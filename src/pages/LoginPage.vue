@@ -1,5 +1,6 @@
 <template>
   <div class="login-page">
+    <router-link to="/" class="back-home-btn">← 返回首页</router-link>
     <div class="login-card">
       <div class="login-header">
         <div class="login-logo">绣</div>
@@ -15,11 +16,13 @@
         >密码登录</button>
         <button
           :class="['mode-tab', { active: loginMode === 'code' }]"
+          :disabled="!emailEnabled"
+          :title="emailEnabled ? '' : '邮件服务未配置，验证码登录暂不可用'"
           @click="switchMode('code')"
         >验证码登录</button>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="login-form">
+      <form class="login-form" @submit.prevent="handleSubmit">
         <!-- ══ 用户名（仅注册）══ -->
         <div v-if="isRegister" class="form-field">
           <label>用户名</label>
@@ -39,7 +42,7 @@
             />
             <!-- 需要验证码时显示发送按钮 -->
             <button
-              v-if="showSendCode"
+              v-if="showSendCode && emailEnabled"
               type="button"
               class="send-code-btn"
               :disabled="codeCountdown > 0"
@@ -48,6 +51,10 @@
               {{ codeCountdown > 0 ? `${codeCountdown}s` : '发送验证码' }}
             </button>
           </div>
+          <!-- 邮件服务未配置时的提示 -->
+          <p v-if="(isRegister || isForgot) && !emailEnabled" class="field-hint">
+            {{ isRegister ? '当前未配置邮件服务，注册无需邮箱验证码' : '邮件服务未配置：任意 6 位数字即可重置密码（开发模式）' }}
+          </p>
         </div>
 
         <!-- ══ 验证码（注册 或 验证码登录）══ -->
@@ -120,6 +127,8 @@ const error = ref('')
 const successMsg = ref('')
 const submitting = ref(false)
 const codeCountdown = ref(0)
+// 邮件服务状态（后端 /api/auth/email-status；未配置 SMTP 时注册无需验证码）
+const emailEnabled = ref(true)
 let countdownTimer = null
 
 const form = reactive({
@@ -131,7 +140,8 @@ const form = reactive({
 })
 
 // ── 显示哪些字段 ──
-const showSendCode = computed(() => isRegister.value || isForgot.value || loginMode.value === 'code')
+// 注册模式的验证码字段只在邮件服务可用时展示（后端 SMTP 未配置时会跳过验证码校验）
+const showSendCode = computed(() => isForgot.value || loginMode.value === 'code' || (isRegister.value && emailEnabled.value))
 const showPassword = computed(() => isRegister.value || isForgot.value || loginMode.value === 'password')
 const passwordMismatch = computed(() =>
   (isRegister.value || isForgot.value) && form.confirmPassword && form.password !== form.confirmPassword
@@ -143,8 +153,18 @@ const submitLabel  = computed(() => {
 })
 
 // ── 入口 ──
-onMounted(() => {
+onMounted(async () => {
   if (route.query.mode === 'register') isRegister.value = true
+
+  // 查询邮件服务状态，调整验证码相关 UI
+  try {
+    const res = await fetch('/api/auth/email-status')
+    const data = await res.json()
+    emailEnabled.value = !!data.emailEnabled
+    if (!emailEnabled.value && loginMode.value === 'code') loginMode.value = 'password'
+  } catch {
+    // 后端不可用时保持默认状态，提交时自然会报错
+  }
 })
 
 // ── 切换登录模式 ──
@@ -280,11 +300,31 @@ async function handleSubmit() {
 
 <style scoped>
 .login-page {
+  position: relative;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #faf6ef 0%, #f0e6d0 50%, #e8d5b8 100%);
+}
+.back-home-btn {
+  position: absolute;
+  top: 24px;
+  left: 28px;
+  padding: 9px 18px;
+  background: #fff;
+  border: 1px solid #e2d5c3;
+  border-radius: 999px;
+  color: #8b6240;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.back-home-btn:hover {
+  border-color: #c9984a;
+  color: #c0392b;
+  box-shadow: 0 4px 14px rgba(92, 61, 32, 0.12);
 }
 .login-card {
   background: #fff;
@@ -344,6 +384,14 @@ async function handleSubmit() {
   background: #f0ebe0;
   color: #5c3d20;
 }
+.mode-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.mode-tab:disabled:hover {
+  background: #faf8f3;
+  color: #9a7d64;
+}
 
 /* ══ 表单 ══ */
 .form-field {
@@ -390,6 +438,9 @@ async function handleSubmit() {
 }
 .field-hint-error {
   color: #c0392b; font-size: 12px; margin: 4px 0 0; text-align: left;
+}
+.field-hint {
+  color: #9a7d64; font-size: 12px; margin: 6px 0 0; text-align: left;
 }
 .login-btn {
   width: 100%; padding: 13px;
