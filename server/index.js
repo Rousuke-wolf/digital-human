@@ -1,14 +1,14 @@
+import './env.js'
 import express from 'express'
 import cors from 'cors'
-import dotenv from 'dotenv'
 import { existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { initDB } from './db.js'
 import authRoutes from './routes/auth.js'
 import ttsRoutes from './routes/tts.js'
-
-dotenv.config()
+import aiRoutes from './routes/ai.js'
+import meshyRoutes from './routes/meshy.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -20,7 +20,36 @@ app.use(express.json({ limit: '1mb' }))
 
 // ── API 路由 ────────────────────────────────────────
 app.use('/api/auth', authRoutes)
+app.use('/api/ai', aiRoutes)
+app.use('/api/meshy', meshyRoutes)
 app.use('/tts', ttsRoutes)
+
+// ── Meshy GLB 资源代理（生产环境；开发环境由 vite 代理处理）──
+// 前端加载 AI 生成的 3D 模型时经此代理，避免跨域 + 隐藏直连地址
+app.get('/meshy-glb', async (req, res) => {
+  const target = req.query.url
+  if (!target) {
+    return res.status(400).json({ message: '缺少 url 参数' })
+  }
+  try {
+    const u = new URL(String(target))
+    // 只允许代理 Meshy 的静态资源域名
+    if (u.hostname !== 'assets.meshy.ai') {
+      return res.status(400).json({ message: '不允许的目标地址' })
+    }
+    const r = await fetch(u)
+    if (!r.ok) {
+      return res.status(r.status).json({ message: `资源获取失败 ${r.status}` })
+    }
+    const buf = Buffer.from(await r.arrayBuffer())
+    res.set('Content-Type', r.headers.get('content-type') || 'model/gltf-binary')
+    res.set('Cache-Control', 'public, max-age=86400')
+    res.send(buf)
+  } catch (err) {
+    console.error('[proxy] GLB 代理失败:', err.message)
+    res.status(502).json({ message: '资源代理失败' })
+  }
+})
 
 // ── 健康检查 + SMTP 测试 ────────────────────────────
 import { testSmtpConnection } from './utils/email.js'
@@ -63,7 +92,8 @@ app.use((req, res) => {
 })
 
 // ── 全局错误处理 ────────────────────────────────────
-app.use((err, req, res, next) => {
+// Express 靠 4 参数签名识别错误中间件，参数名不影响
+app.use((err, req, res, _next) => {
   console.error('[server] 未捕获错误:', err)
   res.status(500).json({ message: '服务器内部错误' })
 })

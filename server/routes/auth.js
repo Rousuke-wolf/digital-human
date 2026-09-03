@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import { query } from '../db.js'
 import { hashPassword, comparePassword } from '../utils/password.js'
 import { requireAuth, signToken } from '../middleware/auth.js'
-import { sendVerificationCode, testSmtpConnection, isEmailAvailable } from '../utils/email.js'
+import { sendVerificationCode, isEmailAvailable } from '../utils/email.js'
 
 const router = Router()
 
@@ -39,6 +39,15 @@ async function verifyCode(email, code) {
   await query('UPDATE email_verifications SET used = 1 WHERE id = ?', [rows[0].id])
   return true
 }
+
+// ── GET /api/auth/email-status ────────────────────
+// 前端据此调整登录页 UI：未配置 SMTP 时注册无需验证码、验证码登录不可用
+router.get('/email-status', (req, res) => {
+  res.json({
+    emailEnabled: isEmailAvailable(),
+    devMode: DEV_MODE,
+  })
+})
 
 // ── POST /api/auth/send-code ──────────────────────
 // purpose: 'register' | 'login'

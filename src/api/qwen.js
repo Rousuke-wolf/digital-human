@@ -1,15 +1,6 @@
-// qwen.js
-import OpenAI from "openai";
-import { heritageListJSON } from "../utils/models.js";
-
-const openai = new OpenAI({
-  apiKey: "sk-a97f441010fd44488eb85dc3dacd9778",
-  baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-  dangerouslyAllowBrowser: true
-});
-
-// API Key 单独保存，供图片生成接口直接使用（不走 OpenAI SDK）
-const DASHSCOPE_KEY = "sk-a97f441010fd44488eb85dc3dacd9778";
+// qwen.js — 通义千问对话 + 图片生成
+// 所有 AI 请求统一走后端代理（server/routes/ai.js），
+// 密钥只存在于服务端环境变量 DASHSCOPE_API_KEY，前端不持有任何 API Key
 
 const systemPrompt = `
 你是"绫韵"，刺绣文化数字人讲解员。只回答刺绣相关问题（历史、四大名绣、苗绣、针法、工具、非遗保护）。非刺绣话题请礼貌拒绝并引导回刺绣。回答亲切专业，100字以内为宜。
@@ -33,82 +24,30 @@ imagePrompt 规则（isGenerateImage=true 时填写）：
 `;
 
 // ─────────────────────────────────────────────
-// 图片生成：调用通义万相 wanx2.1-t2i-turbo
-// 采用「提交任务 → 轮询结果」的异步模式
+// 图片生成：后端代理通义万相（提交任务 → 轮询结果）
 // 返回图片 URL 字符串，失败则返回 null
 // ─────────────────────────────────────────────
 export async function generateImage(prompt) {
-  const IMAGES_URL = "/image-api/api/v1/services/aigc/multimodal-generation/generation";
-
-  const res = await fetch(IMAGES_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${DASHSCOPE_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "qwen-image-2.0-pro",
-      input: {
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ]
-      },
-      parameters: {
-        size: "1024*1024",   // 注意：用 * 不是 x
-        watermark: false
-      }
-    })
-  });
-
-  const json = await res.json();
-
-  console.log("返回:", json);
-
-  // 👇 新接口返回格式
-  const url =
-    json?.output?.choices?.[0]?.message?.content?.[0]?.image;
-
-  if (url) {
-    console.log("✅ 图片生成成功:", url);
-    return url;
-  }
-
-  // 👇 如果是异步任务
-  const taskId = json?.output?.task_id;
-  if (!taskId) return null;
-
-  const QUERY_BASE = "/image-api/api/v1/tasks/";
-
-  for (let i = 0; i < 20; i++) {
-    await new Promise(r => setTimeout(r, 3000));
-
-    const pollRes = await fetch(QUERY_BASE + taskId, {
-      headers: {
-        Authorization: `Bearer ${DASHSCOPE_KEY}`
-      }
+  try {
+    const res = await fetch('/api/ai/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
     });
-
-    const pollJson = await pollRes.json();
-    const status = pollJson?.output?.task_status;
-
-    if (status === "SUCCEEDED") {
-      return pollJson?.output?.results?.[0]?.url;
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.warn('[qwen] 图片生成失败:', json.message || res.status);
+      return null;
     }
-    if (status === "FAILED") return null;
+    return json.url || null;
+  } catch (e) {
+    console.warn('[qwen] 图片生成请求异常:', e.message);
+    return null;
   }
-
-  return null;
 }
 
 // ─────────────────────────────────────────────
-// 流式调用：返回 AsyncGenerator
+// 对话（兼容旧流式接口）：返回 AsyncGenerator
 // 每次 yield { __done: false, __message } 传递增量文字
 // 结束时 yield { __done: true, message, isGenerateImage, imagePrompt }
 // ─────────────────────────────────────────────
@@ -123,20 +62,26 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
   ];
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "qwen-turbo",
-      messages,
-      stream: false,
-      response_format: { type: "json_object" },
+    const res = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'qwen-turbo',
+        messages,
+        response_format: { type: 'json_object' },
+      }),
     });
+    const completion = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(completion.message || `AI 请求失败 ${res.status}`);
+    }
 
-    const raw = completion.choices[0]?.message?.content ?? "";
-    console.log("[qwen] 原始返回:", raw);
+    const raw = completion.choices?.[0]?.message?.content ?? "";
 
     let data;
     try {
       data = JSON.parse(raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim());
-    } catch (e) {
+    } catch {
       console.warn("[qwen] JSON解析失败，原文:", raw);
       // 兜底：把原文当 message
       data = { message: raw || "我刚才走神了，你说什么来着？", isGenerateImage: false, imagePrompt: "" };
@@ -148,8 +93,6 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
     const modelIndex = typeof data.modelIndex === "number" ? data.modelIndex : 0;
     const isShowModel = data.isShowModel === true;
 
-    console.log("[qwen] 解析结果:", { message, isGenerateImage, imagePrompt });
-
     // 逐字 yield，供 appendAIStream 收集（与原流式接口兼容）
     for (const ch of message) {
       yield { __done: false, __message: ch };
@@ -158,7 +101,7 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
     yield { __done: true, message, isGenerateImage, imagePrompt, modelIndex, isShowModel };
 
   } catch (error) {
-    console.error("[qwen] API调用失败:", error);
+    console.error("[qwen] API调用失败:", error.message);
     const fallbackMsg = "系统有点问题，我们稍后再试～";
     for (const ch of fallbackMsg) {
       yield { __done: false, __message: ch };
@@ -166,34 +109,5 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
     yield { __done: true, message: fallbackMsg, isGenerateImage: false, imagePrompt: "", modelIndex: 0, isShowModel: false };
   }
 }
-// ─────────────────────────────────────────────
-// 保留原非流式接口，兼容其他调用方
-// ─────────────────────────────────────────────
-export async function chatWithAI(historyMessages = [], userInput) {
-  try {
-    const messages = [
-      { role: "system", content: systemPrompt },
-      ...historyMessages,
-      { role: "user", content: userInput }
-    ];
-    const completion = await openai.chat.completions.create({
-      model: "qwen-plus",
-      messages
-    });
-    const raw = completion.choices[0].message.content.trim();
-    const cleaned = raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
-    let data;
-    try {
-      data = JSON.parse(cleaned);
-    } catch (e) {
-      data = { message: cleaned || "我刚才走神了，你说什么来着？", isGenerateImage: false, imagePrompt: "" };
-    }
-    if (typeof data.isGenerateImage !== "boolean") data.isGenerateImage = false;
-    if (typeof data.imagePrompt !== "string") data.imagePrompt = "";
-    if (typeof data.modelIndex !== "number") data.modelIndex = 0;
-    return data;
-  } catch (error) {
-    console.error("AI 调用失败:", error);
-    return { message: "系统有点问题，我们稍后再试～", isGenerateImage: false, imagePrompt: "" };
-  }
-}
+
+export { systemPrompt };

@@ -8,7 +8,7 @@
       </div>
 
       <!-- 修改密码 -->
-      <form @submit.prevent="handleChangePwd" class="login-form">
+      <form class="login-form" @submit.prevent="handleChangePwd">
         <h3 style="margin:0 0 16px;color:#3d1f0a;font-size:16px;">🔒 修改密码</h3>
         <div class="form-field">
           <label>旧密码</label>
@@ -44,7 +44,7 @@ import { useAuth } from '../composables/useAuth.js'
 import { authAPI } from '../api/client.js'
 
 const router = useRouter()
-const { user, logout } = useAuth()
+const { user } = useAuth()
 
 const error = ref('')
 const success = ref('')

@@ -1,17 +1,20 @@
+import '../env.js'
 import { Router } from 'express'
 import { WebSocket } from 'ws'
 import { randomUUID } from 'crypto'
-import dotenv from 'dotenv'
-dotenv.config()
 
 const router = Router()
 
 const WS_URL = 'wss://dashscope.aliyuncs.com/api-ws/v1/inference'
-const API_KEY = process.env.DASHSCOPE_TTS_KEY || 'sk-77aee8a61cab46a18ab2ba7487223716'
+const API_KEY = process.env.DASHSCOPE_TTS_KEY
 const DEFAULT_VOICE = 'longling_v2'
 const MODEL = 'cosyvoice-v2'
 
 router.post('/', (req, res) => {
+  if (!API_KEY) {
+    return res.status(503).json({ message: 'TTS 服务未配置，请在 server/.env 中设置 DASHSCOPE_TTS_KEY' })
+  }
+
   const { text, volume, rate, voice } = req.body
 
   if (!text?.trim()) {

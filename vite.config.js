@@ -15,28 +15,9 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
-      // ── 阿里云 TTS 代理（备用）─────────────────────
-      '/tts-api': {
-        target: 'https://dashscope.aliyuncs.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/tts-api/, ''),
-      },
-      // ── 阿里云 图片生成 代理 ──────────────────────
-      "/image-api": {
-        target: "https://dashscope.aliyuncs.com",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/image-api/, "")
-      },
 
-
-      // ── 新增：Meshy API 代理（提交任务 / 查询进度）──
-      '/meshy-api': {
-        target: 'https://api.meshy.ai',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/meshy-api/, ''),
-      },
-
-      // ── 新增：Meshy GLB 文件代理（解决模型加载跨域）──
+      // ── Meshy GLB 文件代理（解决模型加载跨域）──
+      // 生产环境由 server/index.js 的同名路由处理
       '/meshy-glb': {
         target: 'https://assets.meshy.ai',
         changeOrigin: true,
