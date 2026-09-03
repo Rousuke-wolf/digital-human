@@ -1,14 +1,17 @@
 // Meshy.js — Meshy Text-to-3D API 集成 + AI 展品介绍 + TTS 播放
-import { speak, pause, resume, stop, isPlaying, isPaused } from '../../tts.js'
+import { speak, pause, resume, stop } from '../../tts.js'
+import { MODELS } from '../../utils/models.js'
+import { appState, upsertGeneratedModel, setGeneratedIntro } from '../../utils/state.js'
+import { attachViewerLoading } from '../../utils/viewerLoading.js'
 
-const MESHY_API_KEY = 'msy_9BOESjVcI8ETqeOnFM6U8wkFzUH6YCdyuL3G'
-const MESHY_API_URL = '/meshy-api/openapi/v2/text-to-3d'
+// 密钥全部由后端代理持有（server/routes/ai.js、server/routes/meshy.js），
+// 前端只访问自己的后端接口
+const AI_CHAT_URL = '/api/ai/chat'
+const MESHY_API_URL = '/api/meshy/text-to-3d'
+const MESHY_TASK_URL = '/api/meshy/task'
 const MESHY_GLB_PROXY = '/meshy-glb'
 const POLL_INTERVAL = 3000
 const POLL_TIMEOUT = 300000
-
-const QWEN_API_KEY = 'sk-bb2f9a5781d247568259cb014695d29a'
-const QWEN_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
 
 window.meshyTask = window.meshyTask || { status: 'idle' }
 
@@ -229,9 +232,9 @@ function _handleTtsBtnClick() {
 // ── AI 展品介绍 ───────────────────────────────────
 async function generateIntro(prompt) {
   try {
-    const res = await fetch(QWEN_BASE_URL, {
+    const res = await fetch(AI_CHAT_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${QWEN_API_KEY}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'qwen-turbo',
         messages: [
@@ -269,6 +272,8 @@ function loadGeneratedModel(glbUrl, label, intro) {
   viewer.setAttribute('exposure', '1')
   viewer.style.cssText = 'width:100%;height:100%;background:transparent;display:block;'
   wrap.appendChild(viewer)
+  // 生成模型体积大，挂加载进度遮罩
+  attachViewerLoading(viewer)
 
   const nameEl = document.getElementById('modelInfoName')
   const introEl = document.getElementById('modelIntroText')
@@ -286,7 +291,21 @@ async function afterModelLoaded(glbUrl, prompt) {
   const introEl = document.getElementById('modelIntroText')
   if (introEl) introEl.textContent = finalIntro
   if (window._meshyResult) window._meshyResult.intro = finalIntro
+  // 回写生成记录的介绍（持久化，下次选中直接展示）
+  setGeneratedIntro(glbUrl, finalIntro)
   _enableTtsBtn()
+}
+
+// ── 展示「我的生成」里的模型（下拉框选中时调用）──
+export function showGeneratedModel(index) {
+  const g = appState.generatedModels[index]
+  if (!g) return
+
+  stop(); _setTtsBtnUI('idle')
+  loadGeneratedModel(g.glbUrl, g.name, g.intro)
+  window._meshyResult = { glbUrl: g.glbUrl, prompt: g.prompt, intro: g.intro }
+  window.meshyTask = { status: 'success', resultUrl: g.glbUrl, prompt: g.prompt }
+  if (!g.intro) afterModelLoaded(g.glbUrl, g.prompt)
 }
 
 function injectTtsForPreset() {
@@ -300,9 +319,7 @@ async function pollTaskUntilDone(taskId) {
   const deadline = Date.now() + POLL_TIMEOUT
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, POLL_INTERVAL))
-    const res = await fetch(`${MESHY_API_URL}/${taskId}`, {
-      headers: { Authorization: `Bearer ${MESHY_API_KEY}` }
-    })
+    const res = await fetch(`${MESHY_TASK_URL}/${taskId}`)
     if (!res.ok) throw new Error(`轮询失败 ${res.status}`)
     const task = await res.json()
     if (task.status === 'SUCCEEDED') return task
@@ -317,6 +334,14 @@ window.meshyGenerate = async function () {
   const input = document.getElementById('meshyPrompt')
   const prompt = input?.value?.trim()
   if (!prompt) { setStatus('请先输入描述内容', true, true); return }
+
+  // 输入的是预设展品名 → 直接切换预设模型，不走文生 3D（避免误消耗配额）
+  const presetIdx = MODELS.findIndex(m => m.name === prompt)
+  if (presetIdx !== -1) {
+    if (typeof window.onDropdownChange === 'function') window.onDropdownChange(presetIdx)
+    setStatus(`已切换到预设展品「${prompt}」`, false, true)
+    return
+  }
 
   stop(); _setTtsBtnUI('idle')
   setBtnLoading(true); setTimeTag(true)
@@ -335,7 +360,7 @@ window.meshyGenerate = async function () {
 
     const previewRes = await fetch(MESHY_API_URL, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${MESHY_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         mode: 'preview', prompt,
         art_style: 'realistic', negative_prompt: 'low quality, blurry',
@@ -362,7 +387,7 @@ window.meshyGenerate = async function () {
 
     const refineRes = await fetch(MESHY_API_URL, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${MESHY_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode: 'refine', preview_task_id: previewTaskId, texture_resolution: 1024 })
     })
     if (!refineRes.ok) {
@@ -379,10 +404,18 @@ window.meshyGenerate = async function () {
     window._meshyTask = null
     window.meshyTask = { status: 'success', resultUrl: finalUrl, prompt }
 
+    // 加入「我的生成」预设列表（localStorage 持久化，刷新后仍在）
+    upsertGeneratedModel({ name: prompt.slice(0, 20), glbUrl: finalUrl, prompt, intro: null })
+
     // 最终模型：覆盖白模，移除渲染角标
     loadGeneratedModel(finalUrl, prompt.slice(0, 20), null)
     hideRenderingBadge()
     afterModelLoaded(finalUrl, prompt)
+
+    // 下拉框同步选中新生成的条目
+    const genIdx = appState.generatedModels.findIndex(m => m.glbUrl === finalUrl)
+    const sel = document.getElementById('modelDropdown')
+    if (sel && genIdx !== -1) sel.value = `g${genIdx}`
 
     setStatus('✅ 生成完成！', false, true)
     setBtnLoading(false); setTimeTag(false)
@@ -397,14 +430,18 @@ window.meshyGenerate = async function () {
   }
 }
 
-// ── 恢复状态 ──────────────────────────────────────
-function meshyRestoreState() {
+// ── 恢复状态（Show3DPage 在 DOM 构建后调用）──
+export function meshyRestoreState() {
   if (window._meshyResult) {
     const { glbUrl, prompt, intro } = window._meshyResult
     loadGeneratedModel(glbUrl, prompt.slice(0, 20), intro)
     if (!intro) afterModelLoaded(glbUrl, prompt)
     const inp = document.getElementById('meshyPrompt')
     if (inp) inp.value = prompt
+    // 下拉框同步选中对应的「我的生成」条目
+    const gi = appState.generatedModels.findIndex(m => m.glbUrl === glbUrl)
+    const sel = document.getElementById('modelDropdown')
+    if (sel) sel.value = gi !== -1 ? `g${gi}` : ''
     return
   }
   if (window._meshyTask) {
@@ -422,16 +459,6 @@ function meshyRestoreState() {
   injectTtsForPreset()
 }
 
-const _origRebind = window.__rebindScriptEvents
-window.__rebindScriptEvents = function () {
-  if (_origRebind) _origRebind()
-  meshyRestoreState()
-  if (typeof window.__bindComboEvents === 'function') window.__bindComboEvents()
-}
-
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && document.activeElement?.id === 'meshyPrompt') window.meshyGenerate()
 })
-
-meshyRestoreState()
-if (typeof window.__bindComboEvents === 'function') window.__bindComboEvents()

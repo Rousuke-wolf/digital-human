@@ -3,6 +3,9 @@
 // 所有展品数据统一在这里维护
 // 新增展品：在数组末尾加一项，index 自动对应数组下标
 // qwen.js 和 main.js 都从这里 import，无需手动同步
+//
+// src 指向 public/model/exhibits/（构建时由 vite 拷贝进 dist，
+// 开发/生产路径一致；曾放在 src/assets 下，生产环境无法访问）
 // ─────────────────────────────────────────────
 
 export const MODELS = [
@@ -10,7 +13,7 @@ export const MODELS = [
   {
     name: '兔儿爷',
     key: 'rabbit',
-    src: './src/assets/3d-model/rabbit.glb',
+    src: '/model/exhibits/rabbit.glb',
     intro: `兔儿爷是北京地区极具代表性的传统民间艺术形象，也是老北京中秋民俗文化中的重要象征。
 它通常被塑造成兔首人身，身披铠甲或官袍，神态威严中又带有几分可爱，既有民俗信仰色彩，
 又富有浓厚的生活气息。关于兔儿爷的来历，民间普遍认为它与"玉兔"传说有关，后来在北京民俗中
@@ -21,7 +24,7 @@ export const MODELS = [
   {
     name: '舞狮',
     key: 'lion',
-    src: './src/assets/3d-model/lion.glb',
+    src: '/model/exhibits/lion.glb',
     intro: ` 舞狮是中国传统民间表演艺术，尤以广东"醒狮"最为著名，被列入国家级非物质文化遗产。
 表演者两人配合，一人舞头一人舞尾，模仿狮子喜、怒、哀、乐、动、静、惊、疑等神态，
 配合锣鼓节奏腾跃翻滚，既展现武术功底，又寓意驱邪避害、吉祥如意，常见于节庆、开业
@@ -31,7 +34,7 @@ export const MODELS = [
   {
     name: '香囊',
     key: 'xiangnang',
-    src: './src/assets/3d-model/xiangnang.glb',
+    src: '/model/exhibits/xiangnang.glb',
     intro: ` 香囊是中国传统民间工艺品之一，具有悠久的历史与丰富的文化内涵。其造型多样，
     常以布料缝制成袋状，并在外部辅以精美的刺绣装饰。本展品整体呈圆润饱满的袋形结构，以红色为主色调，
     象征吉祥与喜庆，袋身中央绣有花卉纹样，色彩鲜艳、层次分明，体现出刺绣工艺的精致与细腻。香囊上部采用收口设计，
@@ -39,11 +42,11 @@ export const MODELS = [
     。流苏随动作轻微摆动，使静态器物更具灵动之感。`,
   },
 
-  // index 2
+  // index 3
   {
     name: '京剧脸谱',
     key: 'lianpu',
-    src: './src/assets/3d-model/lianpu.glb',
+    src: '/model/exhibits/lianpu.glb',
     intro: ` 京剧脸谱是中国传统戏曲艺术的重要视觉符号，源于京剧表演，被列入国家级非物质文化遗产的重要组成部分
     。 不同颜色与纹样代表人物的性格与身份，例如红色象征忠勇正直，黑色代表刚正不阿，白色则常用于表现阴险狡诈等形
     象，具有高度的象征性与艺术表现力。 演员通过脸谱与服饰、动作相结合，塑造出鲜明的人物形象，使观众能够快速识别
@@ -51,23 +54,23 @@ export const MODELS = [
     统节庆活动之中，具有深厚的文化内涵与审美价值。`,
   },
 
-  // index 2
+  // index 4
   {
     name: '中国结',
-    key: 'lianpu',
-    src: './src/assets/3d-model/zhongguojie.glb',
+    key: 'zhongguojie',
+    src: '/model/exhibits/zhongguojie.glb',
     intro: ` 中国结是中国传统手工编织艺术，历史悠久，被视为中华民族传统文化的重要象征之一。 它以绳线为材料，通过
     盘、绕、编、结等工艺手法形成结构复杂、对称精美的结饰造型，既讲究编织技巧，又强调形式美感与结构规律。 不同的结
     式往往蕴含特定寓意，如团结、平安、吉祥与幸福等，体现了中国传统文化中对美好生活的祝愿与期盼。 中国结常用于室内
     装饰、节庆布置及礼品点缀等场合，既具有观赏价值，也承载着深厚的文化内涵与情感寄托。`,
   },
 
-  // index 2
+  // index 5
   {
     name: '景泰蓝器物',
     key: 'huaping',
-    src: './src/assets/3d-model/huaping.glb',
-    intro: ` 景泰蓝是中国传统金属工艺品，又称“铜胎掐丝珐琅”，以明代景泰年间最为兴盛，被列入国家级非物质文化遗产。
+    src: '/model/exhibits/huaping.glb',
+    intro: ` 景泰蓝是中国传统金属工艺品，又称"铜胎掐丝珐琅"，以明代景泰年间最为兴盛，被列入国家级非物质文化遗产。
      工艺上以铜为胎，通过掐丝、点蓝、烧制、打磨、镀金等多道工序制作而成，图案多以花卉、云纹等为主题，色彩华丽、
      层次丰富，具有极高的艺术价值与工艺难度。 器物造型端庄典雅，纹饰细腻精致，既体现了传统工艺的严谨与匠心，也展
      现出浓厚的东方审美风格。 景泰蓝器物常用于宫廷陈设、艺术收藏及高端礼品之中，不仅具有观赏价值，也承载着吉祥寓
@@ -78,16 +81,7 @@ export const MODELS = [
   // {
   //   name: '风筝',
   //   key: 'kite',
-  //   src: './src/assets/3d-model/kite.glb',
+  //   src: '/model/exhibits/kite.glb',
   //   intro: `...`,
   // },
 ]
-
-// ─────────────────────────────────────────────
-// 供 qwen.js 自动生成 heritageList，不需要手动维护
-// ─────────────────────────────────────────────
-export const heritageListJSON = JSON.stringify(
-  MODELS.map((m, i) => ({ index: i, name: m.name, key: m.key })),
-  null,
-  2
-)

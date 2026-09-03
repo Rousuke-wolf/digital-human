@@ -21,6 +21,71 @@
   line-height: 1;
 }
 
+/* ── 预设展品下拉框（自定义外观）── */
+.meshy-select-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.meshy-select {
+  width: 100%;
+  height: 40px;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0 38px 0 16px;
+  border: 1.5px solid #d4b896;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 14px;
+  color: #5a3e1b;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.meshy-select:hover {
+  border-color: #c8a96e;
+}
+
+.meshy-select:focus {
+  border-color: #c8a96e;
+  box-shadow: 0 0 0 3px rgba(200, 169, 110, 0.15);
+}
+
+.meshy-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 下拉列表分组与选项 */
+.meshy-select optgroup {
+  font-weight: 600;
+  color: #8a6030;
+  background: #faf6ef;
+  font-style: normal;
+}
+.meshy-select option {
+  color: #5a3e1b;
+  background: #fff;
+}
+
+/* 自定义下拉箭头（appearance:none 后原生箭头消失） */
+.meshy-select-arrow {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #b8934e;
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+
+.meshy-select-wrap:hover .meshy-select-arrow {
+  transform: translateY(-50%) translateY(1px);
+}
+
 .meshy-combo-input {
   flex: 1;
   height: 38px;

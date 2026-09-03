@@ -1,35 +1,56 @@
 import { MODELS } from '../../utils/models.js'
 import { appState } from '../../utils/state.js'
 import { buildNavbar } from '../../components/Navibar.js'
+import { showGeneratedModel } from './Meshy.js'
+import { attachViewerLoading } from '../../utils/viewerLoading.js'
 import './index.css'
 import './combo.css'
-import './Meshy.js'
 
-export function buildModelDropdown() {
-  // datalist 选项：预设展品名称
-  const datalistOptions = MODELS.map((m, i) =>
-    `<option data-index="${i}" value="${m.name}"></option>`
-  ).join('')
-
+// 下拉框选中值约定：'' 占位 / '0'~'N-1' 预设展品下标 / 'g0'~'gN' 我的生成下标
+export function buildModelDropdown(selectedValue = '') {
   const isProcessing = window.meshyTask?.status === 'processing'
+  const isSel = (v) => (v === selectedValue ? 'selected' : '')
+  const generated = appState.generatedModels
 
   return `
     <div class="meshy-combo-bar">
-      <!-- datalist 方案：输入框 + 原生下拉二合一 -->
+      <!-- 预设展品：原生 select，始终显示预设列表 -->
       <div class="meshy-combo-row">
         <span class="meshy-combo-icon">🏮</span>
+        <div class="meshy-select-wrap">
+          <select
+            id="modelDropdown"
+            class="meshy-select"
+            ${isProcessing ? 'disabled' : ''}
+          >
+            <option value="" ${isSel('')}>— 选择预设展品 —</option>
+            <optgroup label="预设展品">
+              ${MODELS.map((m, i) =>
+                `<option value="${i}" ${isSel(String(i))}>${m.name}</option>`
+              ).join('')}
+            </optgroup>
+            ${generated.length ? `
+              <optgroup label="我的生成">
+                ${generated.map((g, i) =>
+                  `<option value="g${i}" ${isSel(`g${i}`)}>✨ ${g.name}</option>`
+                ).join('')}
+              </optgroup>
+            ` : ''}
+          </select>
+          <span class="meshy-select-arrow">▾</span>
+        </div>
+      </div>
+      <!-- 自定义描述：AI 文生 3D -->
+      <div class="meshy-combo-row">
+        <span class="meshy-combo-icon">✨</span>
         <input
           type="text"
           id="meshyPrompt"
           class="meshy-combo-input"
-          list="meshyPresetList"
-          placeholder="选择预设展品 或 输入描述生成..."
+          placeholder="或输入描述，AI 生成专属 3D 展品..."
           autocomplete="off"
           ${isProcessing ? 'disabled' : ''}
         />
-        <datalist id="meshyPresetList">
-          ${datalistOptions}
-        </datalist>
         <button class="meshy-gen-btn" id="meshyGenBtn" onclick="window.meshyGenerate()">
           <span id="meshyBtnText">${isProcessing ? '⏳ 生成中...' : '🪄 生成'}</span>
         </button>
@@ -60,6 +81,15 @@ export function build3DPage(hasModel = false) {
     currentIntro = presetModel.intro
   }
 
+  // 下拉框选中项：预设展品对应其下标；Meshy 生成结果对应「我的生成」条目
+  let dropdownValue = ''
+  if (task.status === 'success') {
+    const gi = appState.generatedModels.findIndex(m => m.glbUrl === task.resultUrl)
+    if (gi !== -1) dropdownValue = `g${gi}`
+  } else if (hasModel) {
+    dropdownValue = String(appState.currentModelIndex)
+  }
+
   return `
     <div class="app-wrapper">
       ${buildNavbar('3d')}
@@ -73,7 +103,7 @@ export function build3DPage(hasModel = false) {
         </div>
         <div class="right-panel model-right-panel" id="modelPanel">
           <div class="model-view-box model-view-box-top" id="modelViewBox">
-            ${buildModelDropdown()}
+            ${buildModelDropdown(dropdownValue)}
             <div class="model-viewer-wrap" id="modelViewerWrap">
               ${currentSrc ? `
                 <model-viewer
@@ -104,18 +134,29 @@ export function build3DPage(hasModel = false) {
   `
 }
 
-// ── 绑定 datalist 选中预设展品的逻辑 ─────────────
+// ── 绑定预设展品下拉框选中逻辑 ───────────────────
 window.__bindComboEvents = function () {
-  const input = document.getElementById('meshyPrompt')
-  if (!input) return
+  const select = document.getElementById('modelDropdown')
+  if (!select) return
 
-  input.addEventListener('change', () => {
-    const val = input.value.trim()
-    // 匹配预设展品名称
-    const idx = MODELS.findIndex(m => m.name === val)
-    if (idx !== -1 && typeof window.onDropdownChange === 'function') {
+  // 初始展品 viewer 挂加载进度遮罩（GLB 体积大，避免用户干等）
+  const viewer = document.getElementById('mainModelViewer')
+  if (viewer) attachViewerLoading(viewer)
+
+  select.addEventListener('change', () => {
+    const val = select.value
+    if (!val) return
+
+    if (val.startsWith('g')) {
+      // 「我的生成」条目
+      showGeneratedModel(Number(val.slice(1)))
+      return
+    }
+    // 预设展品
+    const idx = Number(val)
+    if (isNaN(idx) || idx < 0 || idx >= MODELS.length) return
+    if (typeof window.onDropdownChange === 'function') {
       window.onDropdownChange(idx)
     }
-    // 不是预设名称则当作自定义描述，等用户点"生成"
   })
 }
