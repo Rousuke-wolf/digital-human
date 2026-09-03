@@ -2,14 +2,17 @@
   <div class="culture-cards-panel">
     <div class="culture-cards-header">
       <div class="culture-cards-title">🎴 刺绣知识卡片</div>
-      <div class="culture-cards-refresh" @click="refresh">🔀 换一批</div>
+      <div class="culture-cards-refresh" :class="{ locked: inputLocked }" @click="refresh">
+        🔀 换一批
+      </div>
     </div>
-    <div class="culture-mini-grid" id="cultureCardGrid">
+    <div class="culture-mini-grid">
       <div
         v-for="(c, i) in cards"
         :key="c.name + i"
         class="culture-mini-card"
-        @click="quickQuestion(c.q)"
+        :class="{ locked: inputLocked }"
+        @click="onCardClick(c.q)"
       >
         <div class="mini-card-num">0{{ i + 1 }}</div>
         <div class="mini-card-emoji">{{ c.emoji }}</div>
@@ -22,6 +25,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { quickQuestion, inputLocked } from '../../composables/useCultureChat.js'
 
 const CULTURE_CARDS = [
   { emoji:'🧵',name:'苏绣',tag:'精细雅洁 · 双面绣',q:'请详细介绍苏绣的特点和代表作品' },
@@ -48,9 +52,15 @@ function refresh() {
   cards.value = pickRandom4()
 }
 
-function quickQuestion(q) {
-  if (typeof window.quickQuestion === 'function') {
-    window.quickQuestion(q)
-  }
+function onCardClick(q) {
+  quickQuestion(q)
 }
 </script>
+
+<style scoped>
+/* AI 回复期间锁定卡片（与输入锁联动） */
+.locked {
+  pointer-events: none;
+  opacity: 0.45;
+}
+</style>

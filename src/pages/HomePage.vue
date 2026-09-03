@@ -10,6 +10,5 @@ const root = ref(null)
 
 onMounted(() => {
   root.value.innerHTML = buildHomePage()
-  window.__rebindScriptEvents?.()
 })
 </script>

@@ -21,6 +21,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { initLive2D, setEmotion } from '../../composables/useLive2D.js'
 
 const emotions = [
   { key: 'happy', icon: '😊', label: '开心' },
@@ -33,19 +34,12 @@ const current = ref('happy')
 
 function set(emotion) {
   current.value = emotion
-  if (typeof window.setEmotion === 'function') {
-    window.setEmotion(emotion)
-  }
+  setEmotion(emotion)
 }
 
 onMounted(() => {
-  // 暴露给全局（script.js initLive2D 需要按钮 active 状态）
-  window._live2dSetEmotion = set
-  // 等待 script.js 的 initLive2D 初始化
-  setTimeout(() => {
-    if (typeof window.initLive2D_Public === 'function') {
-      window.initLive2D_Public()
-    }
-  }, 100)
+  // Live2D 初始化由 useLive2D 模块承载（文化页 / 3D 展厅共用）
+  initLive2D()
+  setEmotion('happy')
 })
 </script>

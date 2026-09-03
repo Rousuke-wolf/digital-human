@@ -26,10 +26,12 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { lightboxState, closeImagePreview } from '../../utils/lightboxBus.js'
 
-const visible = ref(false)
-const src = ref('')
+// visible/src 由 lightboxBus 共享（聊天组件调用 openImagePreview 打开）
+const visible = lightboxState.visible
+const src = lightboxState.src
 const zoom = ref(1)
 const panX = ref(0)
 const panY = ref(0)
@@ -42,25 +44,16 @@ const imgNaturalH = ref(0)
 let dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0
 let indicatorTimer = null
 
-// 打开
-function open(url) {
-  src.value = url
+// 关闭（打开由 lightboxBus 的 openImagePreview 触发）
+function close() {
+  closeImagePreview()
+  document.body.style.overflow = ''
+  clearTimeout(indicatorTimer)
+  showIndicator.value = false
   zoom.value = 1
   panX.value = 0
   panY.value = 0
   dragging.value = false
-  imgNaturalW.value = 0
-  imgNaturalH.value = 0
-  visible.value = true
-  document.body.style.overflow = 'hidden'
-}
-
-// 关闭
-function close() {
-  visible.value = false
-  document.body.style.overflow = ''
-  clearTimeout(indicatorTimer)
-  showIndicator.value = false
 }
 
 function onImgLoad() {
@@ -146,9 +139,5 @@ function _unbindEvents() {
   _eventsBound = false
 }
 onMounted(() => { _bindEvents() })
-onUnmounted(() => { _unbindEvents(); visible.value = false; document.body.style.overflow = '' })
-
-// 暴露给全局（替代老的 openImagePreview / closeImagePreview）
-window.openImagePreview = open
-window.closeImagePreview = close
+onUnmounted(() => { _unbindEvents(); closeImagePreview(); document.body.style.overflow = '' })
 </script>

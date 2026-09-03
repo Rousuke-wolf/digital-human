@@ -1,5 +1,5 @@
 <template>
-  <div class="app-wrapper page-culture">
+  <div class="app-wrapper page-culture" :class="{ 'voice-mode': voiceModeActive }">
     <div ref="navbarRef"></div>
 
     <div class="main-dashboard culture-dashboard">
@@ -18,43 +18,28 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import '../page/culture/index.css'
-// 副作用导入：注册 window.saveCultureChat 供 renderApp 切页时调用
-import '../page/culture/index.js'
 import Live2DPanel from '../components/live2d/Live2DPanel.vue'
 import ChatPanel from '../components/chat/ChatPanel.vue'
 import KnowledgeCards from '../components/culture/KnowledgeCards.vue'
 import Lightbox from '../components/ui/Lightbox.vue'
 import VoiceOverlay from '../components/chat/VoiceOverlay.vue'
 import { buildNavbar } from '../components/Navibar.js'
+import { voiceModeActive, saveChatHTML, restoreChatHTML } from '../composables/useCultureChat.js'
+import { destroyLive2D } from '../composables/useLive2D.js'
 
 const navbarRef = ref(null)
 let _savedChatHTML = null
 
-// 恢复聊天记录
-function restoreChat() {
-  if (!_savedChatHTML) return
-  const el = document.getElementById('chatHistory')
-  if (el) {
-    el.innerHTML = _savedChatHTML
-    el.scrollTop = el.scrollHeight
-  }
-}
-
 onMounted(() => {
   navbarRef.value.innerHTML = buildNavbar('culture')
 
-  // 恢复之前的聊天记录
-  restoreChat()
-
-  // 触发 script.js 的 bindEvents + initLive2D
-  window.__rebindScriptEvents?.()
+  // 恢复之前的聊天记录（切页后回来继续对话）
+  restoreChatHTML(_savedChatHTML)
 })
 
 onBeforeUnmount(() => {
-  // 保存聊天记录（供切页后恢复）
-  const el = document.getElementById('chatHistory')
-  if (el) _savedChatHTML = el.innerHTML
-  // 同时更新全局 saveCultureChat 用的缓存
-  window._cultureChatHTML = _savedChatHTML
+  // 保存聊天记录 + 释放 Live2D（PIXI 实例 / ResizeObserver）
+  _savedChatHTML = saveChatHTML()
+  destroyLive2D()
 })
 </script>

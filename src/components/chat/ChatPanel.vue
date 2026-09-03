@@ -3,28 +3,41 @@
     <!-- 功能栏 -->
     <div class="function-bar">
       <div class="function-group">
-        <div class="func-item" @click="toggleVoiceSettings" style="cursor:pointer;">
+        <div class="func-item" style="cursor:pointer;" @click="settingsOpen = !settingsOpen">
           <i>🔊</i> 语音设置
         </div>
       </div>
     </div>
 
     <!-- 语音设置 -->
-    <div class="voice-settings-panel" id="voiceSettingsPanel" ref="voiceSettingsRef">
+    <div ref="voiceSettingsRef" class="voice-settings-panel" :class="{ open: settingsOpen }">
       <div class="vs-row">
         <span class="vs-label">🔉 音量</span>
-        <input type="range" class="vs-slider" id="vsVolume" min="0" max="100" value="50" />
-        <span class="vs-val" id="vsVolumeVal">50</span>
+        <input
+          v-model.number="ttsSettings.volume"
+          type="range"
+          class="vs-slider"
+          min="0"
+          max="100"
+        />
+        <span class="vs-val">{{ Math.round(ttsSettings.volume) }}</span>
       </div>
       <div class="vs-row">
         <span class="vs-label">⏩ 语速</span>
-        <input type="range" class="vs-slider" id="vsRate" min="0.5" max="2.0" step="0.1" value="1.2" />
-        <span class="vs-val" id="vsRateVal">1.2x</span>
+        <input
+          v-model.number="ttsSettings.rate"
+          type="range"
+          class="vs-slider"
+          min="0.5"
+          max="2.0"
+          step="0.1"
+        />
+        <span class="vs-val">{{ ttsSettings.rate.toFixed(1) }}x</span>
       </div>
     </div>
 
     <!-- 聊天历史 -->
-    <div class="chat-history" id="chatHistory">
+    <div ref="chatHistoryRef" class="chat-history">
       <div class="welcome-banner">
         <div class="welcome-banner-left">
           <div class="welcome-avatar">绣</div>
@@ -41,19 +54,74 @@
     </div>
 
     <!-- 输入区 -->
-    <div class="input-area">
-      <input type="text" placeholder="输入你想问的问题..." id="textInput" />
-      <button id="sendBtn" title="发送消息">➤</button>
-      <button id="ttsControlBtn" class="tts-control-btn" title="暂停语音">⏸</button>
-      <button id="ttsStopBtn" class="tts-control-btn" title="停止语音">⏹</button>
-      <button id="voiceChatBtn" class="voice-chat-btn" title="切换语音模式">🎤</button>
+    <div class="input-area" :class="{ sending: inputLocked }">
+      <input
+        ref="inputRef"
+        v-model="inputText"
+        type="text"
+        placeholder="输入你想问的问题..."
+        :disabled="inputLocked"
+        @keydown.enter="onSend"
+      />
+      <button title="发送消息" :disabled="inputLocked" @click="onSend">➤</button>
+      <button
+        class="tts-control-btn"
+        :class="{ active: ttsPlaying }"
+        :title="ttsPaused ? '继续语音' : '暂停语音'"
+        @click="toggleTtsPause"
+      >
+        {{ ttsPaused ? '▶' : '⏸' }}
+      </button>
+      <button
+        class="tts-control-btn"
+        :class="{ active: ttsPlaying }"
+        title="停止语音"
+        @click="stopAll"
+      >
+        ⏹
+      </button>
+      <button class="voice-chat-btn" title="切换语音模式" @click="enterVoiceMode">🎤</button>
     </div>
   </div>
 </template>
 
 <script setup>
-function toggleVoiceSettings() {
-  const panel = document.getElementById('voiceSettingsPanel')
-  if (panel) panel.classList.toggle('open')
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import {
+  registerChatUI,
+  unregisterChatUI,
+  sendMessage,
+  toggleTtsPause,
+  stopAll,
+  inputLocked,
+  ttsPlaying,
+  ttsPaused,
+  ttsSettings,
+  voiceModeActive,
+} from '../../composables/useCultureChat.js'
+
+const chatHistoryRef = ref(null)
+const inputRef = ref(null)
+const settingsOpen = ref(false)
+const inputText = ref('')
+
+function onSend() {
+  const text = inputText.value.trim()
+  if (!text) return
+  inputText.value = ''
+  sendMessage(text)
 }
+
+function enterVoiceMode() {
+  voiceModeActive.value = true
+}
+
+// 聊天逻辑由 useCultureChat 单例承载，这里只注册 DOM 引用
+onMounted(() => {
+  registerChatUI({ chatEl: chatHistoryRef.value, inputEl: inputRef.value })
+})
+
+onBeforeUnmount(() => {
+  unregisterChatUI()
+})
 </script>

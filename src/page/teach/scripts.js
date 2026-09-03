@@ -11,6 +11,9 @@
 //  在 tts-teach.js 里配置 TTS_TEACH_PROXY 和 voice 参数即可
 // ─────────────────────────────────────────────────
 
+// 3D 数字人角色（talk/idle 状态驱动，原 window.startLipsync 全局已移除）
+import { startLipsync, stopLipsync } from './character.js';
+
 // ─── 全局动画状态 ─────────────────────────────
 let _isAnimating  = true;
 let _raf          = null;
@@ -129,7 +132,7 @@ window.jumpToPhase = function(phaseIdx) {
 window.stepCardClicked = function(cardIdx) {
   // 1. 停止上一次讲解
   stop();
-  if (typeof window.stopLipsync === 'function') window.stopLipsync();
+  stopLipsync();
 
   // 2. 跳动画
   const phaseIdx = CARD_TO_PHASE[cardIdx] ?? cardIdx;
@@ -141,11 +144,11 @@ window.stepCardClicked = function(cardIdx) {
     const text = lines[cardIdx];
     // 估算播放时长：中文约 4 字/秒（语速 1.2x）
     const estimatedMs = (text.length / (4 * 1.2)) * 1000 + 500;
-    if (typeof window.startLipsync === 'function') window.startLipsync();
+    startLipsync();
     speak(text);
     // 播完后切回 idle
     setTimeout(() => {
-      if (typeof window.stopLipsync === 'function') window.stopLipsync();
+      stopLipsync();
     }, estimatedMs);
   }
 };
@@ -425,7 +428,6 @@ function drawBlanket(ctx, W, H, ct, nDone, isMiao) {
 // ─────────────────────────────────────────────
 function renderFrame(ctx, W, H) {
   const speed  = _curSpeed;
-  const cycleT = _curIsMiao => (_T * speed) % 1;
   const nDone  = Math.floor(_T * speed) % 8;
 
   // ── 循环重置：超过 MAX_CYCLES 轮后归零 ──
@@ -475,7 +477,7 @@ window.selectStep = function(el) {
 window.selectPill = function(el) {
   // 切换前先停止当前讲解，让 3D 模型回 idle
   stop();
-  if (typeof window.stopLipsync === 'function') window.stopLipsync();
+  stopLipsync();
 
   const row=el.closest('.control-row');
   if(row) row.querySelectorAll('.pill-btn').forEach(b=>b.classList.remove('pill-active'));
@@ -523,7 +525,6 @@ window.updateDemo = function() {
   // ── 绑定 canvas 点击事件（圆点可点击）──
   canvas.onclick = (e) => {
     const rect = canvas.getBoundingClientRect();
-    const dpr  = window.devicePixelRatio || 1;
     const lx   = (e.clientX - rect.left);   // logical px
     const ly   = (e.clientY - rect.top);
     for(const dot of _dotPositions){

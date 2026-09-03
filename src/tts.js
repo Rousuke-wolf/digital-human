@@ -41,8 +41,8 @@ function _stopAmpLoop() {
 function _stopPrevious() {
   _stopAmpLoop();
   currentAnalyser = null;
-  if (currentSource) { try { currentSource.stop(); } catch (e) {} currentSource = null; }
-  if (currentCtx)    { try { currentCtx.close();   } catch (e) {} currentCtx    = null; }
+  if (currentSource) { try { currentSource.stop(); } catch {} currentSource = null; }
+  if (currentCtx)    { try { currentCtx.close();   } catch {} currentCtx    = null; }
   // ── Fix 1: 同步清掉 speechSynthesis 队列 ─────────────────────────────────
   // 原来只停 Web Audio，不清 speechSynthesis 队列，导致 _fallback 放入的
   // utterance 一直残留，等 resume() 被调用时就触发幽灵播报

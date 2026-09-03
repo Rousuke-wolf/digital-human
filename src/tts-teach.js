@@ -1,13 +1,13 @@
 // tts-teach.js — 教学页专用 TTS，流式解码（低延迟 + 无电流声）
 
-const TTS_TEACH_PROXY = "http://localhost:3001/tts";
+// 相对路径：开发环境走 vite 代理，生产环境由 Express 同源托管
+const TTS_TEACH_PROXY = "/tts";
 const TEACH_VOICE     = "longling_v2";   // 教学页音色，改这里切换
 
 let _teachCtx      = null;
 let _teachSource   = null;
 let _teachAnalyser = null;
 let _teachGen      = 0;
-let _teachFallbackActive = false;   // 标记是否在走 fallback 路径
 
 window._teachAmplitude = 0;
 let _teachRaf = null;
@@ -36,11 +36,10 @@ function _stopTeachAmpLoop() {
 function _stopTeachPrevious() {
   _stopTeachAmpLoop();
   _teachAnalyser = null;
-  if (_teachSource) { try { _teachSource.stop(); } catch (e) {} _teachSource = null; }
-  if (_teachCtx)    { try { _teachCtx.close();   } catch (e) {} _teachCtx    = null; }
+  if (_teachSource) { try { _teachSource.stop(); } catch {} _teachSource = null; }
+  if (_teachCtx)    { try { _teachCtx.close();   } catch {} _teachCtx    = null; }
   // Fix: 同步清掉 speechSynthesis 队列，防止 fallback utterance 残留
   window.speechSynthesis?.cancel();
-  _teachFallbackActive = false;
 }
 
 export function teachStop() {
@@ -52,7 +51,6 @@ export function teachSpeak(text, onEnd) {
   if (!text?.trim()) return;
 
   const myGen = ++_teachGen;
-  _teachFallbackActive = false;
   _stopTeachPrevious();
 
   // Fix: 带 30 秒超时的 AbortController，防止 fetch 挂起后触发幽灵 fallback
@@ -61,7 +59,9 @@ export function teachSpeak(text, onEnd) {
 
   (async () => {
     try {
-      const settings = window._ttsSettings || {};
+      // 文化页共享设置（useCultureChat 设置 window._ttsSettings）；
+      // 未加载时退回默认值（保持与原全局 script.js 的行为一致）
+      const settings = window._ttsSettings || { volume: 50, rate: 1.2 };
       const res = await fetch(TTS_TEACH_PROXY, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -167,11 +167,9 @@ export function teachSpeak(text, onEnd) {
 }
 
 function _teachFallback(text, onEnd) {
-  _teachFallbackActive = true;
   const u  = new SpeechSynthesisUtterance(text);
   u.lang   = "zh-CN";
   u.onend  = () => {
-    _teachFallbackActive = false;
     if (typeof onEnd === "function") onEnd();
   };
   window.speechSynthesis?.speak(u);
