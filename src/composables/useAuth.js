@@ -1,21 +1,10 @@
 import { ref } from 'vue'
 import { authAPI } from '../api/client.js'
 
-// 全局单例状态（跨组件共享）
+// 全局单例状态（跨组件共享；导航条登录态由 Navbar.vue 响应式渲染）
 const user = ref(null)
 const isLoggedIn = ref(false)
 const loading = ref(true)
-
-function _syncNavbar(username) {
-  if (typeof window.updateNavUser === 'function') {
-    window.updateNavUser(username)
-  }
-}
-function _resetNavbar() {
-  if (typeof window.resetNavUser === 'function') {
-    window.resetNavUser()
-  }
-}
 
 // 本地缓存（后端不可用时也能保持登录态）
 const CACHE_KEY = 'auth_cache'
@@ -44,7 +33,6 @@ export function useAuth() {
     _saveCache({ username: data.user.username, email: data.user.email, avatar: data.user.avatar })
     user.value = data.user
     isLoggedIn.value = true
-    _syncNavbar(data.user.username)
     return data.user
   }
 
@@ -54,7 +42,6 @@ export function useAuth() {
     _saveCache({ username: data.user.username, email: data.user.email, avatar: data.user.avatar })
     user.value = data.user
     isLoggedIn.value = true
-    _syncNavbar(data.user.username)
     return data.user
   }
 
@@ -71,7 +58,6 @@ export function useAuth() {
       user.value = data.user
       isLoggedIn.value = true
       _saveCache({ username: data.user.username, email: data.user.email, avatar: data.user.avatar })
-      _syncNavbar(data.user.username)
     } catch {
       // 后端不可用 → 从本地缓存恢复
       const cache = _loadCache()
@@ -79,7 +65,6 @@ export function useAuth() {
         console.log('[auth] 后端不可用，从本地缓存恢复登录态')
         user.value = { username: cache.username, email: cache.email, avatar: cache.avatar }
         isLoggedIn.value = true
-        _syncNavbar(cache.username)
       } else {
         // 无缓存 → 退出
         _clearCache()
@@ -93,21 +78,9 @@ export function useAuth() {
     _clearCache()
     user.value = null
     isLoggedIn.value = false
-    _resetNavbar()
   }
 
   return { user, isLoggedIn, loading, login, register, checkAuth, logout }
 }
 
-// ── 全局退出处理 ──
-window._handleLogout = function () {
-  const auth = useAuth()
-  auth.logout()
-}
 
-// ── 全局注册跳转 ──
-window._goRegister = function () {
-  if (window.__vueRouter) {
-    window.__vueRouter.push('/login?mode=register')
-  }
-}

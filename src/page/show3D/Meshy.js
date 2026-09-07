@@ -3,6 +3,7 @@ import { speak, pause, resume, stop } from '../../tts.js'
 import { MODELS } from '../../utils/models.js'
 import { appState, upsertGeneratedModel, setGeneratedIntro } from '../../utils/state.js'
 import { attachViewerLoading } from '../../utils/viewerLoading.js'
+import { showPresetModel } from './preset.js'
 
 // 密钥全部由后端代理持有（server/routes/ai.js、server/routes/meshy.js），
 // 前端只访问自己的后端接口
@@ -13,7 +14,9 @@ const MESHY_GLB_PROXY = '/meshy-glb'
 const POLL_INTERVAL = 3000
 const POLL_TIMEOUT = 300000
 
-window.meshyTask = window.meshyTask || { status: 'idle' }
+// ── 模块内部状态（原 window._meshyResult / window._meshyTask 全局）──
+let _meshyResult = null
+let _meshyTask = null
 
   // ── 注入全局 CSS（只注入一次）────────────────────
   ; (function injectStyles() {
@@ -195,7 +198,8 @@ function _stopTtsOnModelChange() {
   if (_ttsState !== 'idle') { stop(); _setTtsBtnUI('idle') }
 }
 
-window._meshyStopTts = function () { _stopTtsOnModelChange() }
+// 供预设切换时停止生成的模型朗读（原 window._meshyStopTts 全局）
+export function meshyStopTts() { _stopTtsOnModelChange() }
 
 function injectTtsButton() {
   if (document.getElementById('meshyTtsBtn')) return
@@ -290,7 +294,7 @@ async function afterModelLoaded(glbUrl, prompt) {
   const finalIntro = intro || '由 Meshy AI 根据您的描述生成的 3D 展品模型。'
   const introEl = document.getElementById('modelIntroText')
   if (introEl) introEl.textContent = finalIntro
-  if (window._meshyResult) window._meshyResult.intro = finalIntro
+  if (_meshyResult) _meshyResult.intro = finalIntro
   // 回写生成记录的介绍（持久化，下次选中直接展示）
   setGeneratedIntro(glbUrl, finalIntro)
   _enableTtsBtn()
@@ -303,8 +307,10 @@ export function showGeneratedModel(index) {
 
   stop(); _setTtsBtnUI('idle')
   loadGeneratedModel(g.glbUrl, g.name, g.intro)
-  window._meshyResult = { glbUrl: g.glbUrl, prompt: g.prompt, intro: g.intro }
-  window.meshyTask = { status: 'success', resultUrl: g.glbUrl, prompt: g.prompt }
+  _meshyResult = { glbUrl: g.glbUrl, prompt: g.prompt, intro: g.intro }
+  appState.meshyTask.status = 'success'
+  appState.meshyTask.resultUrl = g.glbUrl
+  appState.meshyTask.prompt = g.prompt
   if (!g.intro) afterModelLoaded(g.glbUrl, g.prompt)
 }
 
@@ -330,7 +336,7 @@ async function pollTaskUntilDone(taskId) {
 }
 
 // ── 主入口 ────────────────────────────────────────
-window.meshyGenerate = async function () {
+export async function meshyGenerate() {
   const input = document.getElementById('meshyPrompt')
   const prompt = input?.value?.trim()
   if (!prompt) { setStatus('请先输入描述内容', true, true); return }
@@ -338,7 +344,7 @@ window.meshyGenerate = async function () {
   // 输入的是预设展品名 → 直接切换预设模型，不走文生 3D（避免误消耗配额）
   const presetIdx = MODELS.findIndex(m => m.name === prompt)
   if (presetIdx !== -1) {
-    if (typeof window.onDropdownChange === 'function') window.onDropdownChange(presetIdx)
+    showPresetModel(presetIdx)
     setStatus(`已切换到预设展品「${prompt}」`, false, true)
     return
   }
@@ -372,8 +378,9 @@ window.meshyGenerate = async function () {
       throw new Error(err.message || `创建失败 ${previewRes.status}`)
     }
     const { result: previewTaskId } = await previewRes.json()
-    window._meshyTask = { taskId: previewTaskId, prompt, startTime: Date.now() }
-    window.meshyTask = { status: 'processing', prompt }
+    _meshyTask = { taskId: previewTaskId, prompt, startTime: Date.now() }
+    appState.meshyTask.status = 'processing'
+    appState.meshyTask.prompt = prompt
 
     setStatus('⚙️ 白模生成中...')
     const previewTask = await pollTaskUntilDone(previewTaskId)
@@ -400,9 +407,11 @@ window.meshyGenerate = async function () {
     if (!finalGlb) throw new Error('未找到最终模型链接')
 
     const finalUrl = `${MESHY_GLB_PROXY}?url=${encodeURIComponent(finalGlb)}`
-    window._meshyResult = { glbUrl: finalUrl, prompt, intro: null }
-    window._meshyTask = null
-    window.meshyTask = { status: 'success', resultUrl: finalUrl, prompt }
+    _meshyResult = { glbUrl: finalUrl, prompt, intro: null }
+    _meshyTask = null
+    appState.meshyTask.status = 'success'
+    appState.meshyTask.resultUrl = finalUrl
+    appState.meshyTask.prompt = prompt
 
     // 加入「我的生成」预设列表（localStorage 持久化，刷新后仍在）
     upsertGeneratedModel({ name: prompt.slice(0, 20), glbUrl: finalUrl, prompt, intro: null })
@@ -425,15 +434,15 @@ window.meshyGenerate = async function () {
     hideLoader(); hideRenderingBadge()
     setStatus(`❌ ${e.message}`, true, true)
     setBtnLoading(false); setTimeTag(false)
-    window._meshyTask = null
-    window.meshyTask = { status: 'idle' }
+    _meshyTask = null
+    appState.meshyTask.status = 'idle'
   }
 }
 
 // ── 恢复状态（Show3DPage 在 DOM 构建后调用）──
 export function meshyRestoreState() {
-  if (window._meshyResult) {
-    const { glbUrl, prompt, intro } = window._meshyResult
+  if (_meshyResult) {
+    const { glbUrl, prompt, intro } = _meshyResult
     loadGeneratedModel(glbUrl, prompt.slice(0, 20), intro)
     if (!intro) afterModelLoaded(glbUrl, prompt)
     const inp = document.getElementById('meshyPrompt')
@@ -444,10 +453,10 @@ export function meshyRestoreState() {
     if (sel) sel.value = gi !== -1 ? `g${gi}` : ''
     return
   }
-  if (window._meshyTask) {
-    const { prompt, startTime } = window._meshyTask
+  if (_meshyTask) {
+    const { prompt, startTime } = _meshyTask
     if (Date.now() - startTime > POLL_TIMEOUT) {
-      window._meshyTask = null; window.meshyTask = { status: 'idle' }; return
+      _meshyTask = null; appState.meshyTask.status = 'idle'; return
     }
     const inp = document.getElementById('meshyPrompt')
     if (inp) inp.value = prompt
@@ -460,5 +469,5 @@ export function meshyRestoreState() {
 }
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && document.activeElement?.id === 'meshyPrompt') window.meshyGenerate()
+  if (e.key === 'Enter' && document.activeElement?.id === 'meshyPrompt') meshyGenerate()
 })

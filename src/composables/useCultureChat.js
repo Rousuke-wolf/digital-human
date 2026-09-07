@@ -6,11 +6,12 @@
 // DOM 由 ChatPanel 通过 registerChatUI 注册（组件卸载时注销），
 // 其余组件只调用方法、不碰 DOM。
 
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { chatWithAIStream, generateImage, systemPrompt } from '../api/qwen.js'
 import { speak, stop, pause, resume } from '../tts.js'
 import { startLipsync, stopLipsync } from './useLive2D.js'
 import { openImagePreview } from '../utils/lightboxBus.js'
+import { goToExhibit } from '../utils/navigation.js'
 
 // ── 共享响应式状态 ──────────────────────────────────
 export const inputLocked = ref(false)   // 回复进行中：锁定输入与知识卡片
@@ -18,8 +19,9 @@ export const voiceModeActive = ref(false)  // 语音聊天模式（Live2D 缩放
 export const ttsPlaying = ref(false)    // TTS 播放中（暂停/停止按钮高亮）
 export const ttsPaused = ref(false)     // TTS 已暂停（暂停按钮 ▶/⏸ 文字）
 
-// 语音设置（tts.js 在 speak 时读取 window._ttsSettings，后续批次改为模块直读）
-export const ttsSettings = { volume: 50, rate: 1.2 }
+// 语音设置：必须是响应式对象（v-model 绑定的数值显示依赖它触发重渲染）
+// tts.js 在 speak 时仍读取 window._ttsSettings，后续批次改为模块直读
+export const ttsSettings = reactive({ volume: 50, rate: 1.2 })
 window._ttsSettings = ttsSettings
 
 // ── 模块内部状态 ────────────────────────────────────
@@ -176,9 +178,7 @@ function appendUser(text) {
 
 // ── 3D 展品联动（isShowModel 时跳 3D 展厅）──
 function handleModelDisplay(index) {
-  if (typeof window.switchTab === 'function') {
-    window.switchTab('3d', index)
-  }
+  goToExhibit(index)
 }
 
 // ─────────────────────────────────────────────

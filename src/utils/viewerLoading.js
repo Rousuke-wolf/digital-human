@@ -60,16 +60,32 @@ export function attachViewerLoading(viewer) {
   const show = () => { overlay.style.display = 'flex' }
   const hide = () => { overlay.style.display = 'none' }
 
+  // model-viewer 在 load 之后仍可能派发 progress 事件（已知行为），
+  // 必须加 loaded 标记：加载完成后忽略一切晚到的 progress，
+  // 否则遮罩会被重新拉起且再也没有事件隐藏它 → 永久卡在"加载中"
+  let loaded = false
+
   viewer.addEventListener('progress', (e) => {
+    if (loaded) return
     const p = e.detail?.totalProgress ?? 0
+    if (p >= 1) {
+      // 兜底：进度到 100% 视为加载完成（部分版本不派发 load）
+      loaded = true
+      hide()
+      return
+    }
     if (textEl) {
-      textEl.textContent = p > 0 && p < 1 ? `模型加载中 ${Math.round(p * 100)}%…` : '模型加载中…'
+      textEl.textContent = p > 0 ? `模型加载中 ${Math.round(p * 100)}%…` : '模型加载中…'
       textEl.style.color = '#8a6030'
     }
     show()
   })
-  viewer.addEventListener('load', hide)
+  viewer.addEventListener('load', () => {
+    loaded = true
+    hide()
+  })
   viewer.addEventListener('error', () => {
+    loaded = true
     if (textEl) {
       textEl.textContent = '模型加载失败，请检查网络后重试'
       textEl.style.color = '#c0392b'

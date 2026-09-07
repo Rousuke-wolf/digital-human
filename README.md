@@ -111,5 +111,5 @@ bash test/api-test.sh
 
 - 3D 展品模型（GLB）体积较大（5~29MB）：已实现按需加载 + 进度遮罩（`src/utils/viewerLoading.js`），Draco/meshopt 压缩仍待做（需 gltfpack 重新导出模型）
 - Meshy API 为海外服务，国内网络直连不稳定，建议部署时配置代理
-- 文化页已完全组件化（`src/composables/useCultureChat.js` / `useLive2D.js`）；首页/教学页/3D 展厅仍是 `src/page/` 字符串模板页面，待逐步迁移
+- 全部页面已完成 Vue 组件化（含导航条统一）；`src/page/` 下仅保留动画引擎/游戏/Meshy 等逻辑模块
 - 前端为 JavaScript，计划渐进引入 TypeScript
