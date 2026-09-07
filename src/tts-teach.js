@@ -23,6 +23,9 @@ function _startTeachAmpLoop(analyser) {
       sum += v * v;
     }
     window._teachAmplitude = Math.min(1, Math.sqrt(sum / buf.length) * 8);
+    // 镜像到 _ttsAmplitude：Live2D 嘴型同步（useLive2D.js）统一读这个值，
+    // 教学页与文化页共用同一份嘴型驱动
+    window._ttsAmplitude = window._teachAmplitude;
     _teachRaf = requestAnimationFrame(loop);
   }
   loop();
@@ -31,6 +34,7 @@ function _startTeachAmpLoop(analyser) {
 function _stopTeachAmpLoop() {
   if (_teachRaf) { cancelAnimationFrame(_teachRaf); _teachRaf = null; }
   window._teachAmplitude = 0;
+  window._ttsAmplitude = 0;
 }
 
 function _stopTeachPrevious() {

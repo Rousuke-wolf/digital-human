@@ -11,8 +11,8 @@
 //  在 tts-teach.js 里配置 TTS_TEACH_PROXY 和 voice 参数即可
 // ─────────────────────────────────────────────────
 
-// 3D 数字人角色（talk/idle 状态驱动，原 window.startLipsync 全局已移除）
-import { startLipsync, stopLipsync } from './character.js';
+// Live2D 嘴型开关（教学页数字人为 Live2D，与教学页专用 TTS 的振幅联动）
+import { startLipsync, stopLipsync } from '../../composables/useLive2D.js';
 
 // ─── 全局动画状态 ─────────────────────────────
 let _isAnimating  = true;
@@ -20,7 +20,9 @@ let _raf          = null;
 let _T            = 0;           // 单调时间戳
 const MAX_CYCLES  = 3;           // 演示几轮后重播
 
-// ─── 当前选择（供外部 jumpToPhase 使用）────────
+// ─── 当前选择（TeachingPage 通过 selectPill 设置）────────
+let _selStitch = 'flat';
+let _selType   = 'su';
 let _curStitch = 'flat';
 let _curType   = 'su';
 let _curSpeed  = 0.08;
@@ -119,24 +121,24 @@ function getPhase(ct, bounds) {
   return { phase:bounds.length-2, p:1 };
 }
 
-// ─── 跳转到指定阶段 ───────────────────────────
-window.jumpToPhase = function(phaseIdx) {
+// ─── 跳转到指定阶段（canvas 圆点点击也走这里）──
+function jumpToPhase(phaseIdx) {
   const bounds = PB[_curStitch] || PB.flat;
   const target = bounds[Math.min(phaseIdx, bounds.length-2)] || 0;
   // 保持当前轮次，只改阶段内偏移
   const base = Math.floor(_T * _curSpeed);
   _T = (base + target) / _curSpeed;
-};
+}
 
-// ─── 步骤卡片点击 ─────────────────────────────
-window.stepCardClicked = function(cardIdx) {
+// ─── 步骤卡片点击（TeachingPage 调用）─────────
+export function stepCardClicked(cardIdx) {
   // 1. 停止上一次讲解
   stop();
   stopLipsync();
 
   // 2. 跳动画
   const phaseIdx = CARD_TO_PHASE[cardIdx] ?? cardIdx;
-  window.jumpToPhase(phaseIdx);
+  jumpToPhase(phaseIdx);
 
   // 3. TTS 讲解 + 驱动 3D 模型口型/状态
   const lines = SPEECH[_curStitch]?.[_curType];
@@ -453,55 +455,62 @@ function renderFrame(ctx, W, H) {
 
   ctx.restore();
 
-  // ── 同步步骤卡片高亮 ──
-  _syncStepCards(phase);
+  // ── 同步步骤卡片高亮（通知 TeachingPage 更新响应式状态）──
+  _notifyPhase(phase);
 }
 
-// 让步骤卡片跟随动画阶段高亮
-function _syncStepCards(animPhase) {
+// 让步骤卡片跟随动画阶段高亮（TeachingPage 注册监听器后由 Vue 响应式处理）
+let _phaseListener = null;
+export function setPhaseListener(fn) { _phaseListener = fn; }
+
+function _notifyPhase(animPhase) {
+  if (!_phaseListener) return;
   // phase 0 → card 0；phase 1/2 → card 1；phase 3 → card 2
-  const cardIdx = animPhase <= 0 ? 0 : animPhase <= 2 ? 1 : 2;
-  document.querySelectorAll('.step-card').forEach((c,i) => {
-    c.classList.toggle('step-active', i === cardIdx);
-  });
+  _phaseListener(animPhase <= 0 ? 0 : animPhase <= 2 ? 1 : 2);
 }
 
 // ─────────────────────────────────────────────
-//  公开接口
+//  公开接口（原 window.selectStep / selectPill / toggleStitchAnimation）
 // ─────────────────────────────────────────────
-window.selectStep = function(el) {
-  document.querySelectorAll('.step-card').forEach(c=>c.classList.remove('step-active'));
-  el.classList.add('step-active');
-};
 
-window.selectPill = function(el) {
-  // 切换前先停止当前讲解，让 3D 模型回 idle
+// 切换针法/类型（按钮高亮由 TeachingPage 的响应式状态处理）
+export function selectPill(kind, value) {
+  // 切换前先停止当前讲解，让数字人回常态
   stop();
   stopLipsync();
 
-  const row=el.closest('.control-row');
-  if(row) row.querySelectorAll('.pill-btn').forEach(b=>b.classList.remove('pill-active'));
-  el.classList.add('pill-active');
-  _T=0;
-  if(typeof window.updateDemo==='function') window.updateDemo();
-};
+  if (kind === 'stitch') _selStitch = value;
+  else if (kind === 'type') _selType = value;
+  _T = 0;
+  updateDemo();
+}
 
-window.toggleStitchAnimation = function() {
-  const btn=document.getElementById('playPauseBtn');
-  if(!btn) return;
-  _isAnimating=!_isAnimating;
-  if(_isAnimating){ btn.innerHTML='<span class="icon-pause"></span>'; btn.classList.remove('paused'); if(typeof window.updateDemo==='function') window.updateDemo(); }
-  else { btn.innerHTML='<span class="icon-play"></span>'; btn.classList.add('paused'); if(_raf){cancelAnimationFrame(_raf);_raf=null;} }
-};
+export function toggleStitchAnimation() {
+  // 按钮图标由 TeachingPage 绑定 animPaused 状态渲染
+  _isAnimating = !_isAnimating;
+  if (_isAnimating) {
+    updateDemo();
+  } else if (_raf) {
+    cancelAnimationFrame(_raf);
+    _raf = null;
+  }
+}
+
+// 页面离开时清理：停止动画帧 + TTS + 嘴型
+export function stopDemo() {
+  if (_raf) { cancelAnimationFrame(_raf); _raf = null; }
+  _isAnimating = true;   // 复位，下次进入页面恢复默认播放态
+  stop();
+  stopLipsync();
+}
 
 // ─────────────────────────────────────────────
 //  主更新函数（含 canvas 点击事件绑定）
+//  TeachingPage 在 DOM 就绪后调用；选择状态来自 selectPill 设置的模块状态
 // ─────────────────────────────────────────────
-window.updateDemo = function() {
-  const sBtn=document.querySelector('.pill-btn.pill-active[data-stitch]');
-  const tBtn=document.querySelector('.pill-btn.pill-active[data-type]');
-  _curStitch = sBtn ? sBtn.dataset.stitch : 'flat';
-  _curType   = tBtn ? tBtn.dataset.type   : 'su';
+export function updateDemo() {
+  _curStitch = _selStitch;
+  _curType   = _selType;
   _curSpeed  = _curType==='miao' ? 0.10 : 0.08;
 
   const INFO={
@@ -516,7 +525,7 @@ window.updateDemo = function() {
   const vis=document.getElementById('demoVisual'); if(!vis) return;
   if(!document.getElementById('stitchCanvas')){
     vis.innerHTML='<canvas id="stitchCanvas" style="width:100%;height:100%;display:block;cursor:pointer;"></canvas>';
-    setTimeout(()=>window.updateDemo(),80); return;
+    setTimeout(()=>updateDemo(),80); return;
   }
   if(_raf){cancelAnimationFrame(_raf);_raf=null;}
 
@@ -529,14 +538,14 @@ window.updateDemo = function() {
     const ly   = (e.clientY - rect.top);
     for(const dot of _dotPositions){
       if(Math.hypot(lx-dot.cx, ly-dot.cy) <= dot.r){
-        window.jumpToPhase(dot.phaseIdx);
+        jumpToPhase(dot.phaseIdx);
         return;
       }
     }
   };
 
   const rect=canvas.getBoundingClientRect();
-  if(rect.width===0||rect.height===0){setTimeout(()=>window.updateDemo(),80);return;}
+  if(rect.width===0||rect.height===0){setTimeout(()=>updateDemo(),80);return;}
   const dpr=window.devicePixelRatio||1;
   canvas.width=rect.width*dpr; canvas.height=rect.height*dpr;
   const ctx=canvas.getContext('2d');
@@ -552,8 +561,4 @@ window.updateDemo = function() {
     _raf=requestAnimationFrame(loop);
   }
   loop();
-};
-
-document.addEventListener('DOMContentLoaded',()=>{
-  setTimeout(()=>{if(typeof window.updateDemo==='function') window.updateDemo();},120);
-});
+}

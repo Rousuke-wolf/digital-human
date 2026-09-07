@@ -313,9 +313,5 @@ function renderArtwork(cvs, game, acc) {
   ctx.strokeStyle = 'rgba(200,146,58,.3)'; ctx.lineWidth = 1; ctx.strokeRect(7, 7, w - 14, h - 14);
 }
 
-window.openModal = openModal;
-window.closeModal = closeModal;
-window.startGame = startGame;
-window.pickStitch = pickStitch;
-window.goBack = goBack;
-window.ovClick = ovClick;
+// 供 GameModal.vue 的 @click 调用（原 window 全局已移除）
+export { openModal, closeModal, startGame, pickStitch, goBack, ovClick };
