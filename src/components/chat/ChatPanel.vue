@@ -6,6 +6,9 @@
         <div class="func-item" style="cursor:pointer;" @click="settingsOpen = !settingsOpen">
           <i>🔊</i> 语音设置
         </div>
+        <div class="func-item" style="cursor:pointer;" @click="onClearChat">
+          <i>🗑</i> 清空对话
+        </div>
       </div>
     </div>
 
@@ -93,6 +96,7 @@ import {
   sendMessage,
   toggleTtsPause,
   stopAll,
+  clearChat,
   inputLocked,
   ttsPlaying,
   ttsPaused,
@@ -114,6 +118,10 @@ function onSend() {
 
 function enterVoiceMode() {
   voiceModeActive.value = true
+}
+
+function onClearChat() {
+  clearChat()
 }
 
 // 聊天逻辑由 useCultureChat 单例承载，这里只注册 DOM 引用

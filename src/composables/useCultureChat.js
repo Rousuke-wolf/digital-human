@@ -42,10 +42,47 @@ let _typingPaused = false
 let _typingResume = null
 let _typingResolve = null
 
+// ── 对话持久化（localStorage：气泡 HTML + 上下文消息数组）──
+const CHAT_STORAGE_KEY = 'zhichuan-culture-chat'
+
+function persistChat() {
+  if (!_chatEl) return
+  try {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
+      html: _chatEl.innerHTML,
+      messages: _historyMessages,
+    }))
+  } catch {
+    // 存储满/隐私模式等场景静默失败，仅影响刷新恢复
+  }
+}
+
+function loadPersistedChat() {
+  try {
+    const raw = localStorage.getItem(CHAT_STORAGE_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    return {
+      html: typeof data.html === 'string' ? data.html : '',
+      messages: Array.isArray(data.messages) ? data.messages : null,
+    }
+  } catch {
+    return null
+  }
+}
+
 // ── DOM 注册（ChatPanel onMounted / onBeforeUnmount 调用）──
 export function registerChatUI({ chatEl, inputEl }) {
   _chatEl = chatEl
   _inputEl = inputEl
+
+  // 刷新页面后恢复上次对话（气泡 + 多轮上下文）
+  const saved = loadPersistedChat()
+  if (saved?.html) {
+    _chatEl.innerHTML = saved.html
+    _chatEl.scrollTop = _chatEl.scrollHeight
+    if (saved.messages) _historyMessages = saved.messages
+  }
 }
 
 export function unregisterChatUI() {
@@ -54,15 +91,22 @@ export function unregisterChatUI() {
   stopAll()
 }
 
-// ── 聊天记录保存/恢复（CulturePage 切页时用）──
-export function saveChatHTML() {
-  return _chatEl?.innerHTML ?? ''
-}
-
-export function restoreChatHTML(html) {
-  if (!_chatEl || !html) return
-  _chatEl.innerHTML = html
-  _chatEl.scrollTop = _chatEl.scrollHeight
+// ── 清空对话（ChatPanel「清空对话」按钮）──
+export function clearChat() {
+  _streamGeneration++
+  stop()
+  stopTyping()
+  stopLipsync()
+  ttsPlaying.value = false
+  ttsPaused.value = false
+  _historyMessages = [{ role: 'system', content: systemPrompt.trim() }]
+  unlockInput()
+  if (_chatEl) {
+    // 只移除消息气泡，保留模板里的欢迎横幅
+    _chatEl.querySelectorAll('.message').forEach((n) => n.remove())
+    _chatEl.scrollTop = _chatEl.scrollHeight
+  }
+  try { localStorage.removeItem(CHAT_STORAGE_KEY) } catch {}
 }
 
 // ── 历史裁剪：system + 最近 6 轮（12 条）──
@@ -174,6 +218,7 @@ function appendUser(text) {
   div.innerText = text
   _chatEl.appendChild(div)
   _chatEl.scrollTop = _chatEl.scrollHeight
+  persistChat()
 }
 
 // ── 3D 展品联动（isShowModel 时跳 3D 展厅）──
@@ -301,6 +346,7 @@ async function appendAIStream(historyMessages, userInput, onDone) {
       appendImageToDiv(div, finalData.imagePrompt)
     }
   }
+  persistChat()
 }
 
 // ─────────────────────────────────────────────
@@ -350,10 +396,12 @@ async function appendImageToDiv(div, imagePrompt) {
 
     div.appendChild(img)
     if (_chatEl) _chatEl.scrollTop = _chatEl.scrollHeight
+    persistChat()
 
   } catch (err) {
     placeholder.remove()
     console.error('图片追加失败:', err)
+    persistChat()
   }
 }
 

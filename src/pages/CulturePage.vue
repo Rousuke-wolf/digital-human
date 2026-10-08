@@ -16,7 +16,7 @@
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount } from 'vue'
+import { onBeforeUnmount } from 'vue'
 import '../page/culture/index.css'
 import Navbar from '../components/Navbar.vue'
 import Live2DPanel from '../components/live2d/Live2DPanel.vue'
@@ -24,19 +24,12 @@ import ChatPanel from '../components/chat/ChatPanel.vue'
 import KnowledgeCards from '../components/culture/KnowledgeCards.vue'
 import Lightbox from '../components/ui/Lightbox.vue'
 import VoiceOverlay from '../components/chat/VoiceOverlay.vue'
-import { voiceModeActive, saveChatHTML, restoreChatHTML } from '../composables/useCultureChat.js'
+import { voiceModeActive } from '../composables/useCultureChat.js'
 import { destroyLive2D } from '../composables/useLive2D.js'
 
-let _savedChatHTML = null
-
-onMounted(() => {
-  // 恢复之前的聊天记录（切页后回来继续对话）
-  restoreChatHTML(_savedChatHTML)
-})
-
+// 聊天记录由 useCultureChat 自动持久化（切页保留 + 刷新恢复），无需手动保存
 onBeforeUnmount(() => {
-  // 保存聊天记录 + 释放 Live2D（PIXI 实例 / ResizeObserver）
-  _savedChatHTML = saveChatHTML()
+  // 释放 Live2D（PIXI 实例 / ResizeObserver）
   destroyLive2D()
 })
 </script>

@@ -47,6 +47,24 @@
             <!-- 状态提示（原 HTML 缺失导致 setStatus 一直是静默 no-op，本次补回） -->
             <div id="meshyStatus" class="meshy-status"></div>
             <div id="meshyTimeTag" class="meshy-time-tag">⏱ 预计 3 ~ 8 分钟</div>
+
+            <!-- 我的生成：快速切换与删除管理（响应式，随生成/删除自动增减） -->
+            <div v-if="appState.generatedModels.length" class="generated-chips">
+              <div
+                v-for="(g, i) in appState.generatedModels"
+                :key="g.glbUrl"
+                class="generated-chip"
+                title="点击展示该模型"
+                @click="onChipClick(i)"
+              >
+                <span>✨ {{ g.name }}</span>
+                <button
+                  class="generated-chip-del"
+                  title="删除该生成模型"
+                  @click.stop="onDeleteGenerated(g)"
+                >✕</button>
+              </div>
+            </div>
           </div>
 
           <!--
@@ -81,9 +99,16 @@ import Navbar from '../components/Navbar.vue'
 import { MODELS } from '../utils/models.js'
 import { appState } from '../utils/state.js'
 import { showPresetModel } from '../page/show3D/preset.js'
-import { meshyGenerate, meshyRestoreState, showGeneratedModel } from '../page/show3D/Meshy.js'
+import {
+  meshyGenerate,
+  meshyRestoreState,
+  showGeneratedModel,
+  clearGeneratedDisplay,
+  meshySetStatus,
+} from '../page/show3D/Meshy.js'
 import { initLive2D, destroyLive2D } from '../composables/useLive2D.js'
 import { attachViewerLoading } from '../utils/viewerLoading.js'
+import { removeGeneratedModel } from '../utils/state.js'
 
 // 挂载时的生成状态（一次性快照；后续状态由 Meshy.js 的 setBtnLoading 等管理）
 const processingAtMount = appState.meshyTask.status === 'processing'
@@ -125,16 +150,18 @@ function buildInitialViewer() {
   if (introEl) introEl.textContent = intro
 }
 
-// ── 下拉框初始选中项 ──
-function syncDropdownInitial() {
+// ── 下拉框选中项同步（挂载/删除生成条目后调用）──
+function syncDropdownSelection() {
   const sel = document.getElementById('modelDropdown')
   if (!sel) return
   const task = appState.meshyTask
-  if (task.status === 'success') {
+  if (task.status === 'success' && task.resultUrl) {
     const gi = appState.generatedModels.findIndex((m) => m.glbUrl === task.resultUrl)
     sel.value = gi !== -1 ? `g${gi}` : ''
   } else if (appState._modelHasContent) {
     sel.value = String(appState.currentModelIndex)
+  } else {
+    sel.value = ''
   }
 }
 
@@ -151,10 +178,29 @@ function onDropdownSelect() {
   showPresetModel(Number(val))
 }
 
+// ── 「我的生成」chip：点击展示 ──
+function onChipClick(i) {
+  showGeneratedModel(i)
+}
+
+// ── 「我的生成」chip：删除（含展示区/下拉框联动）──
+function onDeleteGenerated(g) {
+  removeGeneratedModel(g.glbUrl)
+
+  // 删除的是正在展示的模型 → 恢复空态
+  if (appState.meshyTask.status === 'success' && appState.meshyTask.resultUrl === g.glbUrl) {
+    clearGeneratedDisplay(g.glbUrl)
+  }
+
+  // 下拉框选中值可能因索引错位失效，重新同步
+  syncDropdownSelection()
+  meshySetStatus(`已删除「${g.name}」`, false, true)
+}
+
 onMounted(() => {
   // 顺序对齐旧实现：初始内容 → Live2D → Meshy 状态恢复
   buildInitialViewer()
-  syncDropdownInitial()
+  syncDropdownSelection()
   initLive2D()
   meshyRestoreState()
 })

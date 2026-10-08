@@ -56,3 +56,13 @@ export function setGeneratedIntro(glbUrl, intro) {
     persistGeneratedModels()
   }
 }
+
+// 删除「我的生成」条目（下拉框与展示区由调用方同步）
+export function removeGeneratedModel(glbUrl) {
+  const idx = appState.generatedModels.findIndex((m) => m.glbUrl === glbUrl)
+  if (idx !== -1) {
+    appState.generatedModels.splice(idx, 1)
+    persistGeneratedModels()
+  }
+  return idx
+}

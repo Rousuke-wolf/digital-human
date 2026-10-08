@@ -314,6 +314,42 @@ export function showGeneratedModel(index) {
   if (!g.intro) afterModelLoaded(g.glbUrl, g.prompt)
 }
 
+// ── 状态提示对外（「我的生成」删除等场景复用）──
+export function meshySetStatus(msg, isError = false, autoFade = false) {
+  setStatus(msg, isError, autoFade)
+}
+
+// ── 清空当前展示的生成模型（删除「我的生成」条目时调用）──
+export function clearGeneratedDisplay(glbUrl) {
+  if (_meshyResult?.glbUrl === glbUrl) _meshyResult = null
+  if (appState.meshyTask.status === 'success' && appState.meshyTask.resultUrl === glbUrl) {
+    appState.meshyTask.status = 'idle'
+    appState.meshyTask.resultUrl = null
+    appState.meshyTask.prompt = ''
+  }
+
+  stop(); _setTtsBtnUI('idle')
+  _disableTtsBtn()
+
+  const wrap = document.getElementById('modelViewerWrap') || document.getElementById('modelViewBox')
+  if (wrap) {
+    document.getElementById('mainModelViewer')?.remove()
+    document.getElementById('meshyLoader')?.remove()
+    document.getElementById('meshyRenderingBadge')?.remove()
+    wrap.innerHTML = `
+      <div class="model-empty-hint">
+        <div class="hint-icon">🧵</div>
+        <div class="hint-text">请选择展品或描述生成</div>
+      </div>`
+  }
+  const nameEl = document.getElementById('modelInfoName')
+  if (nameEl) nameEl.textContent = ''
+  const introEl = document.getElementById('modelIntroText')
+  if (introEl) introEl.textContent = '暂无展品，请选择或生成内容。'
+  const inp = document.getElementById('meshyPrompt')
+  if (inp) inp.value = ''
+}
+
 function injectTtsForPreset() {
   const text = document.getElementById('modelIntroText')?.textContent?.trim()
   if (!text || text === '暂无展品，请选择或生成内容。') return
