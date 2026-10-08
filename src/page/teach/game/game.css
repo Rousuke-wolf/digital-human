@@ -487,3 +487,15 @@
   border-color: var(--gold);
   box-shadow: 0 0 10px rgba(200, 146, 58, .2);
 }
+
+/* ═══ 移动端适配 ═══ */
+@media (max-width: 640px) {
+  .modal {
+    max-width: 96vw;
+    border-radius: 16px;
+  }
+
+  .game-select {
+    flex-direction: column;
+  }
+}

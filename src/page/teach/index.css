@@ -354,3 +354,26 @@
   background: #eee3d0;
   border-color: #d4c4a8;
 }
+
+/* ═══ 移动端适配 ═══ */
+@media (max-width: 900px) {
+  .teaching-dashboard {
+    height: auto;
+    min-height: 0;
+    overflow-y: visible;
+  }
+
+  .demo-canvas-box {
+    height: 260px;
+  }
+
+  .step-cards-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .stitch-controls .control-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

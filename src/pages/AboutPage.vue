@@ -2,7 +2,7 @@
   <div class="app-wrapper page-about" style="background:#F5F5F5;">
     <Navbar />
 
-    <div class="about-page" style="max-width:1200px; margin:0 auto; padding:0 24px;">
+    <div class="about-page about-page-container">
       <div class="about-hero">
         <div class="about-hero-inner">
           <div class="about-badge">🧵 关于我们</div>
@@ -15,7 +15,7 @@
 
       <!-- 项目简介 + 使命（紧贴） -->
       <div class="about-section" style="margin:20px 0;">
-        <div class="about-overview" style="display:flex; gap:24px; align-items:stretch;">
+        <div class="about-overview">
           <div style="flex:1; background:#fff; border:1px solid #eee; border-radius:16px; padding:24px;">
             <h3 style="margin:0 0 10px; color:#8b5a3b; font-size:18px;">📝 项目简介</h3>
             <p style="margin:0; line-height:1.6; font-size:14px;">
@@ -33,7 +33,7 @@
 
       <!-- 核心技术 + 项目特色（紧贴） -->
       <div class="about-section" style="margin:20px 0;">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+        <div class="about-grid-2">
           <div>
             <h3 style="text-align:center; font-size:18px; color:#8b5a3b; margin-bottom:10px;">⚙️ 功能模块</h3>
             <div style="display:flex; flex-direction:column; gap:10px;">
@@ -75,7 +75,7 @@
       <!-- 功能 + 场景（紧贴） -->
       <div class="about-section" style="margin:20px 0;">
         <div style="background:#fff; padding:24px; border-radius:16px;">
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div class="about-grid-2 small-gap">
             <div>
               <h4 style="margin:0 0 10px; font-size:16px; color:#8b5a3b;">🧩 项目特色</h4>
               <div style="font-size:13px; line-height:1.5;">

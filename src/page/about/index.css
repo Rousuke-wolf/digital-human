@@ -194,3 +194,45 @@
     padding: 36px 24px;
   }
 }
+
+/* ═══ 内容容器（原内联样式转类，便于响应式） ═══ */
+.about-page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.about-overview {
+  display: flex;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.about-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.about-grid-2.small-gap {
+  gap: 20px;
+}
+
+/* ═══ 移动端适配 ═══ */
+@media (max-width: 760px) {
+  .about-page-container {
+    padding: 0 12px;
+  }
+
+  .about-overview {
+    flex-direction: column;
+  }
+
+  .about-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .about-title {
+    font-size: 36px;
+  }
+}

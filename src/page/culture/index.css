@@ -848,3 +848,22 @@
   opacity: 1;
 }
 
+
+/* ═══ 移动端适配（640px 以下微调） ═══ */
+@media (max-width: 640px) {
+  .culture-left {
+    height: 300px;
+  }
+
+  .culture-mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .culture-right {
+    padding: 10px;
+  }
+
+  .culture-chat-panel .input-area {
+    gap: 4px;
+  }
+}

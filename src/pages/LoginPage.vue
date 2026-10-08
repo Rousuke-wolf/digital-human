@@ -464,4 +464,17 @@ async function handleSubmit() {
   color: #9a7d64; font-size: 13px; text-decoration: none; font-weight: 400;
 }
 .forgot-link a:hover { color: #c0392b; }
+
+/* ═══ 移动端适配 ═══ */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 28px 20px;
+    margin: 0 16px;
+    border-radius: 18px;
+  }
+  .back-home-btn {
+    top: 14px;
+    left: 14px;
+  }
+}
 </style>
