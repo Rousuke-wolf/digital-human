@@ -1,11 +1,14 @@
-// graphData.js — 非遗知识图谱数据与布局（必做项 3，纯前端无依赖）
-// 三类节点：非遗技艺 / 民族文化 / 图腾纹样。
+// graphData.js — 非遗知识图谱数据与布局（必做项 3，纯前端）
+// 布局参考敦煌石刻星图的星座形式：中心主星【绣】+ 三个独立扇形星座片区
+// （左上=非遗技艺 / 右下=民族文化 / 左下=图腾纹样），子节点作为星点
+// 均匀散布在所属扇区内（种子随机、位置固定，不用力导向布局）
+//
 // 资料依据：中国非物质文化遗产网（ihchina.cn）及公开非遗名录——
 // 苗绣/水族马尾绣/土族盘绣为第一批国家级非遗（2006），
 // 羌绣/彝族刺绣为第二批（2008），花瑶挑花为瑶族支系非遗项目。
 // 展品联动：node.exhibit 对应 src/utils/models.js 中 MODELS 数组下标。
 
-// ── 分类（颜色 + 形状双编码，色盲安全）──
+// ── 分类（颜色，严格沿用原图配色）──
 export const CATEGORIES = [
   { id: 'skill',  name: '非遗技艺', color: '#8b6240', desc: '刺绣绣种与核心针法' },
   { id: 'ethnic', name: '民族文化', color: '#2e7d7a', desc: '拥有刺绣传承的民族' },
@@ -49,6 +52,7 @@ export const NODES = [
     intro: '羌族传统刺绣，以挑花为主，纹样多取自然物象，分布于四川汶川一带，2008年列入国家级非遗。' },
   { id: 'tiaohua',  name: '挑花',     cat: 'skill',
     intro: '按经纬纱线挑绣的技法，正反两面图案一致，多呈几何纹样。羌族、瑶族（花瑶挑花）等民族均有传承。' },
+
   // ── 民族文化 ──
   { id: 'miaoEthnic', name: '苗族', cat: 'ethnic',
     intro: '主要聚居黔湘滇，服饰刺绣华美，苗绣被称为"穿在身上的史书"，图案承载迁徙记忆与图腾崇拜。' },
@@ -119,13 +123,13 @@ export const EDGES = [
   { a: 'mudan', b: 'su' }, { a: 'mudan', b: 'han' }, { a: 'bianfu', b: 'han' }, { a: 'hulu', b: 'han' },
 ]
 
-// 分类枢纽节点（渲染用，挂在各分类下）
+// 分类枢纽节点（各扇区的锚星）
 export const HUB_NODES = CATEGORIES.map((c) => ({
   id: `hub-${c.id}`,
   name: c.name,
   cat: c.id,
   isHub: true,
-  intro: `${c.name}：${c.desc}。点击周围节点可查看具体${c.id === 'skill' ? '绣种与针法' : c.id === 'ethnic' ? '民族刺绣文化' : '纹样寓意'}。`,
+  intro: `${c.name}：${c.desc}。点击周围星点可查看具体${c.id === 'skill' ? '绣种与针法' : c.id === 'ethnic' ? '民族刺绣文化' : '纹样寓意'}。`,
 }))
 
 // ── 节点索引表（含枢纽与中心，供页面查询）──
@@ -138,70 +142,87 @@ export function neighborsOf(id) {
     .map((e) => (e.a === id ? e.b : e.a))
 }
 
-// ── 布局：中心枢纽 + 三类扇形放射（双环）──
-// 中心「非遗刺绣」→ 三个分类枢纽 → 各分类叶子沿朝心弧排布（外环 + 内环）
-// 节点整体外扩；簇环（r=288）完整框住每簇的所有节点与标签
-// 所有名称统一放徽章下方：双环径向间距 70px 时，同侧标签在任意角度
-// 都不会重叠（横向近则纵向必远），彻底杜绝文字碰撞
-const VB_W = 1400
-const VB_H = 1150
-const CENTER = { x: VB_W / 2, y: VB_H / 2 + 85 }
-// 枢纽半径必须 > 内环半径 + 中心印章半径 + 徽章半径，否则内环叶子会压住中心节点
-// 主图标（枢纽徽章/中心大章）放大后取 360，叶子与簇环位置不受影响
-const HUB_R = 360
-const HUB_ANGLE = { skill: -90, ethnic: 30, totem: 150 }   // 度：上/右下/左下
-
-// 双环：外环大半径宽弧（180°）放约 69% 节点，内环小半径窄弧（126°）
-// 内环两端缩进外环内侧 22.5°，加上半节距错位，外内环边缘节点彻底错开
-const RINGS = {
-  outer: { r: 230, spread: Math.PI },
-  inner: { r: 150, spread: Math.PI * 0.7 },
+// ── 确定性伪随机（种子固定，星点位置每次一致）──
+function mulberry32(seed) {
+  let a = seed
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
+
+// ── 星座扇区布局（敦煌星图式，非力导向）──
+// 屏幕角度（y 向下）：三块 120° 扇区铺满全圆，天然中心对称（默认视图整体居中）
+// 技艺=左上 [165°,285°]、民族=右下 [255°,375°]、图腾=左下 [15°,165°]
+// 每个扇区一个锚星（枢纽，距中心 160），子星点在扇区内均匀散布（半径 220~360）
+const VB_W = 1400
+const VB_H = 800
+const CENTER = { x: VB_W / 2, y: VB_H / 2 }
+
+export const SECTORS = {
+  skill:  { from: 165, to: 285, mid: 225, hubR: 160 },
+  ethnic: { from: 255, to: 375, mid: 315, hubR: 160 },
+  totem:  { from: 15,  to: 165, mid: 135, hubR: 160 },
+}
+
+const LEAF_R_MIN = 220
+const LEAF_R_MAX = 360
+const MIN_GAP_SAME = 64    // 同扇区星点最小间距
+const MIN_GAP_CROSS = 54   // 跨扇区星点最小间距
+const MIN_GAP_HUB = 74     // 星点离锚星最小间距
+
+function degToRad(d) { return (d * Math.PI) / 180 }
 
 function computePositions() {
   const pos = { center: { x: CENTER.x, y: CENTER.y } }
+  const placed = []   // 已放置的叶子（含角度，供间距校验）
 
-  // 分类枢纽节点
+  // 锚星（各扇区枢纽）
   for (const cat of CATEGORIES) {
-    const a = (HUB_ANGLE[cat.id] * Math.PI) / 180
+    const sec = SECTORS[cat.id]
+    const a = degToRad(sec.mid)
     pos[`hub-${cat.id}`] = {
-      x: CENTER.x + HUB_R * Math.cos(a),
-      y: CENTER.y + HUB_R * Math.sin(a),
+      x: CENTER.x + sec.hubR * Math.cos(a),
+      y: CENTER.y + sec.hubR * Math.sin(a),
     }
   }
 
-  // 叶子节点：约 57% 放外环、其余放内环；所有名称统一放徽章下方
-  // 内环整体错开半个外环节距（stagger），内环节点落在两个外环节点之间，
-  // 避免外内环对头时胶囊印章边缘碰撞
+  // 子星点：扇区内均匀散布（拒绝采样保证最小间距）
   for (const cat of CATEGORIES) {
     const leaves = NODES.filter((n) => n.cat === cat.id)
+    const sec = SECTORS[cat.id]
+    const rnd = mulberry32(20261022 + CATEGORIES.findIndex((c) => c.id === cat.id))
     const hub = pos[`hub-${cat.id}`]
-    const hubA = (HUB_ANGLE[cat.id] * Math.PI) / 180
-    const outerCount = Math.round(leaves.length * 0.69)
-    const outerNodes = leaves.slice(0, outerCount)
-    const innerNodes = leaves.slice(outerCount)
-    const outerStep = outerNodes.length > 1
-      ? RINGS.outer.spread / (outerNodes.length - 1)
-      : 0
 
-    outerNodes.forEach((n, i) => {
-      const t = outerNodes.length === 1 ? 0.5 : i / (outerNodes.length - 1)
-      const a = hubA + Math.PI - RINGS.outer.spread / 2 + t * RINGS.outer.spread
-      pos[n.id] = {
-        x: hub.x + RINGS.outer.r * Math.cos(a),
-        y: hub.y + RINGS.outer.r * Math.sin(a),
+    leaves.forEach((n) => {
+      let best = null
+      for (let attempt = 0; attempt < 400 && !best; attempt++) {
+        const a = degToRad(sec.from + rnd() * (sec.to - sec.from))
+        const r = LEAF_R_MIN + rnd() * (LEAF_R_MAX - LEAF_R_MIN)
+        const p = {
+          x: CENTER.x + r * Math.cos(a),
+          y: CENTER.y + r * Math.sin(a),
+        }
+        let okMin = true
+        for (const q of placed) {
+          const d = Math.hypot(p.x - q.x, p.y - q.y)
+          const need = q.cat === cat.id ? MIN_GAP_SAME : MIN_GAP_CROSS
+          if (d < need) { okMin = false; break }
+        }
+        if (okMin && Math.hypot(p.x - hub.x, p.y - hub.y) < MIN_GAP_HUB) okMin = false
+        if (okMin) best = p
       }
-      n.labelAbove = false
-    })
-
-    innerNodes.forEach((n, i) => {
-      const t = innerNodes.length === 1 ? 0.5 : i / (innerNodes.length - 1)
-      const a = hubA + Math.PI - RINGS.inner.spread / 2 + t * RINGS.inner.spread + outerStep / 2
-      pos[n.id] = {
-        x: hub.x + RINGS.inner.r * Math.cos(a),
-        y: hub.y + RINGS.inner.r * Math.sin(a),
+      // 兜底：贴扇区中线分环摆放
+      if (!best) {
+        const i = leaves.indexOf(n)
+        const a = degToRad(sec.mid + (i % 3 - 1) * 7)
+        const r = LEAF_R_MIN + ((i * 97) % (LEAF_R_MAX - LEAF_R_MIN))
+        best = { x: CENTER.x + r * Math.cos(a), y: CENTER.y + r * Math.sin(a) }
       }
-      n.labelAbove = false
+      pos[n.id] = best
+      placed.push({ x: best.x, y: best.y, cat: cat.id })
     })
   }
   return pos
@@ -209,3 +230,14 @@ function computePositions() {
 
 export const POSITIONS = computePositions()
 export const VIEWBOX = { w: VB_W, h: VB_H }
+
+// ── 背景装饰：稀疏微弱暗金色静态星点（宣纸上的碎金星）──
+export const GOLD_STARS = (() => {
+  const rnd = mulberry32(20261022)
+  return Array.from({ length: 90 }, () => ({
+    x: rnd() * VB_W,
+    y: rnd() * VB_H,
+    r: 0.5 + rnd() * 0.9,
+    o: 0.12 + rnd() * 0.22,
+  }))
+})()

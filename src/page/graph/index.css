@@ -1,6 +1,6 @@
-/* graph/index.css — 非遗知识图谱页样式
-   画布为亮色暖调「大地图」（可平移缩放）；悬浮层（图例/缩放/详情浮层/提示）
-   统一用暗色透明玻璃质感，贴合背景。三类节点「颜色 + 形状」双编码（色盲安全）。 */
+/* graph/index.css — 非遗知识图谱页样式（敦煌星图式）
+   画布为浅米宣纸底 + 绢布肌理 + 稀疏暗金碎星；节点为星点（微光），
+   悬停放大浮出名称；同星座连线淡色、跨星座金色微光重点突出。 */
 
 .page-graph {
   --gp-brown: #8b6240;
@@ -18,7 +18,7 @@
 
 .graph-main {
   max-width: 1280px;
-  margin: 28px auto 48px;
+  margin: 22px auto 32px;
   padding: 0 24px;
 }
 
@@ -129,11 +129,65 @@
   font-size: 12.5px;
 }
 
-/* ══ 图谱画布：全宽亮色暖调大地图 ═══════════════ */
-/* 背景按布局对位：三簇柔光分别落在技艺（上 50%,27%）、民族（右下 72%,73%）、
-   图腾（左下 28%,73%）的枢纽处（1400×1150 视口的比例坐标） */
+/* ── 顶部图例条（可点击聚焦分类） ─────────────── */
+.graph-legend-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 10px 16px;
+  background: var(--gp-panel);
+  border: 1px solid var(--gp-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(139, 98, 64, 0.06);
+  font-size: 13px;
+}
+
+.lgbar-label {
+  font-weight: 600;
+  color: var(--gp-text);
+}
+
+.lgbar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--gp-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lgbar-item:hover {
+  border-color: var(--gp-gold);
+}
+
+.lgbar-item.on {
+  border-color: var(--gp-brown);
+  background: #fdf6ec;
+  font-weight: 600;
+}
+
+.lgbar-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.lgbar-hint {
+  margin-left: auto;
+  color: var(--gp-mid);
+  font-size: 12px;
+}
+
+/* ══ 星图画布：浅米宣纸底 + 绢布肌理 ═════════════ */
 .graph-canvas-wrap {
-  flex: 1;
   position: relative;
   min-width: 0;
   border: 1px solid var(--gp-border);
@@ -142,46 +196,33 @@
   overflow: hidden;
   user-select: none;
   background:
-    radial-gradient(460px 360px at 50% 27%, rgba(201, 152, 74, 0.07), transparent 72%),
-    radial-gradient(460px 360px at 72% 73%, rgba(201, 152, 74, 0.05), transparent 72%),
-    radial-gradient(460px 360px at 28% 73%, rgba(139, 98, 64, 0.05), transparent 72%),
-    radial-gradient(320px 320px at 50% 57%, rgba(139, 98, 64, 0.04), transparent 72%),
-    repeating-linear-gradient(45deg, rgba(139, 98, 64, 0.016) 0 10px, transparent 10px 20px),
-    repeating-linear-gradient(-45deg, rgba(139, 98, 64, 0.016) 0 10px, transparent 10px 20px),
-    linear-gradient(180deg, #fffdf8 0%, #fbf4e8 100%);
+    repeating-linear-gradient(45deg, rgba(139, 98, 64, 0.012) 0 8px, transparent 8px 16px),
+    repeating-linear-gradient(-45deg, rgba(139, 98, 64, 0.012) 0 8px, transparent 8px 16px),
+    linear-gradient(180deg, #fdfaf3 0%, #faf3e6 100%);
 }
 
 .graph-svg {
   display: block;
   width: 100%;
   height: auto;
-  min-height: 700px;
-  cursor: grab;
-  touch-action: none;   /* 指针拖拽时禁止浏览器手势 */
+  min-height: 600px;
+  cursor: move;          /* 画布普通状态：拖动光标 */
+  touch-action: none;
 }
 
-.graph-svg.dragging {
-  cursor: grabbing;
-}
-
-/* 簇环：带分类色的柔光圈，完整框住每簇（淡色填充 + 同色描边，缓慢呼吸） */
-.cluster-ring {
-  fill-opacity: 0.05;
-  stroke-opacity: 0.45;
-  stroke-width: 2;
-  animation: ring-breathe 6s ease-in-out infinite alternate;
+/* 宣纸上的暗金碎星（静态、微弱） */
+.gold-star {
+  fill: #b08d3f;
   pointer-events: none;
 }
 
-@keyframes ring-breathe {
-  from {
-    fill-opacity: 0.04;
-    stroke-opacity: 0.4;
-  }
-  to {
-    fill-opacity: 0.08;
-    stroke-opacity: 0.6;
-  }
+/* 扇区边界：极淡放射虚线（柔和，无实线框） */
+.sector-line {
+  stroke: #b08d3f;
+  stroke-width: 1;
+  stroke-dasharray: 2 9;
+  opacity: 0.12;
+  pointer-events: none;
 }
 
 /* 边渐显入场 */
@@ -195,27 +236,31 @@
   to { opacity: 1; }
 }
 
-/* 关系边（不参与事件，点击会穿透到背景） */
+/* 星状连线：细柔半透明 */
 .graph-edge {
-  stroke: #cbbd9f;
-  stroke-width: 1.8;
-  opacity: 0.6;
+  stroke-width: 1.1;
+  opacity: 0.2;
   pointer-events: none;
   transition: all 0.25s;
 }
 
+/* 跨星座重点关联：金色更亮（纯颜色/透明度，无 filter 保证流畅） */
+.graph-edge.cross {
+  stroke-width: 1.3;
+  opacity: 0.5;
+}
+
 .graph-edge.active {
-  stroke: var(--gp-brown);
-  stroke-width: 3;
+  stroke: #e0a354;
+  stroke-width: 2.2;
   opacity: 0.95;
 }
 
 .graph-edge.dimmed {
-  opacity: 0.07;
+  opacity: 0.035;
 }
 
-/* 节点入场：从中心向外依次点亮
-   动画只作用在内层 g（无 translate 属性），不会覆盖外层定位 */
+/* 节点入场：从中心向外依次点亮（动画只在内层 g，不覆盖定位） */
 .gnode-in {
   opacity: 0;
   animation: gnode-in 0.5s ease-out forwards;
@@ -226,7 +271,7 @@
 @keyframes gnode-in {
   from {
     opacity: 0;
-    transform: scale(0.25);
+    transform: scale(0.3);
   }
   to {
     opacity: 1;
@@ -234,49 +279,87 @@
   }
 }
 
-/* 节点 */
+/* 星点微动：逐个错开的轻柔起伏（探索后转为静态） */
+.star-pulse {
+  animation: star-bob 4s ease-in-out infinite;
+}
+
+@keyframes star-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2.5px);
+  }
+}
+
+.gnode.explored .star-pulse {
+  animation: none;
+  transform: none;
+}
+
+/* 探索过的节点名称：沿径向向外浮现，白描边防压线 */
+.gnode-explored-label {
+  fill: #6b5638;
+  font-size: 12px;
+  font-weight: 600;
+  stroke: #fdfaf3;
+  stroke-width: 3px;
+  paint-order: stroke;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 节点：普通点击光标 */
 .gnode {
-  cursor: pointer;
+  cursor: default;
 }
 
-.gnode-fill {
-  stroke: #fffdf8;
-  stroke-width: 2.5;
-  transition: opacity 0.25s, filter 0.15s;
+/* 隐形点击区：放大悬停命中范围，响应更跟手 */
+.gnode-hit {
+  fill: transparent;
+  pointer-events: all;
 }
 
-.gnode:hover .gnode-fill {
-  filter: drop-shadow(0 3px 8px rgba(139, 98, 64, 0.55));
+/* 星点本体：纯色填充（光晕由渐变圆承担，无 filter，性能友好） */
+.star-shape {
+  transition: stroke 0.15s ease;
 }
 
-.gnode-core {
-  stroke: #fffdf8;
-  stroke-width: 2.5;
-  transition: filter 0.15s;
+.star-skill {
+  fill: #8b6240;
 }
 
-.gnode:hover .gnode-core {
-  filter: brightness(1.12) drop-shadow(0 3px 8px rgba(139, 98, 64, 0.5));
+.star-ethnic {
+  fill: #2e7d7a;
 }
 
-.gnode.selected .gnode-fill,
-.gnode.selected .gnode-core {
-  stroke: #c0392b;
-  stroke-width: 4;
+.star-totem {
+  fill: #9a5b8c;
 }
 
-/* 中心圆章：内环 + 「绣」字 */
-.gnode-core-ring {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.45);
-  stroke-width: 1.5;
+/* 星点柔光晕：渐变圆，悬停时增强 */
+.star-halo {
+  opacity: 0.8;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
 }
 
+/* 悬停：光晕增强 + 白圈描边（纯透明度/描边变化，零几何重算，响应快） */
+.gnode:hover .star-halo {
+  opacity: 1;
+}
+
+.gnode:hover .star-shape {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 2;
+}
 
 /* 选中涟漪：光环扩散 */
 .gnode-halo {
   fill: none;
-  stroke-width: 3;
+  stroke-width: 2;
   animation: halo-pulse 1.8s ease-out infinite;
   transform-box: fill-box;
   transform-origin: center;
@@ -292,7 +375,7 @@
   }
   100% {
     opacity: 0;
-    transform: scale(1.3);
+    transform: scale(1.35);
   }
 }
 
@@ -301,109 +384,45 @@
   pointer-events: none;
 }
 
-.gnode.dimmed .gnode-fill,
-.gnode.dimmed .gnode-core,
-.gnode.dimmed .gnode-core-ring,
-.gnode.dimmed .gnode-name-in {
-  opacity: 0.16;
+.gnode.dimmed .star-shape,
+.gnode.dimmed .star-halo,
+.gnode.dimmed .gnode-label,
+.gnode.dimmed .gnode-explored-label,
+.gnode.dimmed .gnode-core-char {
+  opacity: 0.12;
 }
 
-/* 章内名称：白色文字，不可选中、不拦截事件（点击穿透到节点） */
-.gnode-name-in {
-  fill: #fff;
+/* 锚星名称（常驻，小字）与中心主星名称 */
+.gnode-label {
+  fill: #6b5638;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 1px;
   pointer-events: none;
   user-select: none;
 }
 
-/* ── 悬浮层统一：暗色透明玻璃，贴合背景 ───────── */
-.graph-legend {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 5;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: rgba(42, 32, 22, 0.82);
-  border: 1px solid rgba(201, 152, 74, 0.35);
-  border-radius: 12px;
-  font-size: 12px;
-  color: #f3ead9;
-  backdrop-filter: blur(6px);
+.gnode-label-center {
+  fill: #4a3a2a;
+  font-size: 15px;
 }
 
-.lg-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.lg-mark {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-}
-
-.lg-core {
-  border-radius: 50%;
-  background: #5c4033;
-}
-
-.lg-skill {
-  border-radius: 50%;
-}
-
-.lg-ethnic {
-  border-radius: 4px;
-}
-
-.lg-totem {
-  border-radius: 3px;
-  transform: rotate(45deg) scale(0.82);
-}
-
-.lg-hint {
-  margin-left: 6px;
-  color: #b7a48d;
-  font-size: 11px;
-}
-
-.lg-btn {
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  font-size: 12px;
-  color: #f3ead9;
-  transition: color 0.2s;
-}
-
-.lg-btn:hover {
-  color: #e8c188;
-}
-
-.lg-btn.on {
-  color: #e8c188;
+/* 中心主星「绣」字 */
+.gnode-core-char {
+  fill: #fff;
+  font-size: 22px;
   font-weight: 600;
+  font-family: "STKaiti", "KaiTi", "FangSong", Georgia, serif;
+  pointer-events: none;
+  user-select: none;
 }
 
-.lg-btn.on .lg-mark {
-  box-shadow: 0 0 0 3px rgba(201, 152, 74, 0.45);
-}
-
-/* 缩放控制（暗色透明玻璃圆钮） */
+/* 缩放控制（右上角，暗色透明玻璃） */
 .graph-controls {
   position: absolute;
+  top: 14px;
   right: 14px;
-  bottom: 14px;
-  z-index: 6;
+  z-index: 8;
   display: flex;
-  flex-direction: column;
   gap: 8px;
 }
 
@@ -425,15 +444,87 @@
   color: #e8c188;
 }
 
-/* 节点专属界面浮层（暗色透明玻璃卡） */
+/* 视口滚动条：默认半透明，悬停才显色；滑块行程限制在轨道内 */
+.graph-scrollbar {
+  position: absolute;
+  z-index: 6;
+  background: rgba(139, 98, 64, 0.05);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+.graph-scrollbar:hover {
+  background: rgba(139, 98, 64, 0.13);
+}
+
+.vsbar {
+  top: 76px;
+  bottom: 30px;
+  left: 10px;
+  width: 10px;
+}
+
+.hsbar {
+  left: 28px;
+  right: 28px;
+  bottom: 10px;
+  height: 10px;
+}
+
+.scrollbar-thumb {
+  position: absolute;
+  background: rgba(42, 32, 22, 0.3);
+  border: 1px solid rgba(201, 152, 74, 0.35);
+  border-radius: 999px;
+  cursor: default;
+  transition: background 0.2s, border-color 0.2s;
+  touch-action: none;
+}
+
+.graph-scrollbar:hover .scrollbar-thumb {
+  background: rgba(42, 32, 22, 0.75);
+  border-color: rgba(201, 152, 74, 0.7);
+}
+
+.vsbar .scrollbar-thumb {
+  left: 0;
+  right: 0;
+  min-height: 34px;
+}
+
+.hsbar .scrollbar-thumb {
+  top: 0;
+  bottom: 0;
+  min-width: 34px;
+}
+
+.graph-scrollbar.locked .scrollbar-thumb {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* 当前缩放幅度 */
+.zoom-pct {
+  align-self: center;
+  padding: 6px 10px;
+  border: 1px solid rgba(201, 152, 74, 0.35);
+  border-radius: 9px;
+  background: rgba(42, 32, 22, 0.82);
+  color: #e8c188;
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+}
+
+/* 节点专属界面浮层（右上控制钮下方，按住标题栏可拖动） */
 .node-overlay {
   position: absolute;
-  top: 14px;
+  top: 64px;
   right: 14px;
   z-index: 7;
   width: 310px;
   max-width: calc(100% - 28px);
-  max-height: calc(100% - 28px);
+  max-height: calc(100% - 78px);
   overflow-y: auto;
   box-sizing: border-box;
   padding: 18px;
@@ -565,120 +656,15 @@
   filter: brightness(1.08);
 }
 
-/* 悬浮提示（暗色透明玻璃） */
-.graph-tip {
-  position: absolute;
-  z-index: 10;
-  pointer-events: none;
-  padding: 7px 12px;
-  border-radius: 10px;
-  background: rgba(42, 32, 22, 0.88);
-  color: #fff;
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(74, 58, 42, 0.3);
-}
-
-.tip-name {
-  font-weight: 600;
-}
-
-.tip-cat {
-  opacity: 0.7;
-}
-
-/* ── 列表视图（亮色） ─────────────────────────── */
-.graph-list {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.list-group {
-  background: var(--gp-panel);
-  border: 1px solid var(--gp-border);
-  border-radius: 14px;
-  padding: 14px 16px;
-  box-shadow: 0 4px 16px rgba(139, 98, 64, 0.06);
-}
-
-.list-group-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.list-group-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--gp-text);
-}
-
-.list-group-count {
-  font-size: 12px;
-  color: var(--gp-mid);
-}
-
-.list-row {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  width: 100%;
-  padding: 9px 6px;
-  border: none;
-  border-bottom: 1px dashed var(--gp-border);
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.list-row:last-child {
-  border-bottom: none;
-}
-
-.list-row:hover {
-  background: #fdf6ec;
-  border-radius: 8px;
-}
-
-.list-row-name {
-  flex: 0 0 86px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gp-brown);
-}
-
-.list-row-intro {
-  flex: 1;
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: var(--gp-mid);
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.list-row-rel {
-  flex: 0 0 auto;
-  font-size: 12px;
-  color: var(--gp-gold);
-}
-
-/* ── 助手面板（画布右上角悬浮，可收起）── */
+/* 助手面板（右上控制钮下方，可收起） */
 .canvas-side-panel {
   position: absolute;
-  top: 14px;
+  top: 64px;
   right: 14px;
   z-index: 7;
   width: 310px;
   max-width: calc(100% - 28px);
-  max-height: calc(100% - 28px);
+  max-height: calc(100% - 78px);
   overflow-y: auto;
   box-sizing: border-box;
   padding: 16px;
@@ -717,7 +703,6 @@
   background: rgba(201, 152, 74, 0.15);
 }
 
-/* 收起图标：一条较长的横线 */
 .csp-close-line {
   display: inline-block;
   width: 16px;
@@ -811,7 +796,7 @@
 /* 面板收起后的重开小胶囊 */
 .csp-reopen {
   position: absolute;
-  top: 14px;
+  top: 64px;
   right: 14px;
   z-index: 7;
   padding: 8px 16px;
@@ -841,7 +826,7 @@
   height: 8px;
   border-radius: 50%;
   border: 1px solid var(--gp-gold);
-  background: #fff;
+  background: transparent;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -852,7 +837,116 @@
 
 .fact-dot.on {
   background: var(--gp-gold);
-  border-color: var(--gp-gold);
+}
+
+/* 悬浮提示（星点名称） */
+.graph-tip {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: rgba(42, 32, 22, 0.88);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(74, 58, 42, 0.3);
+}
+
+.tip-name {
+  font-weight: 600;
+}
+
+.tip-cat {
+  opacity: 0.7;
+}
+
+/* ── 列表视图（亮色） ─────────────────────────── */
+.graph-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.list-group {
+  background: var(--gp-panel);
+  border: 1px solid var(--gp-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 16px rgba(139, 98, 64, 0.06);
+}
+
+.list-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.list-group-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gp-text);
+}
+
+.list-group-count {
+  font-size: 12px;
+  color: var(--gp-mid);
+}
+
+.lg-mark {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.list-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 6px;
+  border: none;
+  border-bottom: 1px dashed var(--gp-border);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.list-row:last-child {
+  border-bottom: none;
+}
+
+.list-row:hover {
+  background: #fdf6ec;
+  border-radius: 8px;
+}
+
+.list-row-name {
+  flex: 0 0 86px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gp-brown);
+}
+
+.list-row-intro {
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--gp-mid);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.list-row-rel {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--gp-gold);
 }
 
 /* ── 响应式 ───────────────────────────────────── */
@@ -868,14 +962,11 @@
   }
 
   .graph-svg {
-    min-height: 400px;
+    min-height: 430px;
   }
 
-  .graph-legend {
-    top: 8px;
-    left: 8px;
-    gap: 6px;
-    padding: 8px 10px;
+  .lgbar-hint {
+    display: none;
   }
 
   .node-overlay,
