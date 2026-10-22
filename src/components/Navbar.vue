@@ -50,6 +50,8 @@ const tabs = [
   { id: 'culture',  path: '/culture',   label: '刺绣文化' },
   { id: 'teaching', path: '/teaching',  label: '教学体验' },
   { id: '3d',       path: '/3d',        label: '3D展厅' },
+  { id: 'create',   path: '/create',    label: '纹样共创' },
+  { id: 'graph',    path: '/graph',     label: '知识图谱' },
   { id: 'about',    path: '/about',     label: '关于我们' },
 ]
 

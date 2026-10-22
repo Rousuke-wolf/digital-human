@@ -202,7 +202,9 @@ onMounted(() => {
   buildInitialViewer()
   syncDropdownSelection()
   initLive2D()
-  meshyRestoreState()
+  // 仅在 Meshy 任务非空闲时恢复生成状态；跨页跳转指定展品时（goToExhibit
+  // 已把任务重置为 idle），跳过恢复，避免覆盖指定的展品
+  if (appState.meshyTask.status !== 'idle') meshyRestoreState()
 })
 
 onBeforeUnmount(() => {

@@ -319,6 +319,13 @@ export function meshySetStatus(msg, isError = false, autoFade = false) {
   setStatus(msg, isError, autoFade)
 }
 
+// ── 无条件清空生成结果标记（跨页跳转指定展品时调用，见 navigation.js）──
+// 否则 3D 页挂载时 meshyRestoreState 会把上次生成的模型恢复出来，
+// 顶掉 goToExhibit 指定的展品
+export function meshyClearResult() {
+  _meshyResult = null
+}
+
 // ── 清空当前展示的生成模型（删除「我的生成」条目时调用）──
 export function clearGeneratedDisplay(glbUrl) {
   if (_meshyResult?.glbUrl === glbUrl) _meshyResult = null

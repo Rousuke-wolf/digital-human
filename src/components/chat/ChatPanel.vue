@@ -41,6 +41,7 @@
 
     <!-- 聊天历史 -->
     <div ref="chatHistoryRef" class="chat-history">
+      <!-- ⚠️ 欢迎横幅卡片：用户指定的保留设计，禁止修改/替换（见 CLAUDE.md 本仓库约定） -->
       <div class="welcome-banner">
         <div class="welcome-banner-left">
           <div class="welcome-avatar">绣</div>

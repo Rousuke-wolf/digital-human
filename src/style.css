@@ -827,7 +827,7 @@ body {
   max-width: 280px;
 }
 
-/* ── 欢迎横幅卡片 ─────────────────────────── */
+/* ── 欢迎横幅卡片（保留设计，禁止修改，见 CLAUDE.md） ── */
 .welcome-banner {
   background: linear-gradient(135deg, #1e2e44 0%, #1a2638 100%);
   border: 1px solid rgba(251, 191, 36, 0.2);

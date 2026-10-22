@@ -12,6 +12,7 @@ import { speak, stop, pause, resume } from '../tts.js'
 import { startLipsync, stopLipsync } from './useLive2D.js'
 import { openImagePreview } from '../utils/lightboxBus.js'
 import { goToExhibit } from '../utils/navigation.js'
+import { getTimeGreeting, getFestival, getVoiceGreeting } from '../utils/companion.js'
 
 // ── 共享响应式状态 ──────────────────────────────────
 export const inputLocked = ref(false)   // 回复进行中：锁定输入与知识卡片
@@ -42,14 +43,42 @@ let _typingPaused = false
 let _typingResume = null
 let _typingResolve = null
 
+let _greetVoiceTimer = null   // 语音问好的 1 秒延迟定时器
+
 // ── 对话持久化（localStorage：气泡 HTML + 上下文消息数组）──
 const CHAT_STORAGE_KEY = 'zhichuan-culture-chat'
+
+// ── 情感化陪伴：已问候文案记录（localStorage，同一文案只触发一次）──
+const USED_GREETINGS_KEY = 'zhichuan-used-greetings'
+
+function _usedGreetings() {
+  try {
+    const raw = localStorage.getItem(USED_GREETINGS_KEY)
+    const data = raw ? JSON.parse(raw) : []
+    return Array.isArray(data) ? data : []
+  } catch { return [] }
+}
+
+function _markGreetingUsed(text) {
+  try {
+    const used = _usedGreetings()
+    if (!used.includes(text)) {
+      used.push(text)
+      localStorage.setItem(USED_GREETINGS_KEY, JSON.stringify(used))
+    }
+  } catch {}
+}
 
 function persistChat() {
   if (!_chatEl) return
   try {
+    // 问候气泡不入持久化历史：每次进入页面由 maybeGreet 重新生成一组，
+    // 避免多次进入后历史里堆积重复问候
+    const clone = _chatEl.cloneNode(true)
+    // 同时清掉早期版本的问候气泡类名（金边 companion-bubble）
+    clone.querySelectorAll('.greeting-bubble, .companion-bubble').forEach((n) => n.remove())
     localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
-      html: _chatEl.innerHTML,
+      html: clone.innerHTML,
       messages: _historyMessages,
     }))
   } catch {
@@ -76,19 +105,85 @@ export function registerChatUI({ chatEl, inputEl }) {
   _chatEl = chatEl
   _inputEl = inputEl
 
+  // 捕获模板里的欢迎横幅卡片（存档恢复会覆盖整个容器，之后按需补回；
+  // 横幅本身是保留设计，禁止修改，见 CLAUDE.md）
+  const bannerEl = _chatEl.querySelector('.welcome-banner')
+  const bannerHTML = bannerEl?.outerHTML ?? ''
+
   // 刷新页面后恢复上次对话（气泡 + 多轮上下文）
   const saved = loadPersistedChat()
   if (saved?.html) {
     _chatEl.innerHTML = saved.html
+    // 迁移：清除早期「普通气泡版欢迎语」，并保证顶部横幅卡片存在
+    _chatEl.querySelectorAll('.message.welcome-bubble').forEach((n) => n.remove())
+    if (bannerHTML && !_chatEl.querySelector('.welcome-banner')) {
+      _chatEl.insertAdjacentHTML('afterbegin', bannerHTML)
+    }
+    // 旧版本存档可能残留问候气泡，先清掉，稍后 maybeGreet 生成新的一组
+    _chatEl.querySelectorAll('.greeting-bubble, .companion-bubble').forEach((n) => n.remove())
     _chatEl.scrollTop = _chatEl.scrollHeight
     if (saved.messages) _historyMessages = saved.messages
   }
+
+  // 每次进入：绫韵主动问候（文字气泡 + 1 秒后语音问好）
+  maybeGreet()
 }
 
 export function unregisterChatUI() {
   _chatEl = null
   _inputEl = null
+  if (_greetVoiceTimer) { clearTimeout(_greetVoiceTimer); _greetVoiceTimer = null }
   stopAll()
+}
+
+// ── 情感化陪伴：追加问候气泡（普通 AI 气泡样式，仅文字不触发 TTS）──
+function _appendGreetingBubble(text) {
+  if (!_chatEl) return
+  const div = document.createElement('div')
+  div.className = 'message ai greeting-bubble'
+  div.innerText = text
+  _chatEl.appendChild(div)
+  _chatEl.scrollTop = _chatEl.scrollHeight
+  persistChat()
+}
+
+// 进入文化页时调用：文字问候（时间段 + 节日）+ 1 秒后语音问好
+// 同一文案（如「晚上好～」）在本地记录中出现过一次后不再触发，语音同理
+function maybeGreet() {
+  if (!_chatEl) return
+  // 幂等：先移除已有问候气泡（热更重挂载/历史恢复场景），保证同时只有一组问候
+  _chatEl.querySelectorAll('.greeting-bubble, .companion-bubble').forEach((n) => n.remove())
+
+  const used = _usedGreetings()
+  const fest = getFestival()
+
+  // 文字问候：该文案未出现过才追加
+  const timeText = getTimeGreeting()
+  if (!used.includes(timeText)) {
+    _appendGreetingBubble(timeText)
+    _markGreetingUsed(timeText)
+  }
+  if (fest && !used.includes(fest.greeting)) {
+    _appendGreetingBubble(fest.greeting)
+    _markGreetingUsed(fest.greeting)
+  }
+
+  // 语音问好：该文案未播过才播
+  _greetVoiceTimer = setTimeout(() => {
+    _greetVoiceTimer = null
+    // 用户已开始提问或已有语音在播：不打扰
+    if (!_chatEl || inputLocked.value || ttsPlaying.value) return
+    const text = getVoiceGreeting()
+    if (_usedGreetings().includes(text)) return
+    _markGreetingUsed(text)
+    speak(text, null, null, () => {
+      // 语音问好播完：复位播报状态与嘴型
+      ttsPlaying.value = false
+      stopLipsync()
+    })
+    startLipsync()
+    ttsPlaying.value = true
+  }, 1000)
 }
 
 // ── 清空对话（ChatPanel「清空对话」按钮）──
@@ -102,7 +197,7 @@ export function clearChat() {
   _historyMessages = [{ role: 'system', content: systemPrompt.trim() }]
   unlockInput()
   if (_chatEl) {
-    // 只移除消息气泡，保留模板里的欢迎横幅
+    // 只移除消息气泡，保留模板里的欢迎横幅卡片
     _chatEl.querySelectorAll('.message').forEach((n) => n.remove())
     _chatEl.scrollTop = _chatEl.scrollHeight
   }

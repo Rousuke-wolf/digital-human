@@ -66,7 +66,7 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'qwen-turbo',
+        model: 'qwen3.8-flash',
         messages,
         response_format: { type: 'json_object' },
       }),

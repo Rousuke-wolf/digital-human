@@ -23,7 +23,7 @@ function aiNotConfigured(res) {
 router.post('/chat', async (req, res) => {
   if (!openai) return aiNotConfigured(res)
 
-  const { messages, model = 'qwen-turbo', response_format } = req.body || {}
+  const { messages, model = 'qwen3.8-flash', response_format } = req.body || {}
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ message: 'messages 不能为空' })
   }
@@ -34,12 +34,17 @@ router.post('/chat', async (req, res) => {
   }
 
   try {
-    const completion = await openai.chat.completions.create({
+    const body = {
       model,
       messages,
       stream: false,
       ...(response_format ? { response_format } : {}),
-    })
+    }
+    // qwen3.8 系列默认开启思考模式（实测 5s+），绫韵是短问答场景需要快响应。
+    // 注意：必须作为顶层参数透传（openai-node 会丢弃 extra_body，实测无效）
+    if (String(model).includes('qwen3.8')) body.enable_thinking = false
+
+    const completion = await openai.chat.completions.create(body)
     res.json(completion)
   } catch (err) {
     console.error('[ai] 对话失败:', err.message)
