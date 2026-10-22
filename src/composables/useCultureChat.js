@@ -13,6 +13,10 @@ import { startLipsync, stopLipsync } from './useLive2D.js'
 import { openImagePreview } from '../utils/lightboxBus.js'
 import { goToExhibit } from '../utils/navigation.js'
 import { getTimeGreeting, getFestival, getVoiceGreeting } from '../utils/companion.js'
+import { useLoginPrompt } from './useLoginPrompt.js'
+
+// 全局登录引导弹窗（与 App.vue 的 LoginPromptModal 共用同一份状态）
+const { promptLogin } = useLoginPrompt()
 
 // ── 共享响应式状态 ──────────────────────────────────
 export const inputLocked = ref(false)   // 回复进行中：锁定输入与知识卡片
@@ -145,6 +149,28 @@ function _appendGreetingBubble(text) {
   _chatEl.appendChild(div)
   _chatEl.scrollTop = _chatEl.scrollHeight
   persistChat()
+}
+
+// ── 系统提示气泡（额度超限等非对话内容）──
+function _appendSystemNotice(text) {
+  if (!_chatEl) return
+  const div = document.createElement('div')
+  div.className = 'message ai system-notice'
+  div.innerText = text
+  _chatEl.appendChild(div)
+  _chatEl.scrollTop = _chatEl.scrollHeight
+  persistChat()
+}
+
+// ── 额度/登录类错误处理（必做项 4）──
+// LOGIN_REQUIRED / GUEST_QUOTA_EXCEEDED → 登录引导弹窗（游客）
+// QUOTA_EXCEEDED → 登录用户额度用完，系统气泡提示（不引导登录）
+function handleAIError(err) {
+  if (err?.code === 'LOGIN_REQUIRED' || err?.code === 'GUEST_QUOTA_EXCEEDED') {
+    promptLogin('chat')
+    return
+  }
+  _appendSystemNotice(err?.message || '系统有点问题，我们稍后再试～')
 }
 
 // 进入文化页时调用：文字问候（时间段 + 节日）+ 1 秒后语音问好
@@ -343,13 +369,19 @@ async function appendAIStream(historyMessages, userInput, onDone) {
   let finalData = null
 
   const stream = chatWithAIStream(historyMessages, userInput)
-  for await (const chunk of stream) {
-    if (isAborted()) break
-    if (chunk.__done) { finalData = chunk; break }
-    const chars = chunk.__message != null
-      ? [chunk.__message]
-      : [...(chunk.delta ?? '')]
-    for (const c of chars) { if (c) collectedMessage += c }
+  try {
+    for await (const chunk of stream) {
+      if (isAborted()) break
+      if (chunk.__done) { finalData = chunk; break }
+      const chars = chunk.__message != null
+        ? [chunk.__message]
+        : [...(chunk.delta ?? '')]
+      for (const c of chars) { if (c) collectedMessage += c }
+    }
+  } catch (err) {
+    // 额度/登录类错误：气泡已创建但无内容，先移除再上抛给 _send 处理
+    div.remove()
+    throw err
   }
 
   // ── 被终止：移除空气泡，干净退出 ─────────────
@@ -495,7 +527,13 @@ async function appendImageToDiv(div, imagePrompt) {
 
   } catch (err) {
     placeholder.remove()
-    console.error('图片追加失败:', err)
+    // 额度/登录类错误：游客引导登录，登录用户提示额度（必做项 4）
+    if (err?.code === 'LOGIN_REQUIRED') {
+      promptLogin('image')
+      persistChat()
+      return
+    }
+    _appendSystemNotice(err?.message || '图片生成失败，请稍后再试')
     persistChat()
   }
 }
@@ -524,9 +562,15 @@ async function _send(text, { clearInput = true } = {}) {
   appendUser(text)
   if (clearInput && _inputEl) _inputEl.value = ''
   appendThinking()
-  await appendAIStream(getContextForAPI(), text, (res) => {
-    _onAIDone(text, res.message)
-  })
+  try {
+    await appendAIStream(getContextForAPI(), text, (res) => {
+      _onAIDone(text, res.message)
+    })
+  } catch (err) {
+    // 额度/登录类错误：清掉 thinking 气泡，按错误码提示
+    removeThinking()
+    handleAIError(err)
+  }
   if (!_replyStopped) {
     unlockInput()
     _inputEl?.focus()

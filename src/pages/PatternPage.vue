@@ -273,25 +273,40 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import Navbar from '../components/Navbar.vue'
 import Lightbox from '../components/ui/Lightbox.vue'
 import { openImagePreview } from '../utils/lightboxBus.js'
+import { useAuth } from '../composables/useAuth.js'
+import { useLoginPrompt } from '../composables/useLoginPrompt.js'
+import { authHeaders } from '../utils/guestId.js'
+import { userAPI } from '../api/client.js'
 import '../page/pattern/index.css'
+
+const { isLoggedIn } = useAuth()
+const { promptLogin } = useLoginPrompt()
 
 // 图片生成：直接走后端代理，与 qwen.js 的 generateImage 相同逻辑。
 // 注意：不要 import qwen.js —— 它内含中文 systemPrompt，卷进本页 chunk 会
 // 触发 Rolldown 多字节字符串 hash 占位符 panic（vite8/rolldown 已知 bug）
+// 额度/登录类错误（401/429 带 code）上抛，由 onGenerate 按码处理
 async function generatePatternImage(prompt) {
   try {
     const res = await fetch('/api/ai/image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ prompt }),
     })
     const json = await res.json().catch(() => ({}))
     if (!res.ok) {
+      if (json.code) {
+        const err = new Error(json.message || '图片生成失败')
+        err.code = json.code
+        err.status = res.status
+        throw err
+      }
       console.warn('[pattern] 图片生成失败:', json.message || res.status)
       return null
     }
     return json.url || null
   } catch (e) {
+    if (e.code) throw e   // 业务码错误继续上抛
     console.warn('[pattern] 图片生成请求异常:', e.message)
     return null
   }
@@ -478,11 +493,13 @@ async function analyzePattern() {
   try {
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         // 与聊天主流程共用对话模型
         model: 'qwen3.8-flash',
         response_format: { type: 'json_object' },
+        // 计入纹样额度（需登录），不占对话额度
+        quota_feature: 'pattern',
         messages: [
           { role: 'system', content: sys },
           {
@@ -513,6 +530,11 @@ async function onGenerate() {
     toast('请先填写纹样主题')
     return
   }
+  // 额度体系（必做项 4）：纹样生成需登录，游客弹登录引导（不发请求）
+  if (!isLoggedIn.value) {
+    promptLogin('pattern')
+    return
+  }
 
   status.value = 'generating'
   elapsed.value = 0
@@ -533,6 +555,9 @@ async function onGenerate() {
   } catch (e) {
     console.error('[pattern] 生成失败:', e.message)
     status.value = 'error'
+    // 额度/登录类错误：提示文案或登录引导（如 token 中途失效）
+    if (e.code === 'LOGIN_REQUIRED') promptLogin('pattern')
+    else if (e.code === 'QUOTA_EXCEEDED') toast(e.message)
   } finally {
     clearInterval(elapsedTimer)
   }
@@ -553,9 +578,9 @@ function persistWorks() {
   try { localStorage.setItem(WORKS_KEY, JSON.stringify(works.value)) } catch {}
 }
 
-function saveWork() {
+async function saveWork() {
   if (!imageUrl.value) return
-  works.value.unshift({
+  const work = {
     id: Date.now(),
     url: imageUrl.value,
     theme: theme.value.trim(),
@@ -563,21 +588,54 @@ function saveWork() {
     styleLabel: styleLabel.value,
     elements: [...selectedElements.value],
     keywords: keywords.value.trim(),
-    density,
-    layout,
+    density: density.value,
+    layout: layout.value,
     filters: { ...filters },
     analysis: analysis.value,
     createdAt: new Date().toISOString(),
-  })
+  }
+  works.value.unshift(work)
   works.value = works.value.slice(0, 30)   // 最多保留 30 件
   persistWorks()
   toast('已保存到我的作品')
+  // 额度体系（必做项 4）：登录状态下同步上云（静默失败，本地保留）
+  if (isLoggedIn.value) {
+    try {
+      const res = await userAPI.addWork({
+        type: 'pattern',
+        name: work.theme || '未命名纹样',
+        data: work.url,
+        payload: {
+          style: work.style,
+          styleLabel: work.styleLabel,
+          elements: work.elements,
+          keywords: work.keywords,
+          density: work.density,
+          layout: work.layout,
+          filters: work.filters,
+          analysis: work.analysis,
+          createdAt: work.createdAt,
+        },
+      })
+      if (res.work?.id) {
+        work.cloudId = res.work.id
+        persistWorks()
+      }
+    } catch {
+      // 后端不可用时本地仍保留作品
+    }
+  }
 }
 
 function deleteWork(id) {
   if (!window.confirm('确定删除这件作品吗？')) return
+  const target = works.value.find((w) => w.id === id)
   works.value = works.value.filter((w) => w.id !== id)
   persistWorks()
+  // 云端作品同步删除（静默失败，下次 loadCloudWorks 会以云端为准回填）
+  if (target?.cloudId && isLoggedIn.value) {
+    userAPI.deleteWork(target.cloudId).catch(() => {})
+  }
   toast('作品已删除')
 }
 
@@ -636,15 +694,21 @@ async function shareWork() {
     text: `我用智传非遗生成了一枚「${styleLabel.value}」${theme.value.trim()}纹样，快来一起创作吧！`,
     url: imageUrl.value,
   }
+  let shared = false
   if (navigator.share) {
-    try { await navigator.share(shareData) } catch { /* 用户取消分享 */ }
+    try { await navigator.share(shareData); shared = true } catch { /* 用户取消分享 */ }
   } else {
     try {
       await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`)
       toast('分享链接已复制，去粘贴给朋友吧')
+      shared = true
     } catch {
       toast('当前浏览器不支持分享')
     }
+  }
+  // 成长体系：分享成功后上报任务事件（仅登录；fire-and-forget）
+  if (shared && isLoggedIn.value) {
+    userAPI.tasksEvent('share').catch(() => {})
   }
 }
 
@@ -655,8 +719,20 @@ const worksWithLabel = computed(() =>
     createdLabel: new Date(w.createdAt).toLocaleDateString('zh-CN'),
   })))
 
+// 个人中心「复用」跳转标记（sessionStorage，跨页传作品参数）
+const REUSE_KEY = 'zhichuan-pattern-reuse'
+
 onMounted(() => {
   document.addEventListener('click', onDocClick)
+  // 个人中心「复用」：恢复指定作品到预览区，继续二次创作
+  try {
+    const raw = sessionStorage.getItem(REUSE_KEY)
+    sessionStorage.removeItem(REUSE_KEY)
+    if (raw) {
+      loadWorkToPreview(JSON.parse(raw))
+      toast('已恢复作品参数，可继续创作')
+    }
+  } catch { /* 数据损坏时忽略 */ }
 })
 
 onBeforeUnmount(() => {

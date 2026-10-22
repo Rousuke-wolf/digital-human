@@ -1,4 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuth } from '../composables/useAuth.js'
+
+const { user } = useAuth()
 
 const routes = [
   { path: '/',             name: 'home',     component: () => import('../pages/HomePage.vue') },
@@ -10,6 +13,7 @@ const routes = [
   { path: '/about',        name: 'about',    component: () => import('../pages/AboutPage.vue') },
   { path: '/login',        name: 'login',    component: () => import('../pages/LoginPage.vue') },
   { path: '/profile',      name: 'profile',  component: () => import('../pages/ProfilePage.vue'), meta: { requiresAuth: true } },
+  { path: '/admin',        name: 'admin',    component: () => import('../pages/AdminPage.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
 ]
 
 const router = createRouter({
@@ -24,6 +28,11 @@ router.beforeEach((to, from, next) => {
     if (!token) {
       return next({ path: '/login', query: { redirect: to.fullPath } })
     }
+  }
+  // 管理员路由：user 未加载时放行（AdminPage 挂载后自校验）；
+  // 已加载且非 admin 则拦回首页
+  if (to.meta.requiresAdmin && user.value && user.value.role !== 'admin') {
+    return next({ path: '/' })
   }
   next()
 })

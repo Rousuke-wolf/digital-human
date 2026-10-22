@@ -9,6 +9,8 @@ import authRoutes from './routes/auth.js'
 import ttsRoutes from './routes/tts.js'
 import aiRoutes from './routes/ai.js'
 import meshyRoutes from './routes/meshy.js'
+import userRoutes from './routes/user.js'
+import adminRoutes from './routes/admin.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -22,6 +24,8 @@ app.use(express.json({ limit: '1mb' }))
 app.use('/api/auth', authRoutes)
 app.use('/api/ai', aiRoutes)
 app.use('/api/meshy', meshyRoutes)
+app.use('/api/user', userRoutes)
+app.use('/api/admin', adminRoutes)
 app.use('/tts', ttsRoutes)
 
 // ── Meshy GLB 资源代理（生产环境；开发环境由 vite 代理处理）──
@@ -63,15 +67,16 @@ app.get('/api/debug/smtp-test', async (req, res) => {
   res.json({ ...result, devMode: process.env.DEV_MODE === 'true' })
 })
 
-// ── 数据备份 ──
+// ── 数据备份（收口：补上管理员鉴权，历史遗留裸接口）──
 import { manualBackup, listBackups } from './db.js'
+import { requireAdmin } from './middleware/auth.js'
 
-app.post('/api/admin/backup', (req, res) => {
+app.post('/api/admin/backup', requireAdmin, (req, res) => {
   const result = manualBackup()
   res.json(result)
 })
 
-app.get('/api/admin/backups', (req, res) => {
+app.get('/api/admin/backups', requireAdmin, (req, res) => {
   res.json({ backups: listBackups() })
 })
 

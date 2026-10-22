@@ -29,6 +29,16 @@ export function optionalAuth(req, res, next) {
   next()
 }
 
+// 必须管理员（管理后台接口用，成长体系）
+export function requireAdmin(req, res, next) {
+  requireAuth(req, res, () => {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ message: '需要管理员权限' })
+    }
+    next()
+  })
+}
+
 // 生成 token
 export function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, {

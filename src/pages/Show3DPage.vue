@@ -109,6 +109,11 @@ import {
 import { initLive2D, destroyLive2D } from '../composables/useLive2D.js'
 import { attachViewerLoading } from '../utils/viewerLoading.js'
 import { removeGeneratedModel } from '../utils/state.js'
+import { consumeExhibitJump, consumeGeneratedJump } from '../utils/navigation.js'
+import { useAuth } from '../composables/useAuth.js'
+import { userAPI } from '../api/client.js'
+
+const { isLoggedIn } = useAuth()
 
 // 挂载时的生成状态（一次性快照；后续状态由 Meshy.js 的 setBtnLoading 等管理）
 const processingAtMount = appState.meshyTask.status === 'processing'
@@ -187,6 +192,11 @@ function onChipClick(i) {
 function onDeleteGenerated(g) {
   removeGeneratedModel(g.glbUrl)
 
+  // 云端作品同步删除（静默失败，下次 loadCloudWorks 会以云端为准回填）
+  if (g.cloudId && isLoggedIn.value) {
+    userAPI.deleteWork(g.cloudId).catch(() => {})
+  }
+
   // 删除的是正在展示的模型 → 恢复空态
   if (appState.meshyTask.status === 'success' && appState.meshyTask.resultUrl === g.glbUrl) {
     clearGeneratedDisplay(g.glbUrl)
@@ -198,12 +208,27 @@ function onDeleteGenerated(g) {
 }
 
 onMounted(() => {
+  // 跨页跳转指定展品（goToExhibit 整页跳转 + sessionStorage 传参）：
+  // 先恢复目标展品索引，再构建初始视图
+  const jumpIdx = consumeExhibitJump()
+  if (jumpIdx != null) {
+    appState.currentModelIndex = jumpIdx
+    appState._modelHasContent = true
+  }
+
   // 顺序对齐旧实现：初始内容 → Live2D → Meshy 状态恢复
   buildInitialViewer()
   syncDropdownSelection()
+
+  // 个人中心「查看」跳转：展示指定生成模型
+  const genUrl = consumeGeneratedJump()
+  if (genUrl != null) {
+    const gi = appState.generatedModels.findIndex((m) => m.glbUrl === genUrl)
+    if (gi !== -1) showGeneratedModel(gi)
+  }
+
   initLive2D()
-  // 仅在 Meshy 任务非空闲时恢复生成状态；跨页跳转指定展品时（goToExhibit
-  // 已把任务重置为 idle），跳过恢复，避免覆盖指定的展品
+  // 仅在 Meshy 任务非空闲时恢复生成状态；跳转指定展品时跳过恢复
   if (appState.meshyTask.status !== 'idle') meshyRestoreState()
 })
 

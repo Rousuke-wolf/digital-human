@@ -1,5 +1,6 @@
 import '../env.js'
 import { Router } from 'express'
+import { quotaGate } from '../utils/quota.js'
 
 const router = Router()
 
@@ -26,7 +27,8 @@ function meshyFetch(path, options = {}) {
 
 // ── POST /api/meshy/text-to-3d ───────────────────────
 // 创建文生 3D 任务（preview / refine 均走此接口）
-router.post('/text-to-3d', async (req, res) => {
+// Meshy 成本最高，需登录（游客 401 + code LOGIN_REQUIRED）；一次生成只扣一次额度
+router.post('/text-to-3d', quotaGate('model3d', { loginRequired: true }), async (req, res) => {
   if (!API_KEY) return meshyNotConfigured(res)
   try {
     const r = await meshyFetch('/text-to-3d', {

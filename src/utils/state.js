@@ -57,6 +57,15 @@ export function setGeneratedIntro(glbUrl, intro) {
   }
 }
 
+// 回写云端作品 id（登录状态下同步上云成功后调用，删除时按 cloudId 删云端）
+export function setGeneratedCloudId(glbUrl, cloudId) {
+  const m = appState.generatedModels.find((x) => x.glbUrl === glbUrl)
+  if (m) {
+    m.cloudId = cloudId
+    persistGeneratedModels()
+  }
+}
+
 // 删除「我的生成」条目（下拉框与展示区由调用方同步）
 export function removeGeneratedModel(glbUrl) {
   const idx = appState.generatedModels.findIndex((m) => m.glbUrl === glbUrl)

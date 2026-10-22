@@ -1,9 +1,17 @@
 // Meshy.js — Meshy Text-to-3D API 集成 + AI 展品介绍 + TTS 播放
 import { speak, pause, resume, stop } from '../../tts.js'
 import { MODELS } from '../../utils/models.js'
-import { appState, upsertGeneratedModel, setGeneratedIntro } from '../../utils/state.js'
+import { appState, upsertGeneratedModel, setGeneratedIntro, setGeneratedCloudId } from '../../utils/state.js'
 import { attachViewerLoading } from '../../utils/viewerLoading.js'
 import { showPresetModel } from './preset.js'
+import { authHeaders } from '../../utils/guestId.js'
+import { useAuth } from '../../composables/useAuth.js'
+import { useLoginPrompt } from '../../composables/useLoginPrompt.js'
+import { userAPI } from '../../api/client.js'
+
+// 额度体系（必做项 4）：3D 生成需登录；登录态下作品同步上云
+const { isLoggedIn } = useAuth()
+const { promptLogin } = useLoginPrompt()
 
 // 密钥全部由后端代理持有（server/routes/ai.js、server/routes/meshy.js），
 // 前端只访问自己的后端接口
@@ -238,9 +246,9 @@ async function generateIntro(prompt) {
   try {
     const res = await fetch(AI_CHAT_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
-        model: 'qwen-turbo',
+        model: 'qwen3.8-flash',
         messages: [
           { role: 'system', content: '你是一位非物质文化遗产讲解员，语言亲切、生动。根据用户提供的展品名称或描述，用100-150字介绍该展品的历史背景、工艺特点和文化价值。只输出介绍正文，不要标题，不要多余内容。' },
           { role: 'user', content: `请介绍这个展品：${prompt}` }
@@ -380,6 +388,9 @@ async function pollTaskUntilDone(taskId) {
 
 // ── 主入口 ────────────────────────────────────────
 export async function meshyGenerate() {
+  // 额度体系（必做项 4）：3D 生成需登录，游客弹登录引导（不发请求）
+  if (!isLoggedIn.value) { promptLogin('model3d'); return }
+
   const input = document.getElementById('meshyPrompt')
   const prompt = input?.value?.trim()
   if (!prompt) { setStatus('请先输入描述内容', true, true); return }
@@ -409,7 +420,7 @@ export async function meshyGenerate() {
 
     const previewRes = await fetch(MESHY_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         mode: 'preview', prompt,
         art_style: 'realistic', negative_prompt: 'low quality, blurry',
@@ -417,8 +428,11 @@ export async function meshyGenerate() {
       })
     })
     if (!previewRes.ok) {
-      const err = await previewRes.json().catch(() => ({}))
-      throw new Error(err.message || `创建失败 ${previewRes.status}`)
+      const errJson = await previewRes.json().catch(() => ({}))
+      const err = new Error(errJson.message || `创建失败 ${previewRes.status}`)
+      err.code = errJson.code   // QUOTA_EXCEEDED / LOGIN_REQUIRED
+      err.status = previewRes.status
+      throw err
     }
     const { result: previewTaskId } = await previewRes.json()
     _meshyTask = { taskId: previewTaskId, prompt, startTime: Date.now() }
@@ -437,12 +451,15 @@ export async function meshyGenerate() {
 
     const refineRes = await fetch(MESHY_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ mode: 'refine', preview_task_id: previewTaskId, texture_resolution: 1024 })
     })
     if (!refineRes.ok) {
-      const err = await refineRes.json().catch(() => ({}))
-      throw new Error(err.message || `贴图创建失败 ${refineRes.status}`)
+      const errJson = await refineRes.json().catch(() => ({}))
+      const err = new Error(errJson.message || `贴图创建失败 ${refineRes.status}`)
+      err.code = errJson.code
+      err.status = refineRes.status
+      throw err
     }
     const { result: refineTaskId } = await refineRes.json()
     const refineTask = await pollTaskUntilDone(refineTaskId)
@@ -458,6 +475,18 @@ export async function meshyGenerate() {
 
     // 加入「我的生成」预设列表（localStorage 持久化，刷新后仍在）
     upsertGeneratedModel({ name: prompt.slice(0, 20), glbUrl: finalUrl, prompt, intro: null })
+
+    // 登录状态：同步作品上云（静默失败，本地仍保留）
+    if (isLoggedIn.value) {
+      userAPI.addWork({
+        type: 'model3d',
+        name: prompt.slice(0, 20),
+        data: finalUrl,
+        payload: { prompt, intro: null },
+      }).then((res) => {
+        if (res.work?.id) setGeneratedCloudId(finalUrl, res.work.id)
+      }).catch(() => {})
+    }
 
     // 最终模型：覆盖白模，移除渲染角标
     loadGeneratedModel(finalUrl, prompt.slice(0, 20), null)
@@ -479,6 +508,8 @@ export async function meshyGenerate() {
     setBtnLoading(false); setTimeTag(false)
     _meshyTask = null
     appState.meshyTask.status = 'idle'
+    // token 中途失效：引导重新登录
+    if (e.code === 'LOGIN_REQUIRED') promptLogin('model3d')
   }
 }
 
