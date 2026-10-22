@@ -1,115 +1,124 @@
-# 智传非遗 — 刺绣文化数字人教育平台
+# 智传非遗 —— 基于 AI 的非遗文化沉浸式传承平台
 
-> 以数字之光，传承千年绣艺。让苏绣、湘绣、蜀绣、粤绣在指尖重焕生机。
+以「非遗刺绣」为主题的 AI 教育平台：数字人「绫韵」担任虚拟非遗传承人，融合情感化陪伴、AIGC 纹样共创、可探索的 3D 知识图谱星图、文生 3D 数字展馆与成长激励体系。
 
-一个面向「中国刺绣非物质文化遗产」的数字化传播与教育平台。核心是一名叫 **绫韵** 的 AI 数字人讲解员：她以 Live2D 形象呈现，能回答刺绣相关问题、语音播报（嘴型同步）、引导针法教学，并展示 3D 非遗展品。
+## 功能总览
 
-## ✨ 功能特性
+| 页面 | 路由 | 说明 |
+|---|---|---|
+| 首页 | `/` | 平台形象入口 |
+| 刺绣文化（数字人） | `/culture` | 绫韵 Live2D 数字人：AI 问答、语音播报、情感化问候、图片生成 |
+| 教学体验 | `/teaching` | Canvas 针法动画教学 + 刺绣小游戏 |
+| 3D 展厅 | `/3d` | 预设展品 + Meshy 文生 3D 生成、AI 讲解朗读 |
+| 纹样共创 | `/create` | AIGC 纹样生成（六类刺绣风格）+ 配色编辑 + 作品库 |
+| 知识图谱 | `/graph` | 非遗知识星图：**2D 宣纸星图 / 3D 深空星图一键切换**，点击探索、兴趣推荐 |
+| 个人中心 | `/profile` | 账号资料、每日额度、今日任务、会员中心（模拟支付）、我的作品、成长记录 |
+| 管理后台 | `/admin` | 运营统计 + 兑换码批量生成（admin 角色） |
 
-| 模块 | 说明 |
-|---|---|
-| 🎭 **数字人问答** | Live2D 数字人「绫韵」+ 通义千问大模型，只回答刺绣领域问题（历史/四大名绣/针法/工具/非遗保护），支持情绪切换、打字机效果、知识卡片快捷提问 |
-| 🔊 **语音播报** | 阿里云 CosyVoice 语音合成，WebSocket 流式传输 → Web Audio 流式解码播放，**实时振幅驱动数字人嘴型**，支持暂停/继续/停止 |
-| 🖼️ **AI 配图** | 数字人判断问题需要配图时，自动调用通义万相生成刺绣主题图片并展示 |
-| 🎓 **教学体验** | 数字人逐步讲解刺绣针法，canvas 动画同步演示（起针/运针/收针），内置针法识别小游戏 |
-| 🏛️ **3D 展厅** | three.js 展示非遗展品三维模型（兔儿爷/舞狮/香囊/脸谱/花瓶/中国结），支持 AI 展品介绍 + 语音朗读、Meshy 文生 3D 自定义展品 |
-| 👤 **用户系统** | 邮箱验证码注册/登录/找回密码（SMTP 发送 + 60 秒限流）、JWT 鉴权、个人中心 |
+## 技术栈
 
-## 🛠️ 技术栈
+- **前端**：Vue 3（`<script setup>`）+ Vite 8 + Vue Router；d3（2D 星图相机）、three.js（3D 星图）、Live2D（PIXI，CDN 引入）
+- **后端**：Express 5 + better-sqlite3（自封装 mysql2 风格 `query()` 接口）
+- **AI 服务**：阿里云百炼（通义千问对话 / 万相图片 / CosyVoice TTS）、Meshy 文生 3D
+- **邮箱**：nodemailer（SMTP 验证码）
 
-- **前端**：Vue 3（Composition API）+ Vue Router + Vite
-- **3D/渲染**：three.js、Live2D（pixi-live2d-display）、model-viewer、Canvas 动画
-- **后端**：Node.js + Express 5
-- **数据库**：SQLite（better-sqlite3，封装了兼容 mysql2 的查询接口，可平滑迁移 MySQL）
-- **AI 服务**：阿里云百炼 — 通义千问（对话）、通义万相（图片生成）、CosyVoice（语音合成）；Meshy（文生 3D）
-- **工程化**：ESLint 10 + Prettier、环境变量管理、自动化 API 测试脚本
+## 环境要求
 
-## 🏗️ 架构
+- **Node.js ≥ 22**（vite 8 与 better-sqlite3 12 的要求；项目在 Node 24 上开发验证）
+- Windows 用户安装 better-sqlite3 若遇到原生编译报错，确认已安装 [Visual Studio Build Tools](https://visualstudio.microsoft.com/zh-hans/downloads/)（C++ 桌面开发工具链）；网络受限时也可用项目自带的 `package-lock.json` 直接 `npm ci` 安装预编译版本
 
-```
-浏览器 (Vue 3 SPA)
-   │
-   │  /api/auth  用户系统（注册/登录/JWT）
-   │  /api/ai    对话 + 图片生成 ──代理──▶ 阿里云百炼 DashScope
-   │  /api/meshy 文生 3D ────────代理──▶ Meshy API
-   │  /tts       语音合成（WebSocket 流式转发）
-   │  /meshy-glb 3D 模型资源代理
-   ▼
-Express 后端 (server/)
-   │
-   ├── SQLite（用户/验证码，启动自动备份）
-   ├── SMTP（验证码邮件）
-   └── 生产环境托管前端 dist 静态文件
-```
-
-**安全设计**：所有第三方 API 密钥只存在于服务端 `server/.env`（已 gitignore），前端通过同源后端代理访问，不暴露任何密钥。
-
-## 🚀 快速开始
+## 快速上手
 
 ```bash
-# 1. 安装依赖
-npm install
+# 1. 克隆仓库
+git clone <仓库地址>
+cd digital-human
 
-# 2. 配置环境变量
-cp .env.example server/.env
-# 编辑 server/.env，填入 DASHSCOPE_API_KEY / DASHSCOPE_TTS_KEY / MESHY_API_KEY / SMTP 等
+# 2. 安装依赖（仅前端 + 后端依赖，无独立构建步骤）
+npm install        # 或 npm ci（按 lock 文件精确安装）
 
-# 3. 开发模式（同时启动后端 + 前端热更新）
+# 3. 配置环境变量
+#    将根目录 .env.example 复制为 server/.env，并填入真实密钥：
+#    cp .env.example server/.env        （Windows: copy .env.example server\.env）
+
+# 4. 启动开发服务（后端 :3001 + 前端 :5173 同时启动）
 npm run dev
-
-# 4. 生产模式
-npm run build   # 构建前端到 dist/
-npm start       # Express 托管 dist + 提供 API
 ```
 
-> 未配置 SMTP 时注册不需要邮箱验证码（开发便利）；配置 SMTP 后自动启用验证码流程。
-> 设 `DEV_MODE=true` 可让验证码直接显示在页面中（联调用）。
+浏览器打开 **http://localhost:5173** 即可。前端通过 vite 代理访问同源后端（`/api`、`/tts`、`/meshy-glb`），无需额外配置。
 
-## 🧪 测试
+## 环境变量（server/.env）
+
+| 变量 | 必填 | 说明 |
+|---|---|---|
+| `DASHSCOPE_API_KEY` | ✅ | 阿里云百炼密钥：AI 对话 + 万相图片生成 |
+| `DASHSCOPE_TTS_KEY` | ✅ | CosyVoice 语音合成（数字人播报） |
+| `MESHY_API_KEY` | ⭕ | Meshy 文生 3D（不填则 3D 生成功能不可用，预设展品不受影响） |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASS` | ⭕ | 邮箱验证码（推荐 QQ/163 SMTP，授权码非登录密码）。**不配置时注册自动免验证码**，验证码登录 tab 禁用 |
+| `JWT_SECRET` | ⭕ | 生产环境务必改为随机长字符串 |
+| `DEV_MODE` | ⭕ | `true` 时验证码直接返回在接口里（本地调试免查邮件） |
+| `QUOTA_CHAT` / `QUOTA_PATTERN` / `QUOTA_MODEL3D` / `GUEST_QUOTA_CHAT` / `VIP_MULTIPLIER` | ⭕ | 额度体系参数（默认 60/10/1/5/2），答辩演示现场可调 |
+
+> 密钥只存在于 `server/.env`（已被 gitignore），前端不持有任何第三方密钥，全部经后端代理转发。
+
+## 常用命令
+
+| 命令 | 说明 |
+|---|---|
+| `npm run dev` | 同时启动后端 + 前端（日常开发） |
+| `npm run dev:api` / `npm run dev:web` | 只启动后端 / 只启动前端 |
+| `npm run build` | 构建前端到 `dist/` |
+| `npm start` | 生产模式：Express 托管 `dist/` 并提供全部 API |
+| `npm run lint` | ESLint（要求保持 0 错误 0 警告） |
+| `bash test/api-test.sh` | 后端自动化测试（51 项断言；需先启动后端，Windows 用 Git Bash 运行） |
+| `npm run format` / `format:check` | Prettier 格式化 / 只检查 |
+
+## 项目结构
+
+```
+digital-human/
+├── server/                  # 后端（Express 5 + SQLite）
+│   ├── index.js             # 应用入口：路由挂载 / 静态托管 / GLB 代理
+│   ├── db.js                # 数据库连接 + 建表（initDB）+ query() 接口
+│   ├── routes/              # auth / ai / meshy / tts / user / admin
+│   ├── middleware/auth.js   # requireAuth / optionalAuth / requireAdmin
+│   └── utils/               # quota（额度链）/ tasks（每日任务）/ packages / email / password
+│       └── data/            # SQLite 数据库 + 启动自动备份（保留 7 天）
+├── src/
+│   ├── pages/               # 页面组件（Home/Culture/Teaching/Show3D/Pattern/Graph/Profile/Login/Admin）
+│   ├── page/                # 页面级模块（图谱数据与 2D/3D 引擎、Meshy 流程、教学动画引擎、各页样式）
+│   ├── components/          # Navbar / ChatPanel / LoginPromptModal / ui/
+│   ├── composables/         # useAuth / useCultureChat / useLive2D / useLoginPrompt
+│   ├── api/                 # client.js（统一请求封装）/ qwen.js
+│   └── utils/               # models / state / worksSync / guestId / navigation 等
+├── public/model/            # Live2D 模型与 GLB 展品（大体积资源，只放 public/）
+├── test/api-test.sh         # 后端 API 自动化测试
+├── TEST_CHECKLIST.md        # 手动验证清单（含已知取舍）
+└── .env.example             # 环境变量模板
+```
+
+## 账号与运营
+
+- **注册**：SMTP 配置后注册需 6 位邮箱验证码（60 秒限流、5 分钟有效）；未配置 SMTP 则免验证码
+- **额度体系**：登录用户每日额度 = 基础 × 会员倍数 + 当日任务加成 + 兑换额度包；游客可试用对话（默认 5 条/日），纹样/3D 生成需登录
+- **管理员**：把任意账号提权为 admin 后重新登录（JWT 携带角色，需重登生效）。在项目根目录的 **Git Bash** 中运行：
 
 ```bash
-# 启动后端后运行自动化 API 测试（18 项）
-bash test/api-test.sh
+node -e 'const D=require("better-sqlite3");const db=new D("server/data/database.db");db.prepare("UPDATE users SET role='"'"'admin'"'"' WHERE email=?").run("你的邮箱")'
 ```
 
-完整测试清单（含浏览器手动验证项）见 [TEST_CHECKLIST.md](TEST_CHECKLIST.md)。
+- **兑换码**：admin 登录后访问 `/admin`，可批量生成会员天数/额度包兑换码（答辩演示时可提前发放给评委体验）
 
-## 📁 目录结构
+## 常见问题
 
-```
-├── server/            # Express 后端
-│   ├── index.js       # 入口（API 路由 + 生产静态托管）
-│   ├── db.js          # SQLite 封装 + 自动备份
-│   ├── env.js         # 统一环境变量加载
-│   ├── middleware/    # JWT 鉴权
-│   ├── routes/        # auth / ai / meshy / tts
-│   └── utils/         # 邮件 / 密码
-├── src/
-│   ├── api/           # qwen.js（AI 客户端）、client.js（鉴权请求封装）
-│   ├── components/    # 聊天面板 / Live2D 面板 / 导航 / 知识卡片
-│   ├── pages/         # 页面级组件（路由）
-│   ├── page/          # 遗留页面模块（字符串模板构建，逐步组件化迁移中）
-│   ├── router/        # Vue Router + 登录守卫
-│   └── composables/   # useAuth 等组合式函数
-├── public/model/      # Live2D 模型资源
-├── test/api-test.sh   # 自动化 API 测试
-└── TEST_CHECKLIST.md  # 测试清单
+- **Windows 下重启开发服务后端口被占**：`concurrently` 的子进程（node/vite）在父进程结束后可能残留。清理命令：
+
+```bash
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | ForEach-Object { $c=$_.CommandLine; if ($c -match 'digital-human|server/index.js|vite') { taskkill /F /PID $_.ProcessId } }"
 ```
 
-## 📝 环境变量
-
-| 变量 | 说明 |
-|---|---|
-| `DASHSCOPE_API_KEY` | 通义千问对话 + 万相图片生成 |
-| `DASHSCOPE_TTS_KEY` | CosyVoice 语音合成 |
-| `MESHY_API_KEY` | Meshy 文生 3D |
-| `SMTP_HOST/PORT/USER/PASS` | 验证码邮件（未配置则跳过验证码） |
-| `JWT_SECRET` / `JWT_EXPIRES_IN` | 登录令牌签名 |
-| `PORT` / `DEV_MODE` | 端口 / 开发模式 |
-
-## 🚧 已知问题与后续计划
-
-- 3D 展品模型（GLB）体积较大（5~29MB）：已实现按需加载 + 进度遮罩（`src/utils/viewerLoading.js`），Draco/meshopt 压缩仍待做（需 gltfpack 重新导出模型）
-- Meshy API 为海外服务，国内网络直连不稳定，建议部署时配置代理
-- 全部页面已完成 Vue 组件化（含导航条统一）；`src/page/` 下仅保留动画引擎/游戏/Meshy 等逻辑模块
-- 前端为 JavaScript，计划渐进引入 TypeScript
+- **验证码邮件收不到**：先 `GET /api/debug/smtp-test` 确认 SMTP 连接；再看垃圾箱；本地调试可开 `DEV_MODE=true` 让验证码直接显示
+- **3D 生成报 502**：本机到 `api.meshy.ai` 网络不通属常见情况（海外服务），链路本身正常；预设展品不受影响
+- **纹样生成需登录**：这是额度体系设计（游客只能调参体验），登录后每日 10 张
+- **开发约束**：`src/pages/PatternPage.vue` 不得 import `src/api/qwen.js`（vite8/Rolldown 已知 bug 会构建 panic）；新增环境变量需同步维护 `.env.example`
+- **图片 URL 过期**：万相返回的图片为临时签名地址（演示期内有效），旧作品图长期后可能失效，属上游特性
