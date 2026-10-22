@@ -142,6 +142,27 @@ export function neighborsOf(id) {
     .map((e) => (e.a === id ? e.b : e.a))
 }
 
+// ── 共享视图函数（2D/3D 渲染层共用同一份逻辑，保证两种模式精确一致）──
+export function nodeColorOf(n) {
+  if (n.cat === 'core') return '#c9984a'
+  return CATEGORIES.find((c) => c.id === n.cat)?.color ?? '#8b6240'
+}
+
+export function nodeRadiusOf(n) {
+  if (n.cat === 'core') return 26
+  if (n.isHub) return 12
+  const deg = neighborsOf(n.id).length
+  return Math.min(9.5, Math.max(5.5, 5.5 + deg * 0.45))
+}
+
+export function edgeIsCross(e) {
+  return NODE_MAP[e.a]?.cat !== NODE_MAP[e.b]?.cat
+}
+
+export function edgeColorOf(e) {
+  return edgeIsCross(e) ? '#c9984a' : nodeColorOf(NODE_MAP[e.a])
+}
+
 // ── 确定性伪随机（种子固定，星点位置每次一致）──
 function mulberry32(seed) {
   let a = seed

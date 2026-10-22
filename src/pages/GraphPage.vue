@@ -1,5 +1,5 @@
 <template>
-  <div class="app-wrapper page-graph">
+  <div class="app-wrapper page-graph" :class="{ 'theme-3d': renderMode === '3d' }">
     <Navbar />
 
     <main class="graph-main">
@@ -51,21 +51,38 @@
         >
           <span class="lgbar-dot" :style="{ background: c.color }"></span>{{ c.name }}
         </button>
-        <span class="lgbar-hint">拖拽平移 · 滚轮缩放 · 点击星点聚焦 · 悬停查看名称</span>
+        <span class="lgbar-hint">
+          {{ renderMode === '2d' ? '拖拽平移 · 滚轮缩放 · 点击星点聚焦' : '拖拽旋转 · 滚轮拉近推远 · 点击星体探索' }}
+        </span>
+        <!-- 2D/3D 渲染模式切换（3D 为深空星空三维探索） -->
+        <div class="render-switch">
+          <button
+            class="render-btn"
+            :class="{ active: renderMode === '2d' }"
+            @click="switchRenderMode('2d')"
+          >📜 2D 星图</button>
+          <button
+            class="render-btn"
+            :class="{ active: renderMode === '3d' }"
+            @click="switchRenderMode('3d')"
+          >🌌 3D 星图</button>
+        </div>
       </div>
 
-      <!-- 图谱视图：宣纸星图，节点静止可点击 -->
-      <div v-if="viewMode === 'graph'" ref="canvasWrapRef" class="graph-canvas-wrap">
-        <!-- 缩放控制（右上角，含当前幅度） -->
-        <div class="graph-controls">
+      <!-- 图谱视图：2D 宣纸星图 / 3D 深空星空（渲染模式可切换，状态共享）
+           v-show 而非 v-if：列表/图谱切换不销毁画布，保证 d3 与 3D 引擎常驻 -->
+      <div v-show="viewMode === 'graph'" ref="canvasWrapRef" class="graph-canvas-wrap">
+        <!-- 缩放控制（右上角，含当前幅度；仅 2D） -->
+        <div v-show="renderMode === '2d'" class="graph-controls">
           <button title="放大 20%" @click="zoomBy(1.2)">＋</button>
           <button title="缩小 20%" @click="zoomBy(1 / 1.2)">－</button>
           <button title="重置视图" @click="backToFull">⌂</button>
           <span class="zoom-pct">{{ Math.round((cam.k / DEFAULT_K) * 100) }}%</span>
         </div>
 
-        <!-- 视口滚动条：左侧竖条 + 底部横条（拖动滑块/点击轨道/滚轮联动移动视口） -->
+        <!-- 视口滚动条：左侧竖条 + 底部横条（仅 2D） -->
         <div
+          v-show="renderMode === '2d'"
           class="graph-scrollbar vsbar"
           :class="{ locked: !vsScrollable }"
           @pointerdown="onTrackJump($event, 'y')"
@@ -74,6 +91,7 @@
           <div class="scrollbar-thumb" :style="vsThumbStyle" @pointerdown.stop="onThumbDown($event, 'y')"></div>
         </div>
         <div
+          v-show="renderMode === '2d'"
           class="graph-scrollbar hsbar"
           :class="{ locked: !hsScrollable }"
           @pointerdown="onTrackJump($event, 'x')"
@@ -81,6 +99,11 @@
         >
           <div class="scrollbar-thumb" :style="hsThumbStyle" @pointerdown.stop="onThumbDown($event, 'x')"></div>
         </div>
+
+        <!-- 3D 场景容器（懒初始化；v-show 保持容器常驻避免重复建场景） -->
+        <div v-show="renderMode === '3d'" ref="scene3dWrapRef" class="graph-scene3d" />
+        <div v-if="renderMode === '3d' && !g3dError" class="g3d-hint">🌌 深空模式 · 拖拽旋转 / 滚轮拉近推远 / 点击星体探索</div>
+        <div v-if="g3dError" class="g3d-hint error">⚠️ {{ g3dError }}（已切回 2D 星图）</div>
 
         <!-- 节点专属界面：介绍 + 关联（选中后浮现，按住标题栏可拖动） -->
         <Transition name="overlay-in">
@@ -163,6 +186,7 @@
         >🎯 助手面板</button>
 
         <svg
+          v-show="renderMode === '2d'"
           ref="svgRef"
           :viewBox="`0 0 ${VIEWBOX.w} ${VIEWBOX.h}`"
           class="graph-svg"
@@ -308,7 +332,7 @@
       </div>
 
       <!-- 列表视图 -->
-      <div v-else class="graph-list">
+      <div v-show="viewMode === 'list'" class="graph-list">
         <div v-for="c in CATEGORIES" :key="c.id" class="list-group">
           <div class="list-group-head">
             <span class="lg-mark" :class="`lg-${c.id}`" :style="{ background: c.color }"></span>
@@ -331,13 +355,15 @@
 // 敦煌星图式星座布局：中心主星【绣】+ 三个扇形星座片区（种子散布、位置固定），
 // 星点节点（大小按层级）、悬停浮出名称、点击聚焦关联；
 // 平移/缩放由 d3-zoom 提供（覆盖率约束保证画面始终 ≥2/3 是图谱）
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { select, zoom, zoomIdentity } from 'd3'
 import Navbar from '../components/Navbar.vue'
 import {
   CATEGORIES, CENTER_NODE, NODES, EDGES, HUB_NODES, NODE_MAP,
   neighborsOf, POSITIONS, VIEWBOX, GOLD_STARS,
+  nodeColorOf, nodeRadiusOf, edgeIsCross, edgeColorOf,
 } from '../page/graph/graphData.js'
+import { initGraph3D } from '../page/graph/scene3d.js'
 import { MODELS } from '../utils/models.js'
 import { goToExhibit } from '../utils/navigation.js'
 import '../page/graph/index.css'
@@ -348,12 +374,61 @@ import { useAuth } from '../composables/useAuth.js'
 const { isLoggedIn } = useAuth()
 
 const viewMode = ref('graph')
+const renderMode = ref('2d')   // '2d' | '3d'：图谱视图的渲染模式（状态共享，仅渲染层切换）
 const selectedId = ref(null)
 const activeFilter = ref(null)
 const tip = ref(null)
 const canvasWrapRef = ref(null)
 const svgRef = ref(null)
+const scene3dWrapRef = ref(null)
 const sidePanelOpen = ref(true)
+// 探索轨迹/已探索（声明提前：3D 状态同步 watch 在下方注册时需要引用）
+const trailIds = ref([])
+const visitedIds = ref([])
+const exploredCount = computed(() => visitedIds.value.length)
+
+// ── 3D 场景：懒初始化，2D 期间暂停渲染循环 ──────────
+let graph3d = null
+const g3dError = ref('')
+
+function switchRenderMode(mode) {
+  if (mode === renderMode.value) return
+  renderMode.value = mode
+  if (mode === '3d' && !graph3d && scene3dWrapRef.value) {
+    // 懒初始化：首次切 3D 才建场景（容器此时已可见）
+    try {
+      graph3d = initGraph3D(scene3dWrapRef.value, {
+        // 用户操作桥接现有探索管线（历史/轨迹/任务上报自动生效）
+        onSelect: (n) => selectNode(n),
+        onHover: (n, e) => hoverNode(n, e),
+        onLeave: () => leaveNode(),
+        onClear: () => clearSelect(),
+      })
+      // 初始状态同步（切到 3D 时保留 2D 的选中/探索/滤镜状态）
+      graph3d.setSelected(selectedId.value)
+      graph3d.setVisited([...visitedIds.value])
+      graph3d.setFilter(activeFilter.value)
+    } catch (err) {
+      // 初始化失败（如 WebGL 不可用）：回退 2D 并给出可见提示
+      console.error('[graph] 3D 初始化失败:', err)
+      graph3d = null
+      g3dError.value = err?.message || '3D 初始化失败'
+      renderMode.value = '2d'
+    }
+  }
+}
+
+// 状态变化 → 3D 场景实时同步（2D 状态为唯一来源）
+watch(selectedId, (id) => graph3d?.setSelected(id))
+watch(visitedIds, (ids) => graph3d?.setVisited([...ids]), { deep: true })
+watch(activeFilter, (cat) => graph3d?.setFilter(cat))
+
+// 仅当「图谱视图 + 3D 模式」同时生效时运行 3D 渲染循环（省资源）
+watch([viewMode, renderMode], () => {
+  if (!graph3d) return
+  if (viewMode.value === 'graph' && renderMode.value === '3d') graph3d.resume()
+  else graph3d.pause()
+})
 
 // 渲染顺序：叶子 → 锚星 → 中心（后者在上层）
 const renderNodes = [...NODES, ...HUB_NODES, CENTER_NODE]
@@ -363,18 +438,9 @@ const animDelayMap = Object.fromEntries(
   [CENTER_NODE, ...HUB_NODES, ...NODES].map((n, i) => [n.id, i * 35]))
 function animDelay(n) { return animDelayMap[n.id] ?? 0 }
 
-// ── 星点尺寸：按层级 + 关联度 ────────────────────
-function nodeRadius(n) {
-  if (n.cat === 'core') return 26
-  if (n.isHub) return 12
-  const deg = neighborsOf(n.id).length
-  return Math.min(9.5, Math.max(5.5, 5.5 + deg * 0.45))
-}
-
-function nodeColor(n) {
-  if (n.cat === 'core') return '#c9984a'
-  return CATEGORIES.find((c) => c.id === n.cat)?.color ?? '#8b6240'
-}
+// ── 星点尺寸/颜色：逻辑统一在 graphData.js（2D/3D 共用，保证精确一致）──
+const nodeRadius = nodeRadiusOf
+const nodeColor = nodeColorOf
 
 // ── 星点微动：逐个错开的轻柔起伏（探索后转为静态）──
 function pulseStyle(n) {
@@ -424,14 +490,9 @@ function tagColor(n) {
   return n.cat === 'core' ? '#8b6240' : (CATEGORIES.find((c) => c.id === n.cat)?.color ?? '#8b6240')
 }
 
-// ── 连线：跨星座=金色重点关联，同星座=分类色淡线 ──
-function isCrossEdge(e) {
-  return NODE_MAP[e.a]?.cat !== NODE_MAP[e.b]?.cat
-}
-
-function edgeColor(e) {
-  return isCrossEdge(e) ? '#c9984a' : nodeColor(NODE_MAP[e.a])
-}
+// ── 连线：跨星座=金色重点关联，同星座=分类色淡线（共享函数别名）──
+const isCrossEdge = edgeIsCross
+const edgeColor = edgeColorOf
 
 // ── 扇区边界虚线（三块 120° 扇区的分界角：15°/165°/255°，极淡）──
 const SECTOR_LINES = [15, 165, 255].map((deg) => {
@@ -667,11 +728,7 @@ function toggleFilter(catId) {
   activeFilter.value = activeFilter.value === catId ? null : catId
 }
 
-// ── 探索轨迹（本次会话内）──
-const trailIds = ref([])
-const visitedIds = ref([])
-const exploredCount = computed(() => visitedIds.value.length)
-
+// ── 探索轨迹（本次会话内；声明已提前至顶部状态区）──
 function pushTrail(id) {
   if (id === 'center' || id.startsWith('hub-')) return
   const list = trailIds.value.filter((x) => x !== id)
@@ -880,6 +937,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearInterval(factTimer)
   canvasWrapRef.value?.removeEventListener('wheel', onWrapWheel)
+  graph3d?.dispose()
+  graph3d = null
   if (camRafId != null) cancelAnimationFrame(camRafId)
   if (scrollDrag) {
     document.removeEventListener('pointermove', onScrollDragMove)

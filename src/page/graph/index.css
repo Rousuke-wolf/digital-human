@@ -186,10 +186,77 @@
   font-size: 12px;
 }
 
+/* ── 2D/3D 渲染模式切换 ───────────────────────────── */
+.render-switch {
+  display: flex;
+  gap: 6px;
+}
+.render-btn {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--gp-border);
+  background: transparent;
+  color: var(--gp-text);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.render-btn:hover { border-color: var(--gp-gold); }
+.render-btn.active {
+  background: var(--gp-brown);
+  border-color: var(--gp-brown);
+  color: #f6e8cf;
+  font-weight: 600;
+}
+
+/* ── 3D 深空场景 ──────────────────────────────────── */
+.graph-scene3d {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: 15px;
+  overflow: hidden;
+}
+.g3d-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 7;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: rgba(13, 18, 40, 0.55);
+  color: #d8e0f5;
+  font-size: 12px;
+  pointer-events: none;
+}
+.g3d-hint.error {
+  background: rgba(120, 24, 10, 0.85);
+  color: #ffd9c8;
+}
+
+/* ── 3D 标签（CSS2D，深色背景上的亮色文字）── */
+.g3d-label {
+  color: #e8e0cc;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.95);
+}
+.g3d-label-center {
+  color: #ffd98a;
+  font-size: 14px;
+}
+.g3d-label-hub { color: #f0e6d0; }
+.g3d-label-leaf { color: #d8e0f5; font-size: 11px; }
+
 /* ══ 星图画布：浅米宣纸底 + 绢布肌理 ═════════════ */
 .graph-canvas-wrap {
   position: relative;
   min-width: 0;
+  /* 高度由容器自身保证（与子元素显隐解耦）：2D 的 SVG 或 3D 的 canvas
+     任一隐藏时画布不塌陷（3D 容器是 absolute 定位，靠容器撑高度） */
+  min-height: 600px;
   border: 1px solid var(--gp-border);
   border-radius: 16px;
   box-shadow: 0 8px 28px rgba(139, 98, 64, 0.10);
@@ -965,6 +1032,14 @@
     min-height: 430px;
   }
 
+  .graph-canvas-wrap {
+    min-height: 430px;
+  }
+
+  .page-graph.theme-3d .graph-canvas-wrap {
+    min-height: 560px;
+  }
+
   .lgbar-hint {
     display: none;
   }
@@ -983,4 +1058,134 @@
   .list-row-name {
     flex: none;
   }
+}
+
+/* ══ 3D 深空主题（renderMode==='3d' 时页面根节点挂 .theme-3d）════ */
+/* 重定义页面级 CSS 变量 + 覆盖少量硬编码浅色元素 + 导航条暗化，
+   全页（页头/图例/轨迹/面板/导航条）切换到契合星图的深星空色 */
+.page-graph.theme-3d {
+  --gp-brown: #c9984a;
+  --gp-gold: #e8c188;
+  --gp-panel: #141b38;
+  --gp-border: #2a3358;
+  --gp-text: #e8e0cc;
+  --gp-mid: #8f9bc0;
+  /* 星空感页面背景：碎星点（确定性散布，白/金混色）+ 两团星云柔光 */
+  background:
+    radial-gradient(1.2px 1.2px at 8% 12%, rgba(255, 255, 255, 0.65) 50%, transparent 51%),
+    radial-gradient(1px 1px at 22% 6%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 35% 14%, rgba(255, 217, 154, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 47% 8%, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 58% 16%, rgba(255, 255, 255, 0.7) 50%, transparent 51%),
+    radial-gradient(1px 1px at 69% 7%, rgba(255, 217, 154, 0.45) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 81% 13%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 92% 5%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 5% 32%, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 16% 25%, rgba(255, 217, 154, 0.4) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 28% 38%, rgba(255, 255, 255, 0.35) 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 41% 29%, rgba(255, 255, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 53% 40%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 64% 33%, rgba(255, 217, 154, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 76% 44%, rgba(255, 255, 255, 0.35) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 88% 37%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 96% 26%, rgba(255, 255, 255, 0.45) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 11% 52%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1px 1px at 24% 61%, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 37% 55%, rgba(255, 217, 154, 0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px at 49% 66%, rgba(255, 255, 255, 0.35) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 61% 58%, rgba(255, 255, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 73% 70%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 85% 63%, rgba(255, 217, 154, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 94% 71%, rgba(255, 255, 255, 0.45) 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 3% 76%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1px 1px at 18% 84%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 31% 78%, rgba(255, 217, 154, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 44% 89%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 57% 82%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 68% 93%, rgba(255, 255, 255, 0.35) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 79% 86%, rgba(255, 217, 154, 0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px at 90% 95%, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 99% 82%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1100px 480px at 85% -10%, rgba(84, 116, 210, 0.16), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(201, 152, 74, 0.10), transparent 60%),
+    #0a0f22;
+}
+
+/* 视图切换按钮（图谱/列表） */
+.page-graph.theme-3d .view-btn {
+  background: #141b38;
+  color: var(--gp-mid);
+}
+.page-graph.theme-3d .view-btn.active {
+  background: #c9984a;
+  color: #241a08;
+}
+
+/* 探索轨迹 chips */
+.page-graph.theme-3d .trail-chip {
+  background: #141b38;
+  color: #e8c188;
+}
+.page-graph.theme-3d .trail-chip.current {
+  background: rgba(201, 152, 74, 0.18);
+}
+
+/* 图例选中态 */
+.page-graph.theme-3d .lgbar-item.on {
+  background: rgba(201, 152, 74, 0.16);
+}
+
+/* 助手面板重开小胶囊 */
+.page-graph.theme-3d .csp-reopen {
+  background: #141b38;
+  border-color: #2a3358;
+  color: #e8c188;
+}
+
+/* 3D 模式：星图窗口加高（各角度下整张星图更容易完整入画），2D 保持原尺寸 */
+.page-graph.theme-3d .graph-canvas-wrap {
+  min-height: 800px;
+}
+
+/* ── 深空蓝面板：详情浮层/助手面板/悬浮提示/重开胶囊统一冷色深调 ── */
+.page-graph.theme-3d .node-overlay,
+.page-graph.theme-3d .canvas-side-panel {
+  background: rgba(16, 23, 49, 0.92);
+  border: 1px solid #2a3358;
+  backdrop-filter: blur(8px);
+}
+.page-graph.theme-3d .graph-tip {
+  background: rgba(16, 23, 49, 0.92);
+  border: 1px solid #2a3358;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+/* ── 导航条暗化（深空模式；style.css 的 navbar 规则带 !important，这里同步加）── */
+.page-graph.theme-3d .navbar {
+  background: #101731 !important;
+  border-bottom-color: #232c52 !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.35) !important;
+  color: #e8e0cc !important;
+}
+.page-graph.theme-3d .navbar .nav-logo-text { color: #e8e0cc !important; }
+.page-graph.theme-3d .navbar .nav-tab { color: #aab4d8 !important; }
+.page-graph.theme-3d .navbar .nav-tab:hover { color: #e8c188 !important; }
+.page-graph.theme-3d .navbar .nav-tab.active {
+  color: #e8c188 !important;
+  border-bottom-color: #c9984a !important;
+}
+.page-graph.theme-3d .navbar .nav-user-name { color: #d8e0f5 !important; }
+.page-graph.theme-3d .navbar .nav-profile-link { color: #e8c188 !important; }
+.page-graph.theme-3d .navbar .nav-user-logout { color: #aab4d8 !important; }
+.page-graph.theme-3d .navbar .nav-login-btn,
+.page-graph.theme-3d .navbar .nav-register-btn {
+  background: #141b38 !important;
+  border-color: #2a3358 !important;
+  color: #e8e0cc !important;
+}
+
+/* 3D 模式：html/body 底色同步（页面滚动到底部不再露白边） */
+html:has(.page-graph.theme-3d),
+body:has(.page-graph.theme-3d) {
+  background: #0a0f22;
 }
