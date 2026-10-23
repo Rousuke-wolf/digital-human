@@ -1,0 +1,102 @@
+// ═══════════════════════════════════════════════════════
+// variables.scss — 全站 SCSS 变量唯一来源（色彩 + 字体 + 字号层级）
+// 规则：
+//   1. 组件样式只允许 `@use '../styles/variables.scss' as *` 引用本文件变量，
+//      禁止硬编码任何颜色 / 字体 / 字号
+//   2. 全站页面背景统一使用 $color-bg-primary，禁止各页面单独定义背景色
+//   3. three.js 场景内（节点材质/连线）无法读 SCSS 变量，
+//      同套色值另有一份 TS 常量 src/constants/palette.ts，两处同步维护
+// ═══════════════════════════════════════════════════════
+
+/* ── 一、色彩规范 ─────────────────────────────────────── */
+
+// 基底：低饱和深墨绿（全站唯一页面底色，含首页/文化/教学/3D展厅/关于）
+$color-bg-primary: #1a2f2a;
+$color-bg-deep: #101f1b;      // 最深底（暗角 / 渐变收尾）
+$color-bg-card: #223c35;      // 卡片底 / 毛玻璃深底
+$color-bg-elevated: #2e4d43;  // 抬高面 / 描边强调绿
+
+// 三传统点缀色（降饱和使用，节点颜色只允许取自这三色）
+$color-accent-cinnabar: #a63a2b;  // 朱砂红
+$color-accent-azurite: #33465f;   // 石青
+$color-accent-gold: #b98a2f;      // 鎏金
+$color-accent-gold-pale: #d9b36a; // 鎏金高亮（标题 / 节点标签 / 描边）
+$color-accent-gold-deep: #a5802a; // 鎏金深（按钮渐变收尾）
+
+// 节点三色（取自朱砂 / 石青 / 鎏金，再降饱和；与 constants/palette.ts 同步）
+$color-node-zhusha: #9e4a3a;
+$color-node-zhusha-deep: #7c3a30;
+$color-node-liujin: #a8893e;
+$color-node-shiqing: #4a5f78;
+
+// 文字
+$color-text-primary: #f2ead8;   // 宣纸白（正文，深底上对比度最高）
+$color-text-secondary: #9fb3a8; // 弱化文字
+$color-text-gold: #d9b36a;      // 强调文字（标题/链接激活态）
+
+// 玻璃 / 阴影
+$color-glass: rgba(26, 47, 42, 0.72);          // 毛玻璃面板底色
+$color-glass-border: rgba(185, 138, 47, 0.28); // 极细鎏金描边
+$color-shadow-deep: 0 18px 50px rgba(0, 0, 0, 0.45);
+
+// 细节描边 / 填充（常用派生值，避免组件内硬编码）
+$color-gold-line: rgba(185, 138, 47, 0.2);        // 极细鎏金描边（胶囊/输入框）
+$color-gold-soft-border: rgba(217, 179, 106, 0.25); // 鎏金高亮描边（聚焦态）
+$color-gold-faint: rgba(185, 138, 47, 0.14);      // 弱金描边（字幕框）
+$color-gold-glow: rgba(185, 138, 47, 0.12);       // 金晕（形象区/悬停底）
+$color-gold-halo: rgba(185, 138, 47, 0.4);        // 光晕环
+$color-jade-deep: rgba(16, 31, 27, 0.6);          // 输入/字幕深底
+$color-jade-chip: rgba(30, 56, 47, 0.5);          // 胶囊底
+$color-ivory-soft: rgba(242, 234, 216, 0.78);     // 低透明度白（悬停态）
+$color-ivory-dim: rgba(242, 234, 216, 0.45);      // 低透明度白（默认态）
+$color-ivory-faint: rgba(242, 234, 216, 0.18);    // 更低透明度（分隔符）
+$color-gold-active: rgba(217, 179, 106, 0.95);    // 激活态淡金
+
+// ── 旧变量名兼容别名（存量组件平滑迁移，新代码请用 $color-* 命名） ──
+$jade-950: $color-bg-deep;
+$jade-900: $color-bg-primary;
+$jade-800: $color-bg-card;
+$jade-700: $color-bg-elevated;
+$jade-400: #5f8474; // 仅 Navbar 头像高光渐变使用
+$cinnabar: $color-accent-cinnabar;
+$azurite: $color-accent-azurite;
+$gold: $color-accent-gold;
+$gold-pale: $color-accent-gold-pale;
+$gold-deep: $color-accent-gold-deep;
+$gold-line: $color-gold-line;
+$gold-soft-border: $color-gold-soft-border;
+$gold-faint: $color-gold-faint;
+$gold-glow: $color-gold-glow;
+$gold-halo: $color-gold-halo;
+$gold-active: $color-gold-active;
+$jade-deep: $color-jade-deep;
+$jade-chip: $color-jade-chip;
+$ivory: $color-text-primary;
+$ivory-soft: $color-ivory-soft;
+$ivory-dim: $color-ivory-dim;
+$ivory-faint: $color-ivory-faint;
+$muted: $color-text-secondary;
+$glass: $color-glass;
+$glass-border: $color-glass-border;
+$shadow-deep: $color-shadow-deep;
+
+/* ── 二、字体体系 ─────────────────────────────────────── */
+
+// 标题：马善政毛笔楷书（npm @fontsource 随包分发，离线可用）
+$font-title: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', serif;
+// 正文：思源宋体（@fontsource/noto-serif-sc，随包分发；兜底系统宋体）
+$font-body: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
+// 装饰 / 印章：站酷小薇
+$font-deco: 'ZCOOL XiaoWei', 'STKaiti', 'KaiTi', serif;
+
+/* ── 三、字号层级（禁止页面内硬编码字号） ─────────────── */
+
+$font-size-display: 88px;    // 首页书法主标题（桌面）
+$font-size-h1: 34px;         // 页面大标题
+$font-size-h2: 24px;         // 区块标题
+$font-size-h3: 19px;         // 卡片标题 / 节点标签
+$font-size-body-lg: 17px;    // 副标题
+$font-size-body: 15px;       // 正文
+$font-size-body-sm: 13px;    // 次要正文 / 气泡
+$font-size-caption: 12px;    // 辅助说明
+$font-size-tiny: 11px;       // 标签 / 时间戳

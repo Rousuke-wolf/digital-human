@@ -877,3 +877,416 @@
     gap: 4px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   第三轮重构：宣纸融合 + 信笺级聊天 + 猜你想问胶囊
+   1. 页面背景与首页一致的宣纸米黄渐变，去硬边框割裂
+   2. 左侧立绘：无卡片底/无边框，渐变遮罩融入宣纸
+   3. 聊天区：透明悬浮 + 信笺气泡 + 侧边小头像
+   4. 功能栏：右上角极简线框幽灵按钮
+   5. 底部知识卡片 → 「猜你想问」胶囊标签
+   ═══════════════════════════════════════════════════════ */
+
+/* ── 全局：宣纸米黄（与首页同源） ── */
+.page-culture,
+.page-culture .app-wrapper {
+  background:
+    radial-gradient(1200px 600px at 50% -8%, rgba(201, 152, 74, 0.16), transparent 62%),
+    linear-gradient(180deg, #faf6ef 0%, #f6eedd 46%, #efe3c8 100%) !important;
+}
+
+.culture-dashboard {
+  background: transparent !important;
+  padding: 18px 28px 20px;
+  gap: 24px;
+}
+
+/* ── 左侧：立绘融入宣纸 ── */
+.culture-left {
+  background: transparent !important;
+  border-right: none !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.culture-left .character-section {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.culture-left .character-3d {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  /* 渐变遮罩：底部+左右边缘自然融入宣纸，绣娘如静坐画中 */
+  -webkit-mask-image:
+    linear-gradient(to top, transparent 0%, black 26%),
+    linear-gradient(to right, transparent 0%, black 12%),
+    linear-gradient(to left, transparent 0%, black 12%);
+  mask-image:
+    linear-gradient(to top, transparent 0%, black 26%),
+    linear-gradient(to right, transparent 0%, black 12%),
+    linear-gradient(to left, transparent 0%, black 12%);
+}
+
+/* 情绪切换：透明毛玻璃胶囊，纯文字无 Emoji */
+.culture-left .emotion-switch {
+  background: rgba(255, 252, 245, 0.55) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(160, 122, 74, 0.22) !important;
+  box-shadow: 0 4px 14px rgba(92, 61, 32, 0.05) !important;
+  border-radius: 30px !important;
+  width: fit-content !important;
+  align-self: center;
+  margin-top: 14px !important;
+  padding: 5px 8px !important;
+  gap: 2px;
+}
+
+.culture-left .emotion-btn {
+  font-size: 13px !important;
+  padding: 5px 14px !important;
+  color: #8a7357 !important;
+  gap: 0 !important;
+  letter-spacing: 1px;
+  border: 1px solid transparent;
+}
+
+.culture-left .emotion-btn span {
+  font-size: 13px !important;
+}
+
+.culture-left .emotion-btn:hover {
+  background: rgba(160, 122, 74, 0.08) !important;
+  color: #5c3d20 !important;
+}
+
+.culture-left .emotion-btn.active {
+  background: rgba(192, 57, 43, 0.08) !important;
+  border: 1px solid rgba(192, 57, 43, 0.35) !important;
+  color: #a93226 !important;
+}
+
+/* ── 右侧：透明容器，对话自然悬浮 ── */
+.culture-right {
+  background: transparent !important;
+}
+
+.culture-chat-panel {
+  padding: 6px 4px 12px !important;
+  border-bottom: none !important;
+}
+
+/* ── 功能栏：右上角极简幽灵按钮（线框图标 + 浅灰文字） ── */
+.culture-chat-panel .function-bar {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 6px 12px !important;
+  margin-bottom: 4px !important;
+  justify-content: flex-end !important;
+}
+
+.culture-chat-panel .function-group {
+  gap: 10px !important;
+}
+
+.culture-chat-panel .func-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent !important;
+  border: 1px solid rgba(160, 122, 74, 0.28) !important;
+  color: #8a7357 !important;
+  border-radius: 20px !important;
+  padding: 4px 14px !important;
+  font-size: 12px !important;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.culture-chat-panel .func-item:hover {
+  background: rgba(255, 252, 245, 0.75) !important;
+  color: #5c3d20 !important;
+  border-color: rgba(139, 98, 64, 0.55) !important;
+  transform: translateY(-1px);
+}
+
+.culture-chat-panel .func-item i {
+  display: inline-flex;
+  align-items: center;
+  color: inherit !important;
+  font-size: 13px !important;
+}
+
+/* 语音设置面板：毛玻璃 */
+.culture-chat-panel .voice-settings-panel {
+  background: rgba(255, 252, 245, 0.6) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(160, 122, 74, 0.22) !important;
+  box-shadow: 0 6px 18px rgba(92, 61, 32, 0.05);
+  border-radius: 14px !important;
+}
+
+.culture-chat-panel .vs-label {
+  color: #8a7357 !important;
+}
+
+.culture-chat-panel .vs-val {
+  color: #a93226 !important;
+}
+
+.culture-chat-panel .vs-slider {
+  accent-color: #c9984a !important;
+}
+
+/* ── 聊天历史：透明信笺，仅内部滚动 ── */
+.culture-chat-panel .chat-history {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 8px 6px !important;
+  margin-bottom: 10px !important;
+  overflow-y: auto !important;
+}
+
+/* ── 气泡：信笺级质感 + 侧边小头像 ── */
+.culture-chat-panel .message {
+  max-width: 78% !important;
+  position: relative;
+}
+
+/* 绣娘气泡：纯白 + 极柔和阴影，左上角小圆角（从左侧发出） */
+.culture-chat-panel .message.ai {
+  background: #ffffff !important;
+  color: #4a3a2a !important;
+  border: none !important;
+  border-radius: 16px 16px 16px 4px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+  margin-left: 46px !important;
+  padding: 12px 18px !important;
+}
+
+/* 绣娘小头像（复用团队国风头像图） */
+.culture-chat-panel .message.ai::before {
+  content: '';
+  position: absolute;
+  left: -38px;
+  bottom: 2px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: url('/team/avatar.svg') center / cover no-repeat;
+  box-shadow: 0 2px 6px rgba(92, 61, 32, 0.12);
+}
+
+/* 用户气泡：浅茶色低饱和 + 深棕文字，右上角小圆角（右侧发出） */
+.culture-chat-panel .message.user {
+  background: #f0e2cd !important;
+  color: #4a3222 !important;
+  border: none !important;
+  border-radius: 16px 16px 4px 16px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+  margin-right: 46px !important;
+  padding: 12px 18px !important;
+}
+
+/* 用户小头像：极简人形线稿 */
+.culture-chat-panel .message.user::before {
+  content: '';
+  position: absolute;
+  right: -38px;
+  bottom: 2px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(160, 122, 74, 0.3);
+  background: rgba(255, 252, 245, 0.9)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a7357' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3.5'/%3E%3Cpath d='M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6'/%3E%3C/svg%3E")
+    center / 62% no-repeat;
+}
+
+/* 思考中：与绣娘气泡对齐 */
+.culture-chat-panel .message.thinking {
+  background: transparent !important;
+  border: none !important;
+  color: #8a7357 !important;
+  margin-left: 46px !important;
+}
+
+/* ── 输入区：毛玻璃圆角长条，轻盈 ── */
+.culture-chat-panel .input-area {
+  background: rgba(255, 252, 245, 0.6) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(160, 122, 74, 0.28) !important;
+  border-radius: 26px !important;
+  box-shadow: 0 4px 14px rgba(92, 61, 32, 0.05) !important;
+  padding: 6px 8px 6px 20px !important;
+  margin-bottom: 0 !important;
+}
+
+.culture-chat-panel .input-area input {
+  color: #4a3a2a !important;
+  font-size: 15px !important;
+}
+
+.culture-chat-panel .input-area input::placeholder {
+  color: #b3a08a !important;
+}
+
+/* 发送按钮：朱砂红圆形极简图标 */
+.culture-chat-panel .input-area button:first-of-type {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background: #c0392b !important;
+  color: white !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  font-size: 16px !important;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.culture-chat-panel .input-area button:first-of-type:hover {
+  background: #a93226 !important;
+  box-shadow: none !important;
+  transform: scale(1.05);
+}
+
+/* TTS 控制：透明线框幽灵按钮 */
+.culture-chat-panel .tts-control-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent !important;
+  border: 1px solid rgba(160, 122, 74, 0.25) !important;
+  color: #8a7357 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.culture-chat-panel .tts-control-btn:hover {
+  border-color: #8b6240 !important;
+  color: #8b6240 !important;
+}
+
+.culture-chat-panel .tts-control-btn.active {
+  background: rgba(139, 98, 64, 0.1) !important;
+  border-color: #8b6240 !important;
+  color: #8b6240 !important;
+}
+
+/* 语音模式按钮：透明线框 */
+.culture-chat-panel .voice-chat-btn {
+  background: transparent !important;
+  border: 1px solid rgba(160, 122, 74, 0.25) !important;
+  color: #8a7357 !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+.culture-chat-panel .voice-chat-btn:hover {
+  background: transparent !important;
+  border-color: #c0392b !important;
+  color: #c0392b !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ── 底部：「猜你想问」轻量胶囊标签条 ── */
+.culture-cards-panel {
+  background: transparent !important;
+  border-top: none !important;
+  padding: 10px 6px 16px !important;
+  min-height: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+.culture-cards-header {
+  margin-bottom: 10px !important;
+}
+
+.culture-cards-title {
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #5c3d20 !important;
+  letter-spacing: 2px !important;
+  border-left: 3px solid #c0392b !important;
+  padding-left: 10px !important;
+}
+
+.culture-cards-refresh {
+  background: transparent !important;
+  border: 1px solid rgba(160, 122, 74, 0.28) !important;
+  color: #8a7357 !important;
+  font-size: 12px !important;
+  border-radius: 16px !important;
+  padding: 3px 12px !important;
+}
+
+.culture-cards-refresh:hover {
+  color: #5c3d20 !important;
+  border-color: rgba(139, 98, 64, 0.55) !important;
+}
+
+/* 胶囊标签：浅色透明底 + 极细浅棕边框，悬停加深并微浮 */
+.culture-ask-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.culture-ask-pill {
+  background: rgba(255, 252, 245, 0.35);
+  border: 1px solid rgba(160, 122, 74, 0.3);
+  border-radius: 20px;
+  padding: 7px 16px;
+  font-size: 13px;
+  color: #6b4a2a;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+}
+
+.culture-ask-pill:hover {
+  border-color: rgba(139, 98, 64, 0.65);
+  color: #4a2e1b;
+  background: rgba(255, 252, 245, 0.75);
+  transform: translateY(-2px);
+}
+
+.culture-ask-pill.locked {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+/* ── 响应式微调 ── */
+@media (max-width: 1024px) {
+  .culture-dashboard {
+    padding: 14px 16px !important;
+  }
+
+  .culture-left {
+    height: 320px !important;
+    border-bottom: none !important;
+  }
+
+  .culture-chat-panel .message {
+    max-width: 86% !important;
+  }
+}

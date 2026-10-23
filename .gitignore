@@ -34,3 +34,7 @@ server/.env
 # SQLite 数据库文件（数据持久化，勿删除）
 server/data/
 server/data.db*
+
+
+
+*.env*

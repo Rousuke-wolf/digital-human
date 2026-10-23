@@ -303,18 +303,18 @@
   to { opacity: 1; }
 }
 
-/* 星状连线：细柔半透明 */
+/* 星状连线：极细淡金/浅灰，不发白光（纯颜色/透明度，无 filter 保证流畅） */
 .graph-edge {
-  stroke-width: 1.1;
-  opacity: 0.2;
+  stroke-width: 1;
+  opacity: 0.35;
   pointer-events: none;
   transition: all 0.25s;
 }
 
-/* 跨星座重点关联：金色更亮（纯颜色/透明度，无 filter 保证流畅） */
+/* 跨星座重点关联：淡金稍深 */
 .graph-edge.cross {
-  stroke-width: 1.3;
-  opacity: 0.5;
+  stroke-width: 1.2;
+  opacity: 0.6;
 }
 
 .graph-edge.active {
@@ -395,15 +395,15 @@
 }
 
 .star-skill {
-  fill: #8b6240;
+  fill: #4a7a6b;
 }
 
 .star-ethnic {
-  fill: #2e7d7a;
+  fill: #5b7fa6;
 }
 
 .star-totem {
-  fill: #9a5b8c;
+  fill: #a63a2b;
 }
 
 /* 星点柔光晕：渐变圆，悬停时增强 */
@@ -459,18 +459,24 @@
   opacity: 0.12;
 }
 
-/* 锚星名称（常驻，小字）与中心主星名称 */
+/* 锚星名称（常驻，小字）与中心主星名称：深墨棕 + 白色发光描边 */
 .gnode-label {
-  fill: #6b5638;
+  fill: #3e2723;
   font-size: 12.5px;
   font-weight: 600;
+  stroke: #fdf9f1;
+  stroke-width: 3px;
+  paint-order: stroke;
   pointer-events: none;
   user-select: none;
 }
 
 .gnode-label-center {
-  fill: #4a3a2a;
+  fill: #3e2723;
   font-size: 15px;
+  stroke: #fdf9f1;
+  stroke-width: 3.5px;
+  paint-order: stroke;
 }
 
 /* 中心主星「绣」字 */
@@ -1167,7 +1173,13 @@
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.35) !important;
   color: #e8e0cc !important;
 }
-.page-graph.theme-3d .navbar .nav-logo-text { color: #e8e0cc !important; }
+.page-graph.theme-3d .navbar .nav-logo-name {
+  color: #e8e0cc !important;
+}
+.page-graph.theme-3d .navbar .nav-logo-sub {
+  color: #c9bfa8 !important;
+  border-left-color: rgba(232, 224, 204, 0.25) !important;
+}
 .page-graph.theme-3d .navbar .nav-tab { color: #aab4d8 !important; }
 .page-graph.theme-3d .navbar .nav-tab:hover { color: #e8c188 !important; }
 .page-graph.theme-3d .navbar .nav-tab.active {
@@ -1189,3 +1201,160 @@ html:has(.page-graph.theme-3d),
 body:has(.page-graph.theme-3d) {
   background: #0a0f22;
 }
+
+/* ═══════════════════════════════════════════════════
+   浅色重构补丁：彻底废除深空/暗色，统一宣纸玻璃风
+   1. 3D 模式页面背景 = 2D 宣纸同底（画布透明透出）
+   2. 暗色元素（浮层/助手面板/控制钮/提示）→ 浅色毛玻璃
+   3. 3D 标签 → 深墨棕 + 白色发光
+   ═══════════════════════════════════════════════════ */
+
+/* 3D 模式：页面与 2D 同底（覆盖旧深空星云背景） */
+.page-graph.theme-3d {
+  background:
+    radial-gradient(1100px 480px at 85% -10%, rgba(201, 152, 74, 0.10), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(139, 98, 64, 0.08), transparent 60%),
+    #faf6ef !important;
+}
+
+/* html/body 不再切深色 */
+html:has(.page-graph.theme-3d),
+body:has(.page-graph.theme-3d) {
+  background: #faf6ef !important;
+}
+
+/* 导航条：3D 模式保持标准暖白导航（覆盖旧暗化规则） */
+.page-graph.theme-3d .navbar { background: #faf7f2 !important; border-bottom-color: #e8ddd0 !important; box-shadow: 0 1px 8px rgba(139, 98, 64, 0.08) !important; color: #5c3d20 !important; }
+.page-graph.theme-3d .navbar .nav-logo-name { color: #4a2e1b !important; }
+.page-graph.theme-3d .navbar .nav-logo-sub { color: #a08a70 !important; border-left-color: rgba(92, 61, 32, 0.22) !important; }
+.page-graph.theme-3d .navbar .nav-tab { color: #6b4226 !important; }
+.page-graph.theme-3d .navbar .nav-tab:hover,
+.page-graph.theme-3d .navbar .nav-tab.active { color: #3d1f0a !important; }
+.page-graph.theme-3d .navbar .nav-user-name { color: #5c3d20 !important; }
+.page-graph.theme-3d .navbar .nav-profile-link { color: #8b6240 !important; }
+.page-graph.theme-3d .navbar .nav-user-logout { color: #8a7357 !important; }
+.page-graph.theme-3d .navbar .nav-login-btn,
+.page-graph.theme-3d .navbar .nav-register-btn { background: transparent !important; border-color: #8b6240 !important; color: #8b6240 !important; }
+
+/* 视图切换/轨迹胶囊：3D 模式维持浅色（覆盖旧深蓝） */
+.page-graph.theme-3d .view-btn { background: #fff; color: var(--gp-mid); }
+.page-graph.theme-3d .view-btn.active { background: #a63a2b; border-color: #a63a2b; color: #fff; }
+.page-graph.theme-3d .trail-chip { background: #fff; color: var(--gp-brown); }
+.page-graph.theme-3d .trail-chip.current { background: #a63a2b; color: #fff; }
+.page-graph.theme-3d .lgbar-item.on { background: rgba(201, 152, 74, 0.16); }
+.page-graph.theme-3d .csp-reopen { background: rgba(255, 252, 245, 0.85); border-color: rgba(160, 122, 74, 0.24); color: var(--gp-text); }
+.page-graph.theme-3d .node-overlay,
+.page-graph.theme-3d .canvas-side-panel { background: rgba(255, 252, 245, 0.85); border: 1px solid rgba(160, 122, 74, 0.24); }
+.page-graph.theme-3d .graph-tip { background: rgba(255, 252, 245, 0.92); border: 1px solid rgba(160, 122, 74, 0.24); box-shadow: 0 6px 18px rgba(92, 61, 32, 0.12); }
+
+/* 3D 提示胶囊：浅色毛玻璃 */
+.g3d-hint { background: rgba(255, 252, 245, 0.75); color: #6b5638; border: 1px solid rgba(160, 122, 74, 0.24); backdrop-filter: blur(8px); }
+.g3d-hint.error { background: rgba(166, 58, 43, 0.12); color: #a63a2b; border-color: rgba(166, 58, 43, 0.35); }
+
+/* 3D 标签：深墨棕 + 白色发光阴影 */
+.g3d-label { color: #3e2723; text-shadow: 0 0 6px rgba(255, 255, 255, 0.95), 0 0 2px rgba(255, 255, 255, 0.95); }
+.g3d-label-center { color: #8b5a2b; }
+.g3d-label-hub { color: #3e2723; }
+.g3d-label-leaf { color: #5c4430; font-size: 11px; }
+
+/* 缩放控制：白底半透明 + 极细浅棕边框 + 圆角 + 悬浮上浮 */
+.graph-controls button {
+  background: rgba(255, 252, 245, 0.75);
+  border: 1px solid rgba(160, 122, 74, 0.28);
+  color: #6b5638;
+  backdrop-filter: blur(8px);
+}
+.graph-controls button:hover { border-color: #8b6240; color: #8b6240; transform: translateY(-2px); }
+.zoom-pct { background: rgba(255, 252, 245, 0.75); border: 1px solid rgba(160, 122, 74, 0.28); color: #8b6240; backdrop-filter: blur(8px); }
+
+/* 节点浮层 / 助手面板：浅色毛玻璃 + 深墨棕文字 */
+.node-overlay,
+.canvas-side-panel {
+  background: rgba(255, 252, 245, 0.85);
+  border: 1px solid rgba(160, 122, 74, 0.24);
+  box-shadow: 0 14px 40px rgba(92, 61, 32, 0.14);
+  backdrop-filter: blur(10px);
+  color: var(--gp-text);
+}
+.ov-close { color: #9a8468; }
+.ov-close:hover { color: #a63a2b; }
+.ov-name { color: #3e2723; }
+.ov-intro { color: #5c4430; }
+.ov-sec { color: #3e2723; }
+.ov-chip { border-color: rgba(160, 122, 74, 0.3); background: rgba(201, 152, 74, 0.08); color: #8b6240; }
+.ov-chip:hover { background: rgba(201, 152, 74, 0.18); border-color: #8b6240; }
+.ov-exhibit { border-color: rgba(160, 122, 74, 0.3); background: rgba(201, 152, 74, 0.08); color: #4a3a2a; }
+.ov-exhibit:hover { background: rgba(201, 152, 74, 0.18); }
+.ov-back { background: linear-gradient(135deg, #c9984a, #a67a4e); color: #fff; }
+.csp-head { color: #3e2723; }
+.csp-close-line { background: #9a8468; }
+.csp-close:hover .csp-close-line { background: #a63a2b; }
+.csp-sec { color: #3e2723; }
+.csp-based { color: #9a8468; }
+.csp-chip { border-color: rgba(160, 122, 74, 0.3); background: rgba(201, 152, 74, 0.08); color: #8b6240; }
+.csp-chip:hover { background: rgba(201, 152, 74, 0.18); border-color: #8b6240; }
+.csp-exhibit { border-color: rgba(160, 122, 74, 0.3); background: rgba(201, 152, 74, 0.08); color: #4a3a2a; }
+.csp-exhibit:hover { background: rgba(201, 152, 74, 0.18); }
+.csp-fact-text { color: #5c4430; }
+.csp-hint { color: #9a8468; }
+
+/* ═══════════════════════════════════════════════════
+   深蓝回归补丁（用户指定）：3D 星图画布与页面底色换回深蓝/藏青
+   只改背景色 CSS：
+   1. 主画布容器 + 页面底层背景 + html/body = #0B132B
+   2. 导航条与页面底色统一为同款深蓝
+   3. 3D 标签文字恢复浅色（深蓝底上保持可读，节点材质与颜色未动）
+   其余全部保持不变：探索轨迹/图例深色面板、助手面板浅色毛玻璃、
+   3D 玉石节点、金星粒子、极细连线
+   ═══════════════════════════════════════════════════ */
+
+/* 页面底层背景：深蓝/藏青 + 两团极淡星云柔光 */
+.page-graph.theme-3d {
+  background:
+    radial-gradient(1100px 480px at 85% -10%, rgba(64, 92, 178, 0.22), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(201, 152, 74, 0.08), transparent 60%),
+    #0B132B !important;
+}
+
+/* html/body 同步深蓝（滚动到底不露宣纸边） */
+html:has(.page-graph.theme-3d),
+body:has(.page-graph.theme-3d) {
+  background: #0B132B !important;
+}
+
+/* 主画布容器（Canvas 容器）：纸纹渐变 → 深蓝底（透明 3D 画布透出） */
+.page-graph.theme-3d .graph-canvas-wrap {
+  background:
+    radial-gradient(1100px 480px at 85% -10%, rgba(64, 92, 178, 0.22), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(201, 152, 74, 0.08), transparent 60%),
+    #0B132B !important;
+}
+
+/* 导航条：与页面底色统一为同款深蓝 */
+.page-graph.theme-3d .navbar {
+  background: #0B132B !important;
+  border-bottom-color: #1e2a4d !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.35) !important;
+  color: #e8e0cc !important;
+}
+.page-graph.theme-3d .navbar .nav-logo-name { color: #e8e0cc !important; }
+.page-graph.theme-3d .navbar .nav-logo-sub { color: #9aa6c8 !important; border-left-color: rgba(232, 224, 204, 0.25) !important; }
+.page-graph.theme-3d .navbar .nav-tab { color: #aab4d8 !important; }
+.page-graph.theme-3d .navbar .nav-tab:hover,
+.page-graph.theme-3d .navbar .nav-tab.active { color: #e8c188 !important; }
+.page-graph.theme-3d .navbar .nav-tab.active { border-bottom-color: #c9984a !important; }
+.page-graph.theme-3d .navbar .nav-user-name { color: #d8e0f5 !important; }
+.page-graph.theme-3d .navbar .nav-profile-link { color: #e8c188 !important; }
+.page-graph.theme-3d .navbar .nav-user-logout { color: #aab4d8 !important; }
+.page-graph.theme-3d .navbar .nav-login-btn,
+.page-graph.theme-3d .navbar .nav-register-btn {
+  background: #141b38 !important;
+  border-color: #2a3358 !important;
+  color: #e8e0cc !important;
+}
+
+/* 3D 标签：深蓝底上恢复浅色文字（玉石节点材质与颜色未动） */
+.g3d-label { color: #e8e0cc; text-shadow: 0 0 8px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.45); }
+.g3d-label-center { color: #f0d9a8; }
+.g3d-label-hub { color: #f0e6d0; }
+.g3d-label-leaf { color: #d8e0f5; }

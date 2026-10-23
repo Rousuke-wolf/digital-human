@@ -6,25 +6,25 @@
       <div class="graph-head">
         <div class="graph-head-left">
           <h2 class="graph-title">非遗知识图谱</h2>
-          <p class="graph-sub">敦煌星图式布局 · 技艺 / 民族 / 图腾三大星座 —— 点击星点探索刺绣文化关联</p>
+          <p class="graph-sub">玉石星图式布局 · 技艺 / 民族 / 图腾三大星座 —— 点击星点探索刺绣文化关联</p>
         </div>
         <div class="view-switch">
           <button
             class="view-btn"
             :class="{ active: viewMode === 'graph' }"
             @click="viewMode = 'graph'"
-          >🔗 图谱视图</button>
+          >图谱视图</button>
           <button
             class="view-btn"
             :class="{ active: viewMode === 'list' }"
             @click="viewMode = 'list'"
-          >📋 列表视图</button>
+          >列表视图</button>
         </div>
       </div>
 
       <!-- 探索轨迹 -->
       <div class="graph-trail">
-        <span class="trail-label">🧭 探索轨迹</span>
+        <span class="trail-label">探索轨迹</span>
         <template v-if="trailIds.length">
           <template v-for="(id, i) in trailIds" :key="id">
             <span v-if="i" class="trail-arrow">→</span>
@@ -54,22 +54,22 @@
         <span class="lgbar-hint">
           {{ renderMode === '2d' ? '拖拽平移 · 滚轮缩放 · 点击星点聚焦' : '拖拽旋转 · 滚轮拉近推远 · 点击星体探索' }}
         </span>
-        <!-- 2D/3D 渲染模式切换（3D 为深空星空三维探索） -->
+        <!-- 2D/3D 渲染模式切换（3D 为玉石星图三维探索） -->
         <div class="render-switch">
           <button
             class="render-btn"
             :class="{ active: renderMode === '2d' }"
             @click="switchRenderMode('2d')"
-          >📜 2D 星图</button>
+          >2D 星图</button>
           <button
             class="render-btn"
             :class="{ active: renderMode === '3d' }"
             @click="switchRenderMode('3d')"
-          >🌌 3D 星图</button>
+          >3D 星图</button>
         </div>
       </div>
 
-      <!-- 图谱视图：2D 宣纸星图 / 3D 深空星空（渲染模式可切换，状态共享）
+      <!-- 图谱视图：2D 宣纸星图 / 3D 玉石星图（渲染模式可切换，状态共享）
            v-show 而非 v-if：列表/图谱切换不销毁画布，保证 d3 与 3D 引擎常驻 -->
       <div v-show="viewMode === 'graph'" ref="canvasWrapRef" class="graph-canvas-wrap">
         <!-- 缩放控制（右上角，含当前幅度；仅 2D） -->
@@ -102,21 +102,23 @@
 
         <!-- 3D 场景容器（懒初始化；v-show 保持容器常驻避免重复建场景） -->
         <div v-show="renderMode === '3d'" ref="scene3dWrapRef" class="graph-scene3d" />
-        <div v-if="renderMode === '3d' && !g3dError" class="g3d-hint">🌌 深空模式 · 拖拽旋转 / 滚轮拉近推远 / 点击星体探索</div>
-        <div v-if="g3dError" class="g3d-hint error">⚠️ {{ g3dError }}（已切回 2D 星图）</div>
+        <div v-if="renderMode === '3d' && !g3dError" class="g3d-hint">玉石星图 · 拖拽旋转 / 滚轮拉近推远 / 点击星体探索</div>
+        <div v-if="g3dError" class="g3d-hint error">{{ g3dError }}（已切回 2D 星图）</div>
 
         <!-- 节点专属界面：介绍 + 关联（选中后浮现，按住标题栏可拖动） -->
         <Transition name="overlay-in">
           <div v-if="selectedNode" class="node-overlay" :style="overlayStyle">
             <div class="ov-head" title="按住拖动浮层" @pointerdown="onOvDown">
               <span class="ov-tag" :style="{ background: tagColor(selectedNode) }">{{ tagName(selectedNode) }}</span>
-              <button class="ov-close" title="返回全景" @pointerup.stop @click="backToFull">✕</button>
+              <button class="ov-close" title="返回全景" @pointerup.stop @click="backToFull">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+              </button>
             </div>
             <h3 class="ov-name">{{ selectedNode.name }}</h3>
             <p class="ov-intro">{{ selectedNode.intro }}</p>
 
             <template v-if="relatedNodes.length">
-              <div class="ov-sec">🔗 关联节点（{{ relatedNodes.length }}）</div>
+              <div class="ov-sec">关联节点（{{ relatedNodes.length }}）</div>
               <div class="ov-chips">
                 <button
                   v-for="r in relatedNodes"
@@ -128,11 +130,11 @@
             </template>
 
             <button v-if="nodeExhibit" class="ov-exhibit" @click="goToExhibit(nodeExhibit.index)">
-              <span>🏛️ 3D 展厅 · {{ nodeExhibit.name }}</span>
+              <span>3D 展厅 · {{ nodeExhibit.name }}</span>
               <span>去观看 →</span>
             </button>
 
-            <button class="ov-back" @click="backToFull">🌌 返回全景</button>
+            <button class="ov-back" @click="backToFull">返回全景</button>
           </div>
         </Transition>
 
@@ -140,7 +142,7 @@
         <Transition name="overlay-in">
           <div v-if="!selectedNode && sidePanelOpen" class="canvas-side-panel">
             <div class="csp-head">
-              <span>🎯 助手面板</span>
+              <span>助手面板</span>
               <button class="csp-close" title="收起面板" @click="sidePanelOpen = false">
                 <span class="csp-close-line"></span>
               </button>
@@ -152,14 +154,14 @@
               <button v-for="r in recNodes" :key="r.id" class="csp-chip" @click="selectNode(r)">{{ r.name }}</button>
             </div>
 
-            <div class="csp-sec">🏛️ 展品推荐</div>
+            <div class="csp-sec">展品推荐</div>
             <button v-for="ex in recExhibits" :key="ex.index" class="csp-exhibit" @click="goToExhibit(ex.index)">
               <span>3D 展厅 · {{ ex.name }}</span>
               <span>去观看 →</span>
             </button>
 
             <div class="csp-facts">
-              <div class="csp-sec">💡 刺绣冷知识</div>
+              <div class="csp-sec">刺绣冷知识</div>
               <p class="csp-fact-text">{{ FACTS[factIndex] }}</p>
               <div class="fact-dots">
                 <span
@@ -183,7 +185,7 @@
           class="csp-reopen"
           title="展开助手面板"
           @click="sidePanelOpen = true"
-        >🎯 助手面板</button>
+        >助手面板</button>
 
         <svg
           v-show="renderMode === '2d'"

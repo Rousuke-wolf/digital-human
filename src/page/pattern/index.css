@@ -70,16 +70,22 @@
   width: 100%;
   box-sizing: border-box;
   padding: 10px 14px;
-  border: 1px solid var(--pp-border);
+  /* 宣纸质感背景框（全站统一规范） */
+  border: 1px solid #E0D4C3;
   border-radius: 10px;
   font-size: 14px;
   color: var(--pp-text);
-  background: #fff;
+  background: rgba(255, 255, 255, 0.4);
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.param-input:hover {
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .param-input:focus {
+  background: rgba(255, 255, 255, 0.8);
   border-color: var(--pp-gold);
   box-shadow: 0 0 0 3px rgba(201, 152, 74, 0.15);
 }
@@ -247,26 +253,26 @@
   color: #fff;
 }
 
-/* 生成按钮 */
+/* 生成按钮：全站统一朱砂红 */
 .gen-btn {
   width: 100%;
   padding: 13px;
   margin-top: 4px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--pp-brown), #a67a4e);
+  background: var(--accent-red, #A63A2B);
   color: #fff;
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 2px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 14px rgba(139, 98, 64, 0.3);
+  box-shadow: 0 4px 14px rgba(166, 58, 43, 0.3);
 }
 
 .gen-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(139, 98, 64, 0.4);
+  box-shadow: 0 6px 18px rgba(166, 58, 43, 0.4);
 }
 
 .gen-btn:disabled {
@@ -452,16 +458,65 @@
   min-height: 420px;
 }
 
-.loading-ring {
-  width: 54px;
-  height: 54px;
-  border: 4px solid var(--pp-border);
-  border-top-color: var(--pp-gold);
-  border-radius: 50%;
-  animation: pp-spin 1s linear infinite;
+/* ── 水墨晕染 + 金线穿梭加载动画（替代普通旋转加载圈）── */
+.ink-loader {
+  position: relative;
+  width: 84px;
+  height: 84px;
 }
 
-@keyframes pp-spin {
+/* 水墨晕染：三团墨色在宣纸上循环晕开、淡出 */
+.ink-blob {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(74, 58, 42, 0.32) 0%, transparent 42%),
+    radial-gradient(circle at 68% 55%, rgba(139, 98, 64, 0.26) 0%, transparent 46%),
+    radial-gradient(circle at 50% 75%, rgba(74, 58, 42, 0.2) 0%, transparent 38%);
+  border-radius: 50%;
+  animation: ink-bloom 2.6s ease-in-out infinite;
+}
+
+@keyframes ink-bloom {
+  0% {
+    transform: scale(0.45) rotate(0deg);
+    opacity: 0.15;
+  }
+  50% {
+    transform: scale(1) rotate(90deg);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(0.6) rotate(180deg);
+    opacity: 0.2;
+  }
+}
+
+/* 金线穿梭：极细金弧沿圆环巡回（刺绣穿针引线的意象） */
+.gold-thread {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: rgba(201, 152, 74, 0.95);
+  border-right-color: rgba(201, 152, 74, 0.35);
+  animation: thread-run 1.6s linear infinite;
+}
+
+.gold-thread::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c9984a;
+  box-shadow: 0 0 6px rgba(201, 152, 74, 0.8);
+  transform: translateX(-50%);
+}
+
+@keyframes thread-run {
   to { transform: rotate(360deg); }
 }
 
@@ -612,10 +667,14 @@
 .action-btn {
   flex: 1;
   min-width: 110px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 11px 10px;
   border: 1px solid var(--pp-border);
   border-radius: 10px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.4);
   color: var(--pp-text);
   font-size: 14px;
   cursor: pointer;
@@ -624,17 +683,17 @@
 
 .action-btn:hover {
   border-color: var(--pp-gold);
-  background: #fdf6ec;
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .action-btn.primary {
-  background: var(--pp-brown);
-  border-color: var(--pp-brown);
+  background: var(--accent-red, #A63A2B);
+  border-color: var(--accent-red, #A63A2B);
   color: #fff;
 }
 
 .action-btn.primary:hover {
-  background: #a67a4e;
+  background: #8e2f22;
 }
 
 /* ── 作品库 ───────────────────────────────────── */

@@ -15,6 +15,11 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      // ── 图鉴上传图片（本地 Express /uploads 静态目录）──
+      '/uploads': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
 
       // ── Meshy GLB 文件代理（解决模型加载跨域）──
       // 生产环境由 server/index.js 的同名路由处理

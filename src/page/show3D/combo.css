@@ -118,7 +118,7 @@
   height: 38px;
   border: none;
   border-radius: 20px;
-  background: #c8a96e;
+  background: var(--accent-red, #A63A2B);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
@@ -128,7 +128,7 @@
 }
 
 .meshy-gen-btn:hover:not(:disabled) {
-  background: #b8934e;
+  background: #8e2f22;
 }
 
 .meshy-gen-btn:active:not(:disabled) {

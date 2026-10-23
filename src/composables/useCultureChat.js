@@ -51,6 +51,8 @@ let _greetVoiceTimer = null   // 语音问好的 1 秒延迟定时器
 
 // ── 对话持久化（localStorage：气泡 HTML + 上下文消息数组）──
 const CHAT_STORAGE_KEY = 'zhichuan-culture-chat'
+// 历史记录上限：最多保留最近 50 条消息（刷新/切换路由后仍保留）
+const MAX_PERSISTED_MESSAGES = 50
 
 // ── 情感化陪伴：已问候文案记录（localStorage，同一文案只触发一次）──
 const USED_GREETINGS_KEY = 'zhichuan-used-greetings'
@@ -81,9 +83,23 @@ function persistChat() {
     const clone = _chatEl.cloneNode(true)
     // 同时清掉早期版本的问候气泡类名（金边 companion-bubble）
     clone.querySelectorAll('.greeting-bubble, .companion-bubble').forEach((n) => n.remove())
+    // 历史上限：气泡只保留最近 50 条（欢迎横幅不是 .message，不受影响）
+    const bubbles = clone.querySelectorAll('.message')
+    if (bubbles.length > MAX_PERSISTED_MESSAGES) {
+      bubbles.forEach((n, i) => {
+        if (i < bubbles.length - MAX_PERSISTED_MESSAGES) n.remove()
+      })
+    }
+    // 上下文数组同样裁剪：保留 system 首条 + 最近 50 条对话
+    const sys = _historyMessages.length && _historyMessages[0]?.role === 'system'
+      ? [_historyMessages[0]]
+      : []
+    const recent = _historyMessages
+      .filter((m) => m?.role !== 'system')
+      .slice(-MAX_PERSISTED_MESSAGES)
     localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
       html: clone.innerHTML,
-      messages: _historyMessages,
+      messages: [...sys, ...recent],
     }))
   } catch {
     // 存储满/隐私模式等场景静默失败，仅影响刷新恢复
@@ -170,7 +186,7 @@ function handleAIError(err) {
     promptLogin('chat')
     return
   }
-  _appendSystemNotice(err?.message || '系统有点问题，我们稍后再试～')
+  _appendSystemNotice(err?.message || '绣娘正在穿针引线，请稍后再试')
 }
 
 // 进入文化页时调用：文字问候（时间段 + 节日）+ 1 秒后语音问好
@@ -560,7 +576,8 @@ async function _send(text, { clearInput = true } = {}) {
 
   lockInput()
   appendUser(text)
-  if (clearInput && _inputEl) _inputEl.value = ''
+  // clearInput=true（键盘发送）：清空输入框；false（快捷提问/语音）：把文字回填输入框
+  if (_inputEl) _inputEl.value = clearInput ? '' : text
   appendThinking()
   try {
     await appendAIStream(getContextForAPI(), text, (res) => {

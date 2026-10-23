@@ -1,13 +1,28 @@
 <template>
   <div class="culture-chat-panel">
-    <!-- 功能栏 -->
+    <!-- 功能栏：右上角极简线框图标 -->
     <div class="function-bar">
       <div class="function-group">
         <div class="func-item" style="cursor:pointer;" @click="settingsOpen = !settingsOpen">
-          <i>🔊</i> 语音设置
+          <i>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            </svg>
+          </i>
+          语音设置
         </div>
         <div class="func-item" style="cursor:pointer;" @click="onClearChat">
-          <i>🗑</i> 清空对话
+          <i>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" x2="10" y1="11" y2="17" />
+              <line x1="14" x2="14" y1="11" y2="17" />
+            </svg>
+          </i>
+          清空对话
         </div>
       </div>
     </div>
@@ -15,7 +30,12 @@
     <!-- 语音设置 -->
     <div ref="voiceSettingsRef" class="voice-settings-panel" :class="{ open: settingsOpen }">
       <div class="vs-row">
-        <span class="vs-label">🔉 音量</span>
+        <span class="vs-label">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+          </svg>
+          音量
+        </span>
         <input
           v-model.number="ttsSettings.volume"
           type="range"
@@ -26,7 +46,13 @@
         <span class="vs-val">{{ Math.round(ttsSettings.volume) }}</span>
       </div>
       <div class="vs-row">
-        <span class="vs-label">⏩ 语速</span>
+        <span class="vs-label">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;">
+            <path d="m12 14 4-4" />
+            <path d="M3.34 19a10 10 0 1 1 17.32 0" />
+          </svg>
+          语速
+        </span>
         <input
           v-model.number="ttsSettings.rate"
           type="range"
@@ -57,7 +83,7 @@
       </div>
     </div>
 
-    <!-- 输入区 -->
+    <!-- 输入区：毛玻璃圆角长条 -->
     <div class="input-area" :class="{ sending: inputLocked }">
       <input
         ref="inputRef"
@@ -67,14 +93,25 @@
         :disabled="inputLocked"
         @keydown.enter="onSend"
       />
-      <button title="发送消息" :disabled="inputLocked" @click="onSend">➤</button>
+      <button title="发送消息" :disabled="inputLocked" @click="onSend">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m22 2-7 20-4-9-9-4Z" />
+          <path d="M22 2 11 13" />
+        </svg>
+      </button>
       <button
         class="tts-control-btn"
         :class="{ active: ttsPlaying }"
         :title="ttsPaused ? '继续语音' : '暂停语音'"
         @click="toggleTtsPause"
       >
-        {{ ttsPaused ? '▶' : '⏸' }}
+        <svg v-if="ttsPaused" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="6 3 20 12 6 21 6 3" />
+        </svg>
+        <svg v-else viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="4" width="4" height="16" rx="1" />
+          <rect x="14" y="4" width="4" height="16" rx="1" />
+        </svg>
       </button>
       <button
         class="tts-control-btn"
@@ -82,9 +119,17 @@
         title="停止语音"
         @click="stopAll"
       >
-        ⏹
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="6" width="12" height="12" rx="1" />
+        </svg>
       </button>
-      <button class="voice-chat-btn" title="切换语音模式" @click="enterVoiceMode">🎤</button>
+      <button class="voice-chat-btn" title="切换语音模式" @click="enterVoiceMode">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" x2="12" y1="19" y2="22" />
+        </svg>
+      </button>
     </div>
   </div>
 </template>

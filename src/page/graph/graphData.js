@@ -8,11 +8,11 @@
 // 羌绣/彝族刺绣为第二批（2008），花瑶挑花为瑶族支系非遗项目。
 // 展品联动：node.exhibit 对应 src/utils/models.js 中 MODELS 数组下标。
 
-// ── 分类（颜色，严格沿用原图配色）──
+// ── 分类（低饱和国风色：黛绿 / 石青 / 朱砂，2D/3D 共用）──
 export const CATEGORIES = [
-  { id: 'skill',  name: '非遗技艺', color: '#8b6240', desc: '刺绣绣种与核心针法' },
-  { id: 'ethnic', name: '民族文化', color: '#2e7d7a', desc: '拥有刺绣传承的民族' },
-  { id: 'totem',  name: '图腾纹样', color: '#9a5b8c', desc: '承载寓意的经典纹样' },
+  { id: 'skill',  name: '非遗技艺', color: '#4a7a6b', desc: '刺绣绣种与核心针法' },
+  { id: 'ethnic', name: '民族文化', color: '#5b7fa6', desc: '拥有刺绣传承的民族' },
+  { id: 'totem',  name: '图腾纹样', color: '#a63a2b', desc: '承载寓意的经典纹样' },
 ]
 
 export const CENTER_NODE = {
@@ -159,8 +159,9 @@ export function edgeIsCross(e) {
   return NODE_MAP[e.a]?.cat !== NODE_MAP[e.b]?.cat
 }
 
+// 连线统一为极细淡金/浅灰（去发光，信笺级克制）
 export function edgeColorOf(e) {
-  return edgeIsCross(e) ? '#c9984a' : nodeColorOf(NODE_MAP[e.a])
+  return edgeIsCross(e) ? '#c9984a' : '#b9a98c'
 }
 
 // ── 确定性伪随机（种子固定，星点位置每次一致）──

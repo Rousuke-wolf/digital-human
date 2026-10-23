@@ -1,8 +1,8 @@
 <template>
   <div class="navbar">
     <router-link to="/" class="nav-logo">
-      <div class="nav-logo-icon">绣</div>
-      <span class="nav-logo-text">智传非遗</span>
+      <span class="nav-logo-name">智绣</span>
+      <span class="nav-logo-sub">非物质文化遗产 · 中国传统刺绣</span>
     </router-link>
 
     <div class="nav-center">
@@ -51,9 +51,9 @@ import { useAuth } from '../composables/useAuth.js'
 
 const tabs = [
   { id: 'home',     path: '/',          label: '首页' },
-  { id: 'culture',  path: '/culture',   label: '刺绣文化' },
-  { id: 'teaching', path: '/teaching',  label: '教学体验' },
-  { id: '3d',       path: '/3d',        label: '3D展厅' },
+  { id: 'culture',  path: '/culture',   label: '绫韵问答' },
+  { id: 'teaching', path: '/teaching',  label: '绣影漫游' },
+  { id: '3d',       path: '/3d',        label: '三维体验' },
   { id: 'create',   path: '/create',    label: '纹样共创' },
   { id: 'graph',    path: '/graph',     label: '知识图谱' },
   { id: 'about',    path: '/about',     label: '关于我们' },

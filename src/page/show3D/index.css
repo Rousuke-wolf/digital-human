@@ -175,7 +175,7 @@
 }
 
 .meshy-gen-btn {
-  background: #a07840;
+  background: var(--accent-red, #A63A2B);
   border: none;
   border-radius: 50px;
   color: #fff;
@@ -190,7 +190,7 @@
 }
 
 .meshy-gen-btn:hover:not(:disabled) {
-  background: #8a6430;
+  background: #8e2f22;
   transform: translateY(-1px);
 }
 
@@ -310,4 +310,52 @@
     flex: 1;
     min-width: 88px;
   }
+}
+
+/* ═══════════════════════════════════════════════════
+   全站统一国风基调补丁：3D 展厅
+   1. 展示区/介绍卡 → 全站统一毛玻璃白卡片
+   2. 底部控制条（下拉/输入/生成）→ 白底半透明 + 极细浅棕边框
+   ═══════════════════════════════════════════════════ */
+
+/* 3D 模型展示区：毛玻璃白卡片（画布透明透出宣纸底） */
+.model-view-box {
+  background: var(--card-bg, rgba(255, 255, 255, 0.6));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--card-border, rgba(160, 122, 74, 0.24));
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(92, 61, 32, 0.06);
+}
+
+/* 展品介绍卡：毛玻璃白卡片 */
+.model-info-card {
+  background: var(--card-bg, rgba(255, 255, 255, 0.6));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--card-border, rgba(160, 122, 74, 0.24));
+  border-radius: 16px;
+}
+
+/* 控制条（选择/生成）：白底半透明 + 极细浅棕边框 + 圆角，悬浮微浮 */
+.meshy-combo-bar {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(160, 122, 74, 0.24);
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(92, 61, 32, 0.05);
+  transition: box-shadow 0.2s;
+}
+
+.meshy-combo-bar:hover {
+  box-shadow: 0 6px 18px rgba(92, 61, 32, 0.09);
+}
+
+.meshy-combo-row {
+  transition: transform 0.2s;
+}
+
+.meshy-combo-row:hover {
+  transform: translateY(-1px);
 }

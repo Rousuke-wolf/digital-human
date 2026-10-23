@@ -1,3 +1,22 @@
+/* ═══════════════════════════════════════════════════════
+   全站 UI 基础规范（国家级大创答辩 · 统一国风基调）
+   --bg-paper    宣纸米黄底色
+   --text-main   深墨棕文字
+   --accent-red  朱砂红
+   --card-bg     毛玻璃白（卡片统一底色）
+   --card-border 极细茶褐色描边（卡片统一边框）
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-paper: #FDF9F1;
+  --text-main: #3E2723;
+  --accent-red: #A63A2B;
+  --card-bg: rgba(255, 255, 255, 0.6);
+  --card-border: rgba(160, 122, 74, 0.24);
+  --ink-soft: #4A3A2A;
+  --tea: #8A7357;
+  --gold: #C9984A;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -6,7 +25,7 @@
 }
 
 body {
-  background: white;
+  background: var(--bg-paper);
   min-height: 100vh;
   padding: 0;
   display: block;
@@ -18,6 +37,17 @@ body {
   max-width: 100%;
   margin: 0;
   border-radius: 0 0 36px 36px; /* 只保留下方圆角 */
+}
+
+/* ── 全站统一玻璃卡片规范（卡片类 UI 一律沿用）──
+   background: var(--card-bg) + backdrop-filter: blur(10px) + 极细茶褐边框 */
+.gcard {
+  background: var(--card-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(92, 61, 32, 0.06);
 }
 
 /* 导航栏 (可选) — 极简轻量 */
@@ -34,12 +64,6 @@ body {
 }
 
 
-
-.nav-logo span {
-  font-size: 20px;
-  font-weight: 500;
-  color: #fbbf24;
-}
 
 .navbar {
   height: 64px;
@@ -1191,33 +1215,12 @@ body {
 .nav-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-right: 32px;
   text-decoration: none;
 }
 
-.nav-logo-icon {
-  width: 34px;
-  height: 34px;
-  background: #c0392b;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  flex-shrink: 0;
-}
-
-.nav-logo-text {
-  font-size: 18px;
-  font-weight: 600;
-  color: #fbbf24;
-  letter-spacing: 1px;
-  white-space: nowrap;
-}
-
+/* 左上角品牌标识：主文字 + 副标题（实际样式见下方「第二轮补丁」的 .navbar .nav-logo-name/-sub） */
 .nav-cta-btn {
   background: #c0392b;
   color: white;
@@ -1248,88 +1251,7 @@ body {
   background: #faf6ef;
 }
 
-.hero-section {
-  min-height: calc(100vh - 64px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  background: linear-gradient(135deg, #faf6ef 0%, #f0e6d0 50%, #e8d5b8 100%);
-  overflow: hidden;
-}
-
-.hero-bg-dots {
-  position: absolute;
-  inset: 0;
-  opacity: 0.04;
-  background-image:
-    repeating-linear-gradient(45deg, #c0392b 0, #c0392b 1px, transparent 0, transparent 50%),
-    repeating-linear-gradient(-45deg, #c9984a 0, #c9984a 1px, transparent 0, transparent 50%);
-  background-size: 28px 28px;
-}
-
-.hero-content {
-  position: relative;
-  z-index: 2;
-  text-align: center;
-  max-width: 680px;
-  padding: 40px 24px;
-  animation: heroFadeIn 0.7s ease-out;
-}
-
-@keyframes heroFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(192, 57, 43, 0.08);
-  border: 1px solid rgba(192, 57, 43, 0.2);
-  color: #c0392b;
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 24px;
-}
-
-.hero-title {
-  font-size: clamp(52px, 8vw, 88px);
-  color: #3d1f0a;
-  line-height: 1.1;
-  margin-bottom: 18px;
-  letter-spacing: 6px;
-  font-weight: 700;
-}
-
-.hero-accent {
-  color: #c0392b;
-}
-
-.hero-subtitle {
-  font-size: 17px;
-  color: #6b4226;
-  line-height: 1.9;
-  margin-bottom: 36px;
-}
-
-.hero-btns {
-  display: flex;
-  gap: 14px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
+/* （原首页 hero/功能卡片全局样式已随首页重构移除，现样式见 src/pages/HomePage.vue 组件内） */
 .btn-primary {
   background: #c0392b;
   color: white;
@@ -1365,52 +1287,6 @@ body {
   background: #3d1f0a;
   color: white;
   transform: translateY(-2px);
-}
-
-.home-features {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  padding: 56px 40px;
-  background: white;
-  flex-wrap: wrap;
-}
-
-.home-feature-card {
-  flex: 1;
-  min-width: 200px;
-  max-width: 260px;
-  background: #faf6ef;
-  border: 1px solid rgba(139, 98, 64, 0.2);
-  border-radius: 18px;
-  padding: 28px 22px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.25s;
-}
-
-.home-feature-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 14px 36px rgba(92, 61, 32, 0.15);
-  border-color: #c0392b;
-}
-
-.hf-icon {
-  font-size: 36px;
-  margin-bottom: 14px;
-}
-
-.hf-title {
-  font-size: 17px;
-  font-weight: 600;
-  color: #3d1f0a;
-  margin-bottom: 8px;
-}
-
-.hf-desc {
-  font-size: 13px;
-  color: #9a7d64;
-  line-height: 1.7;
 }
 
 /* ── 刺绣文化页 ─────────────────────────────── */
@@ -1740,10 +1616,6 @@ body {
     padding: 36px 24px;
   }
 
-  .home-features {
-    padding: 36px 16px;
-  }
-
   .steps-row {
     grid-template-columns: 1fr;
   }
@@ -1784,35 +1656,35 @@ body {
   border-radius: 0 !important;
 }
 
-/* Logo 区 */
+/* Logo 区：品牌主文字 + 精简副标题（去掉红底色块与胶囊，极简国风横向排版） */
 .navbar .nav-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-decoration: none;
   margin-right: 0;
 }
 
-.navbar .nav-logo-icon {
-  width: 34px;
-  height: 34px;
-  background: #c0392b;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  flex-shrink: 0;
-}
-
-.navbar .nav-logo-text {
-  font-size: 18px;
-  font-weight: 700;
-  color: #3d1f0a;
+/* 品牌主文字「智绣」：深棕书法字，纯文字无底色，体现非遗底蕴 */
+.navbar .nav-logo .nav-logo-name {
+  font-family: 'Ma Shan Zheng', 'STXingkai', 'Xingkai SC', 'KaiTi', cursive;
+  font-size: 28px;
+  line-height: 1;
+  color: #4a2e1b;
   letter-spacing: 1px;
   white-space: nowrap;
+}
+
+/* 副标题：小号衬线字 + 极细半透明竖线分隔，弱化存在感 */
+.navbar .nav-logo .nav-logo-sub {
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #a08a70;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  padding-left: 12px;
+  border-left: 1px solid rgba(92, 61, 32, 0.22);
 }
 
 /* 中间导航链接居中 */
@@ -2048,202 +1920,6 @@ body {
   flex-shrink: 0;
 }
 
-/* ── 关于我们页 ──────────────────────────────── */
-.page-about .app-wrapper {
-  display: block;
-  height: auto;
-  min-height: 100vh;
-  background: #faf6ef;
-  border-radius: 36px;
-  overflow: hidden;
-}
-
-.about-page {
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100vh - 64px);
-}
-
-.about-hero {
-  position: relative;
-  background: linear-gradient(135deg, #3d1f0a 0%, #7a4f2a 60%, #a07040 100%);
-  padding: 80px 80px 100px;
-  overflow: hidden;
-  text-align: center;
-}
-
-.about-hero-inner {
-  position: relative;
-  z-index: 2;
-}
-
-.about-badge {
-  display: inline-block;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #e8c080;
-  padding: 6px 18px;
-  border-radius: 20px;
-  font-size: 13px;
-  margin-bottom: 20px;
-  letter-spacing: 1px;
-}
-
-.about-title {
-  font-size: 52px;
-  font-weight: 700;
-  color: #faf6ef;
-  letter-spacing: 4px;
-  margin-bottom: 14px;
-}
-
-.qabout-subtitle {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.72);
-  line-height: 1.8;
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-.about-deco-circle {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.about-deco-1 {
-  width: 400px;
-  height: 400px;
-  top: -100px;
-  right: -80px;
-}
-
-.about-deco-2 {
-  width: 250px;
-  height: 250px;
-  bottom: -60px;
-  left: 40px;
-}
-
-.about-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0;
-  background: white;
-  border-bottom: 1px solid #ede3d0;
-}
-
-.about-card {
-  padding: 44px 36px;
-  border-right: 1px solid #ede3d0;
-  transition: background 0.2s;
-}
-
-.about-card:last-child {
-  border-right: none;
-}
-
-.about-card:hover {
-  background: #faf6ef;
-}
-
-.about-card-icon {
-  font-size: 36px;
-  margin-bottom: 16px;
-}
-
-.about-card-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #3d1f0a;
-  margin-bottom: 12px;
-}
-
-.about-card-text {
-  font-size: 14px;
-  color: #6b4226;
-  line-height: 1.9;
-}
-
-.about-team {
-  padding: 56px 80px;
-  background: #faf6ef;
-}
-
-.about-section-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #3d1f0a;
-  margin-bottom: 32px;
-  letter-spacing: 1px;
-}
-
-.about-team-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-}
-
-.about-member {
-  background: white;
-  border: 1px solid #ede3d0;
-  border-radius: 16px;
-  padding: 28px 20px;
-  text-align: center;
-  transition: all 0.2s;
-}
-
-.about-member:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 28px rgba(92, 61, 32, 0.12);
-  border-color: #c0392b;
-}
-
-.about-member-avatar {
-  font-size: 36px;
-  margin-bottom: 14px;
-}
-
-.about-member-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #3d1f0a;
-  margin-bottom: 6px;
-}
-
-.about-member-role {
-  font-size: 12px;
-  color: #9a7d64;
-  line-height: 1.6;
-}
-
-.about-footer-note {
-  margin-top: auto;
-  padding: 24px 80px;
-  background: white;
-  border-top: 1px solid #ede3d0;
-  font-size: 13px;
-  color: #b0907a;
-  text-align: center;
-}
-
-@media (max-width: 960px) {
-  .about-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .about-team-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .about-hero {
-    padding: 48px 24px 64px;
-  }
-
-  .about-team {
-    padding: 36px 24px;
-  }
-}
 
 /* ═══════════════════════════════════════════
    移动端适配（全局布局 + 首页 + 导航条）
@@ -2285,7 +1961,7 @@ body {
 }
 
 @media (max-width: 640px) {
-  .navbar .nav-logo-text {
+  .navbar .nav-logo-sub {
     display: none;
   }
 
@@ -2295,33 +1971,4 @@ body {
     white-space: nowrap;
   }
 
-  /* 首页 hero 与功能卡片 */
-  .hero-section {
-    min-height: auto;
-    padding: 56px 20px 72px;
-  }
-
-  .hero-title {
-    font-size: 40px;
-  }
-
-  .hero-subtitle {
-    font-size: 15px;
-  }
-
-  .hero-btns {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .home-features {
-    padding: 24px 16px;
-    gap: 12px;
-  }
-
-  .home-feature-card {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
 }
