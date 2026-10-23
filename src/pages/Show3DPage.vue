@@ -16,7 +16,6 @@
           <!-- 预设展品下拉 + AI 生成（原 buildModelDropdown 字符串模板迁入） -->
           <div class="meshy-combo-bar">
             <div class="meshy-combo-row">
-              <span class="meshy-combo-icon">🏮</span>
               <div class="meshy-select-wrap">
                 <select id="modelDropdown" class="meshy-select" :disabled="processingAtMount" @change="onDropdownSelect">
                   <option value="">— 选择预设展品 —</option>
@@ -24,7 +23,7 @@
                     <option v-for="(m, i) in MODELS" :key="m.key" :value="String(i)">{{ m.name }}</option>
                   </optgroup>
                   <optgroup v-if="appState.generatedModels.length" label="我的生成">
-                    <option v-for="(g, i) in appState.generatedModels" :key="g.glbUrl" :value="'g' + i">✨ {{ g.name }}</option>
+                    <option v-for="(g, i) in appState.generatedModels" :key="g.glbUrl" :value="'g' + i">{{ g.name }}</option>
                   </optgroup>
                 </select>
                 <span class="meshy-select-arrow">▾</span>
@@ -32,7 +31,6 @@
             </div>
 
             <div class="meshy-combo-row">
-              <span class="meshy-combo-icon">✨</span>
               <input
                 id="meshyPrompt"
                 class="meshy-combo-input"
@@ -40,13 +38,13 @@
                 autocomplete="off"
               />
               <button id="meshyGenBtn" class="meshy-gen-btn" @click="meshyGenerate()">
-                <span id="meshyBtnText">🪄 生成</span>
+                <span id="meshyBtnText">生成</span>
               </button>
             </div>
 
             <!-- 状态提示（原 HTML 缺失导致 setStatus 一直是静默 no-op，本次补回） -->
             <div id="meshyStatus" class="meshy-status"></div>
-            <div id="meshyTimeTag" class="meshy-time-tag">⏱ 预计 3 ~ 8 分钟</div>
+            <div id="meshyTimeTag" class="meshy-time-tag">预计 3 ~ 8 分钟</div>
 
             <!-- 我的生成：快速切换与删除管理（响应式，随生成/删除自动增减） -->
             <div v-if="appState.generatedModels.length" class="generated-chips">
@@ -57,12 +55,16 @@
                 title="点击展示该模型"
                 @click="onChipClick(i)"
               >
-                <span>✨ {{ g.name }}</span>
+                <span>{{ g.name }}</span>
                 <button
                   class="generated-chip-del"
                   title="删除该生成模型"
                   @click.stop="onDeleteGenerated(g)"
-                >✕</button>
+                >
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
@@ -149,9 +151,10 @@ function buildInitialViewer() {
   if (wrap) {
     wrap.innerHTML = src
       ? `<model-viewer id="mainModelViewer" src="${src}" auto-rotate camera-controls
+          environment-image="neutral" exposure="1.05" shadow-intensity="0.6"
           style="width:100%;height:100%;background:transparent;"></model-viewer>`
       : `<div class="model-empty-hint">
-          <div class="hint-icon">🧵</div>
+          <div class="hint-icon"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V7"/><path d="m5 4 14 2-3 3-8-1z"/><path d="M19 6c-1.5 4.5-4 7.5-7 9"/></svg></div>
           <div class="hint-text">请选择展品或描述生成</div>
         </div>`
     if (src) attachViewerLoading(document.getElementById('mainModelViewer'))

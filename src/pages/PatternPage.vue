@@ -79,7 +79,6 @@
               :class="{ active: style === s.id }"
               @click="style = s.id"
             >
-              <span class="style-icon">{{ s.icon }}</span>
               <span class="style-name">{{ s.name }}</span>
               <span class="style-desc">{{ s.desc }}</span>
             </button>
@@ -117,7 +116,7 @@
           :disabled="status === 'generating' || !theme.trim()"
           @click="onGenerate"
         >
-          {{ status === 'generating' ? '生成中…' : '✨ 生成纹样' }}
+          {{ status === 'generating' ? '生成中…' : '生成纹样' }}
         </button>
         <p class="gen-hint">AI 绘制约需 20~60 秒，请耐心等待</p>
       </aside>
@@ -128,19 +127,25 @@
         <div v-if="status === 'idle'" class="preview-empty">
           <div class="empty-pattern-frame">
             <div class="mockup-img">
-              <div class="empty-icon">🪡</div>
+              <div class="empty-icon">
+                <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20V7" />
+                  <path d="m5 4 14 2-3 3-8-1z" />
+                  <path d="M19 6c-1.5 4.5-4 7.5-7 9" />
+                </svg>
+              </div>
               <p class="empty-title">等待灵感</p>
               <p class="empty-desc">你的专属非遗纹样将在这里呈现<br>填写左侧参数，点击「生成纹样」开始创作</p>
             </div>
             <div class="mockup-bar">
-              <span>🎨 配色调整</span><span class="mockup-dot">·</span>
-              <span>📖 AI 解读</span><span class="mockup-dot">·</span>
-              <span>⬇️ 下载分享</span>
+              <span>配色调整</span><span class="mockup-dot">·</span>
+              <span>AI 解读</span><span class="mockup-dot">·</span>
+              <span>下载分享</span>
               <span class="mockup-bar-hint">生成后自动呈现</span>
             </div>
           </div>
           <div class="inspo-section">
-            <div class="inspo-title">💡 灵感示例 · 点击填入参数</div>
+            <div class="inspo-title">灵感示例 · 点击填入参数</div>
             <div class="inspo-grid">
               <button
                 v-for="ex in INSPO_EXAMPLES"
@@ -148,16 +153,18 @@
                 class="inspo-card"
                 @click="fillInspo(ex)"
               >
-                <span class="inspo-icon">{{ ex.icon }}</span>
                 <span class="inspo-text">{{ ex.theme }} · {{ styleNameOf(ex.style) }}</span>
               </button>
             </div>
           </div>
         </div>
 
-        <!-- 生成中 -->
+        <!-- 生成中：水墨晕染 + 金线穿梭（替代普通旋转加载圈） -->
         <div v-else-if="status === 'generating'" class="preview-loading">
-          <div class="loading-ring"></div>
+          <div class="ink-loader" aria-hidden="true">
+            <span class="ink-blob"></span>
+            <span class="gold-thread"></span>
+          </div>
           <p class="loading-title">AI 正在创作中…（已等待 {{ elapsed }}s）</p>
           <p class="loading-desc">{{ loadingHint }}</p>
         </div>
@@ -165,7 +172,13 @@
         <!-- 失败 -->
         <div v-else-if="status === 'error'" class="preview-empty">
           <div class="empty-pattern-frame">
-            <div class="empty-icon">⚠️</div>
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                <line x1="12" x2="12" y1="9" y2="13" />
+                <line x1="12" x2="12.01" y1="17" y2="17" />
+              </svg>
+            </div>
             <p class="empty-title">生成失败</p>
             <p class="empty-desc">可能是网络波动或图片配额问题<br>稍后重试，或调整参数后再生成</p>
             <button class="retry-btn" @click="onGenerate">重新生成</button>
@@ -187,7 +200,7 @@
 
           <!-- 二次编辑：配色调整 -->
           <div class="edit-panel">
-            <div class="edit-title">🎨 配色调整</div>
+            <div class="edit-title">配色调整</div>
             <div class="slider-grid">
               <div v-for="f in FILTER_FIELDS" :key="f.key" class="slider-item">
                 <label class="slider-label">{{ f.label }}（{{ f.disp(filters[f.key]) }}）</label>
@@ -206,30 +219,42 @@
 
           <!-- AI 一体化解读 -->
           <div class="analysis-panel">
-            <div class="edit-title">📖 AI 纹样解读</div>
+            <div class="edit-title">AI 纹样解读</div>
             <div v-if="analysis" class="analysis-grid">
               <div class="analysis-card">
-                <div class="analysis-head">🎨 配色方案</div>
+                <div class="analysis-head">配色方案</div>
                 <p class="analysis-text">{{ analysis.colorScheme }}</p>
               </div>
               <div class="analysis-card">
-                <div class="analysis-head">📜 文化释义</div>
+                <div class="analysis-head">文化释义</div>
                 <p class="analysis-text">{{ analysis.meaning }}</p>
               </div>
               <div class="analysis-card">
-                <div class="analysis-head">🧵 推荐针法</div>
+                <div class="analysis-head">推荐针法</div>
                 <p class="analysis-text">{{ analysis.stitches }}</p>
               </div>
             </div>
             <p v-else class="analysis-empty">解读生成失败，重新生成纹样时会再次尝试</p>
           </div>
 
-          <!-- 操作按钮 -->
+          <!-- 操作按钮（极简线性图标） -->
           <div class="action-row">
-            <button class="action-btn primary" @click="onGenerate">🔄 重新生成</button>
-            <button class="action-btn" @click="saveWork">💾 保存作品</button>
-            <button class="action-btn" @click="downloadImage">⬇️ 下载</button>
-            <button class="action-btn" @click="shareWork">📤 分享</button>
+            <button class="action-btn primary" @click="onGenerate">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></svg>
+              重新生成
+            </button>
+            <button class="action-btn" @click="saveWork">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>
+              保存作品
+            </button>
+            <button class="action-btn" @click="downloadImage">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+              下载
+            </button>
+            <button class="action-btn" @click="shareWork">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" x2="12" y1="2" y2="15" /></svg>
+              分享
+            </button>
           </div>
         </div>
       </section>
@@ -238,7 +263,7 @@
     <!-- 作品库 -->
     <section class="works-panel">
       <div class="works-head">
-        <h3 class="works-title">🗂️ 我的作品</h3>
+        <h3 class="works-title">我的作品</h3>
         <span class="works-count">共 {{ works.length }} 件</span>
       </div>
       <div v-if="works.length" class="works-grid">
@@ -327,22 +352,22 @@ const EXTRA_ELEMENT_OPTIONS = [
 
 // 刺绣类型单一维度（原「风格约束」混入水墨/国潮等画风概念，已统一为刺绣类型）
 const STYLE_OPTIONS = [
-  { id: 'miao', name: '苗绣', icon: '🌺', desc: '色彩浓烈 · 民族图腾' },
-  { id: 'su',   name: '苏绣', icon: '🦋', desc: '丝线光泽 · 写实雅致' },
-  { id: 'xiang', name: '湘绣', icon: '🐅', desc: '狮虎题材 · 层次丰富' },
-  { id: 'shu',  name: '蜀绣', icon: '🐟', desc: '明快清丽 · 针脚细腻' },
-  { id: 'yue',  name: '粤绣', icon: '🌼', desc: '金银垫绣 · 富丽繁密' },
-  { id: 'jing', name: '京绣', icon: '🐉', desc: '宫廷气派 · 金线龙纹' },
+  { id: 'miao', name: '苗绣', desc: '色彩浓烈 · 民族图腾' },
+  { id: 'su',   name: '苏绣', desc: '丝线光泽 · 写实雅致' },
+  { id: 'xiang', name: '湘绣', desc: '狮虎题材 · 层次丰富' },
+  { id: 'shu',  name: '蜀绣', desc: '明快清丽 · 针脚细腻' },
+  { id: 'yue',  name: '粤绣', desc: '金银垫绣 · 富丽繁密' },
+  { id: 'jing', name: '京绣', desc: '宫廷气派 · 金线龙纹' },
 ]
 
 // 灵感示例：点击填入左侧参数（空态占位 + 降低使用门槛）
 const INSPO_EXAMPLES = [
-  { icon: '🌸', theme: '牡丹', style: 'su',   keywords: '团花纹样' },
-  { icon: '🦚', theme: '凤凰', style: 'miao', keywords: '吉祥图腾' },
-  { icon: '🐟', theme: '锦鲤', style: 'shu',  keywords: '水波纹' },
-  { icon: '🐉', theme: '龙纹', style: 'jing', keywords: '云纹' },
-  { icon: '🦁', theme: '瑞狮', style: 'xiang', keywords: '' },
-  { icon: '🌺', theme: '山茶花', style: 'yue', keywords: '金银线' },
+  { theme: '牡丹', style: 'su',   keywords: '团花纹样' },
+  { theme: '凤凰', style: 'miao', keywords: '吉祥图腾' },
+  { theme: '锦鲤', style: 'shu',  keywords: '水波纹' },
+  { theme: '龙纹', style: 'jing', keywords: '云纹' },
+  { theme: '瑞狮', style: 'xiang', keywords: '' },
+  { theme: '山茶花', style: 'yue', keywords: '金银线' },
 ]
 
 const DENSITY_OPTIONS = [

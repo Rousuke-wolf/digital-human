@@ -23,7 +23,7 @@ export function showPresetModel(index) {
       wrap.querySelector('.model-empty-hint')?.remove()
       wrap.innerHTML = `
         <model-viewer id="mainModelViewer" src="${model.src}" alt="3D模型展示"
-          auto-rotate camera-controls shadow-intensity="1" exposure="1"
+          auto-rotate camera-controls environment-image="neutral" exposure="1.05" shadow-intensity="0.6"
           style="width:100%;height:100%;background:transparent;"></model-viewer>`
       attachViewerLoading(document.getElementById('mainModelViewer'))
     }

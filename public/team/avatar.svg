@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <!-- 核心团队占位头像：宣纸圆底 + 双金环 + 行楷「绣」字 + 朱砂小印 -->
+  <defs>
+    <radialGradient id="paper" cx="50%" cy="36%" r="75%">
+      <stop offset="0%" stop-color="#fdf8ee"/>
+      <stop offset="100%" stop-color="#f0e2c4"/>
+    </radialGradient>
+  </defs>
+  <circle cx="120" cy="120" r="118" fill="url(#paper)"/>
+  <circle cx="120" cy="120" r="117" fill="none" stroke="rgba(201,152,74,0.75)" stroke-width="1.5"/>
+  <circle cx="120" cy="120" r="105" fill="none" stroke="rgba(201,152,74,0.35)" stroke-width="1"/>
+  <text x="120" y="144" text-anchor="middle" font-family="STXingkai, KaiTi, 'Ma Shan Zheng', serif" font-size="92" fill="#c0392b">绣</text>
+  <rect x="114" y="158" width="12" height="12" fill="#c0392b" opacity="0.85" transform="rotate(45 120 164)"/>
+</svg>

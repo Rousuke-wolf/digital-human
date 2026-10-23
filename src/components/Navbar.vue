@@ -1,8 +1,8 @@
 <template>
   <div class="navbar">
     <router-link to="/" class="nav-logo">
-      <div class="nav-logo-icon">绣</div>
-      <span class="nav-logo-text">智传非遗</span>
+      <span class="nav-logo-name">智绣</span>
+      <span class="nav-logo-sub">非物质文化遗产 · 中国传统刺绣</span>
     </router-link>
 
     <div class="nav-center">

@@ -11,6 +11,8 @@ import aiRoutes from './routes/ai.js'
 import meshyRoutes from './routes/meshy.js'
 import userRoutes from './routes/user.js'
 import adminRoutes from './routes/admin.js'
+import galleryRoutes from './routes/gallery.js'
+import newsRoutes from './routes/news.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -26,7 +28,12 @@ app.use('/api/ai', aiRoutes)
 app.use('/api/meshy', meshyRoutes)
 app.use('/api/user', userRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/gallery', galleryRoutes)
+app.use('/api/news', newsRoutes)
 app.use('/tts', ttsRoutes)
+
+// ── 图鉴上传文件静态托管（server/public/uploads/）──
+app.use('/uploads', express.static(join(__dirname, 'public', 'uploads')))
 
 // ── Meshy GLB 资源代理（生产环境；开发环境由 vite 代理处理）──
 // 前端加载 AI 生成的 3D 模型时经此代理，避免跨域 + 隐藏直连地址
@@ -86,7 +93,7 @@ if (existsSync(distPath)) {
   app.use(express.static(distPath))
   // SPA fallback：非 API 请求全部返回 index.html
   app.use((req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/tts')) return next()
+    if (req.path.startsWith('/api') || req.path.startsWith('/tts') || req.path.startsWith('/uploads')) return next()
     res.sendFile(join(distPath, 'index.html'))
   })
 }
@@ -113,6 +120,7 @@ async function start() {
       console.log(`   POST /api/auth/login    — 登录`)
       console.log(`   GET  /api/auth/me       — 用户信息`)
       console.log(`   POST /tts               — TTS 语音`)
+
     })
   } catch (err) {
     console.error('❌ 服务启动失败:', err)

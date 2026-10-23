@@ -14,7 +14,16 @@
       >
         <div id="voiceStatus" class="voice-status">{{ statusText }}</div>
         <div class="voice-btn-group">
-          <button class="voice-mic-btn" @click="toggleMic">{{ recording ? '⏹' : '🎙' }}</button>
+          <button class="voice-mic-btn" @click="toggleMic">
+            <svg v-if="recording" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="6" width="12" height="12" rx="1" />
+            </svg>
+            <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" x2="12" y1="19" y2="22" />
+            </svg>
+          </button>
           <button class="voice-end-btn" @click="exitVoiceMode">✕</button>
         </div>
         <button class="voice-back-btn" @click="exitVoiceMode">⌨ 返回文字聊天</button>

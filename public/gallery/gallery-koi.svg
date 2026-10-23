@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <defs>
+    <radialGradient id="paper" cx="50%" cy="44%" r="78%">
+      <stop offset="0%" stop-color="#f8f1e1"/>
+      <stop offset="58%" stop-color="#f3e9d2"/>
+      <stop offset="100%" stop-color="#e9d7b4"/>
+    </radialGradient>
+    <radialGradient id="vign" cx="50%" cy="46%" r="72%">
+      <stop offset="62%" stop-color="#3d1f0a" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#3d1f0a" stop-opacity="0.12"/>
+    </radialGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <linearGradient id="goldKoi" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e8c98f"/>
+      <stop offset="100%" stop-color="#c9984a"/>
+    </linearGradient>
+    <linearGradient id="redKoi" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d9584a"/>
+      <stop offset="100%" stop-color="#a83226"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#paper)"/>
+  <rect width="1200" height="800" filter="url(#grain)" opacity="0.045"/>
+
+  <!-- 水波涟漪 -->
+  <g fill="none" stroke="#8fa08c">
+    <ellipse cx="420" cy="480" rx="330" ry="108" stroke-width="2" opacity="0.5"/>
+    <ellipse cx="420" cy="480" rx="250" ry="80" stroke-width="2" opacity="0.38"/>
+    <ellipse cx="420" cy="480" rx="180" ry="56" stroke-width="2" opacity="0.26"/>
+    <ellipse cx="830" cy="630" rx="220" ry="74" stroke-width="2" opacity="0.45"/>
+    <ellipse cx="830" cy="630" rx="150" ry="48" stroke-width="2" opacity="0.3"/>
+  </g>
+
+  <!-- 锦鲤（金，向右） -->
+  <g>
+    <ellipse cx="420" cy="460" rx="140" ry="58" fill="url(#goldKoi)" stroke="#a06c2c" stroke-width="2" transform="rotate(-6 420 460)"/>
+    <path d="M302 444 Q220 384 150 384 Q232 432 298 458 Z" fill="#d8a75c" stroke="#a06c2c" stroke-width="2"/>
+    <path d="M302 472 Q226 516 158 528 Q234 486 300 470 Z" fill="#d8a75c" stroke="#a06c2c" stroke-width="2"/>
+    <path d="M420 402 Q452 366 506 372 Q474 400 462 404 Z" fill="#e8c98f" stroke="#a06c2c" stroke-width="1.5"/>
+    <path d="M455 404 A54 54 0 0 0 455 516" fill="none" stroke="#a06c2c" stroke-width="2"/>
+    <circle cx="478" cy="450" r="7" fill="#3d1f0a"/>
+    <circle cx="480" cy="448" r="2.4" fill="#f8f1e1"/>
+    <g fill="#a06c2c" opacity="0.55">
+      <circle cx="360" cy="430" r="6"/>
+      <circle cx="330" cy="466" r="5"/>
+      <circle cx="400" cy="498" r="7"/>
+    </g>
+  </g>
+
+  <!-- 锦鲤（红，向左） -->
+  <g transform="rotate(8 830 610)">
+    <ellipse cx="830" cy="610" rx="100" ry="42" fill="url(#redKoi)" stroke="#8f2a1f" stroke-width="2"/>
+    <path d="M914 596 Q972 552 1026 560 Q972 598 916 606 Z" fill="#c0392b" stroke="#8f2a1f" stroke-width="2"/>
+    <path d="M914 620 Q966 658 1018 668 Q972 626 918 616 Z" fill="#c0392b" stroke="#8f2a1f" stroke-width="2"/>
+    <path d="M830 568 Q850 540 886 546 Q858 566 850 568 Z" fill="#d9584a" stroke="#8f2a1f" stroke-width="1.5"/>
+    <circle cx="780" cy="604" r="5.5" fill="#3d1f0a"/>
+    <circle cx="778" cy="602" r="2" fill="#f8f1e1"/>
+  </g>
+
+  <!-- 气泡 -->
+  <g fill="none" stroke="#8fa08c" stroke-width="2" opacity="0.7">
+    <circle cx="548" cy="368" r="10"/>
+    <circle cx="590" cy="322" r="6"/>
+    <circle cx="512" cy="312" r="4"/>
+  </g>
+
+  <!-- 飘落芙蓉花瓣 -->
+  <g>
+    <path d="M700 210 C688 186 688 166 700 152 C712 166 712 186 700 210 Z" fill="#e8a9a0" stroke="#c0392b" stroke-width="1.6" transform="rotate(32 700 210)"/>
+    <path d="M830 160 C818 136 818 116 830 102 C842 116 842 136 830 160 Z" fill="#d97a6a" stroke="#c0392b" stroke-width="1.6" transform="rotate(-24 830 160)"/>
+    <path d="M620 130 C608 106 608 86 620 72 C632 86 632 106 620 130 Z" fill="#e8a9a0" stroke="#c0392b" stroke-width="1.6" transform="rotate(64 620 130)"/>
+  </g>
+
+  <rect width="1200" height="800" fill="url(#vign)"/>
+  <rect x="30" y="30" width="1140" height="740" fill="none" stroke="#c9984a" stroke-width="2.5" opacity="0.75"/>
+  <rect x="38" y="38" width="1124" height="724" fill="none" stroke="#c9984a" stroke-width="1" opacity="0.4"/>
+  <g transform="translate(1088 690)">
+    <rect width="64" height="64" rx="6" fill="#c0392b" opacity="0.92"/>
+    <text x="32" y="46" text-anchor="middle" font-family="STKaiti, KaiTi, SimSun, serif" font-size="40" font-weight="700" fill="#f8f1e1">绣</text>
+  </g>
+</svg>

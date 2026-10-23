@@ -116,7 +116,7 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
     // 额度/登录类错误：上抛给调用方处理（登录引导 / 额度提示气泡）
     if (error.code) throw error;
     console.error("[qwen] API调用失败:", error.message);
-    const fallbackMsg = "系统有点问题，我们稍后再试～";
+    const fallbackMsg = "绣娘正在穿针引线，请稍后再试";
     for (const ch of fallbackMsg) {
       yield { __done: false, __message: ch };
     }
