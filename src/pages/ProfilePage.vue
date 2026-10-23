@@ -256,6 +256,47 @@
       </section>
     </div>
 
+    <!-- 头像裁剪弹窗：拖拽图片选择头像位置 + 缩放 -->
+    <div v-if="cropOpen" class="avatar-crop-mask" @click.self="closeCrop">
+      <div class="avatar-crop-card">
+        <h4 class="avatar-crop-title">拖动图片，选择头像位置</h4>
+        <div
+          ref="cropStageRef"
+          class="avatar-crop-stage"
+          @pointerdown="onCropDown"
+          @pointermove="onCropMove"
+          @pointerup="onCropUp"
+          @pointercancel="onCropUp"
+        >
+          <img
+            ref="cropImgRef"
+            :src="cropSrc"
+            alt=""
+            draggable="false"
+            class="avatar-crop-img"
+            @load="centerCropPos"
+          />
+          <div class="avatar-crop-ring"></div>
+        </div>
+        <div class="avatar-crop-zoom">
+          <span class="avatar-crop-zoom-label">缩放</span>
+          <input
+            v-model.number="cropZoom"
+            type="range"
+            min="100"
+            max="300"
+            step="5"
+            class="avatar-crop-slider"
+            @input="applyCropTransform"
+          />
+        </div>
+        <div class="avatar-crop-actions">
+          <button class="profile-btn ghost" @click="closeCrop">取消</button>
+          <button class="profile-btn primary" @click="confirmCrop">确认</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 模拟支付弹窗（演示环境，无真实交易） -->
     <div v-if="payPlan" class="pay-mask" @click.self="payPlan = null">
       <div class="pay-card">
@@ -330,24 +371,102 @@ function onAvatarFile(e) {
     avatarMsg.value = '仅支持 PNG / JPG / WebP 图片'
     return
   }
-  const img = new Image()
-  const url = URL.createObjectURL(file)
-  img.onload = () => {
-    // 居中裁剪压缩到 200×200，控制体积（后端限制 2MB）
-    const size = 200
-    const canvas = document.createElement('canvas')
-    canvas.width = size
-    canvas.height = size
-    const ctx = canvas.getContext('2d')
-    const scale = Math.max(size / img.width, size / img.height)
-    const w = img.width * scale
-    const h = img.height * scale
-    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
-    URL.revokeObjectURL(url)
-    uploadAvatar(canvas.toDataURL('image/jpeg', 0.85))
+  // 打开裁剪弹窗，由用户拖拽/缩放选定头像位置
+  cropSrc.value = URL.createObjectURL(file)
+  cropZoom.value = 100
+  cropPos.value = { x: 0, y: 0 }
+  cropOpen.value = true
+}
+
+// ── 头像裁剪：拖拽图片位置 + 缩放，确认后按圆形区域出图 ──
+const CROP_SIZE = 280          // 裁剪舞台边长（px，与 CSS 一致）
+const cropOpen = ref(false)
+const cropSrc = ref('')
+const cropZoom = ref(100)      // 100~300（%）
+const cropPos = ref({ x: 0, y: 0 })
+const cropStageRef = ref(null)
+const cropImgRef = ref(null)
+let cropDrag = null
+
+// 当前图片在舞台内的显示比例（cover 适配 × 缩放）
+function cropScale() {
+  const img = cropImgRef.value
+  if (!img?.naturalWidth) return 1
+  const base = Math.max(CROP_SIZE / img.naturalWidth, CROP_SIZE / img.naturalHeight)
+  return base * (cropZoom.value / 100)
+}
+
+// 位置约束：图片必须始终盖满裁剪区（不留空隙）
+function clampCropPos(x, y) {
+  const img = cropImgRef.value
+  const s = cropScale()
+  const imgW = (img?.naturalWidth || 0) * s
+  const imgH = (img?.naturalHeight || 0) * s
+  return {
+    x: Math.min(0, Math.max(CROP_SIZE - imgW, x)),
+    y: Math.min(0, Math.max(CROP_SIZE - imgH, y)),
   }
-  img.onerror = () => URL.revokeObjectURL(url)
-  img.src = url
+}
+
+function applyCropTransform() {
+  const img = cropImgRef.value
+  if (!img) return
+  const s = cropScale()
+  img.style.transform = `translate(${cropPos.value.x}px, ${cropPos.value.y}px) scale(${s})`
+}
+
+function centerCropPos() {
+  const img = cropImgRef.value
+  if (!img?.naturalWidth) return
+  const s = cropScale()
+  cropPos.value = clampCropPos(
+    (CROP_SIZE - img.naturalWidth * s) / 2,
+    (CROP_SIZE - img.naturalHeight * s) / 2,
+  )
+  applyCropTransform()
+}
+
+function onCropDown(e) {
+  cropDrag = { sx: e.clientX, sy: e.clientY, ox: cropPos.value.x, oy: cropPos.value.y }
+  e.currentTarget.setPointerCapture?.(e.pointerId)
+}
+
+function onCropMove(e) {
+  if (!cropDrag) return
+  cropPos.value = clampCropPos(
+    cropDrag.ox + e.clientX - cropDrag.sx,
+    cropDrag.oy + e.clientY - cropDrag.sy,
+  )
+  applyCropTransform()
+}
+
+function onCropUp() {
+  cropDrag = null
+}
+
+function closeCrop() {
+  cropOpen.value = false
+  if (cropSrc.value) URL.revokeObjectURL(cropSrc.value)
+  cropSrc.value = ''
+}
+
+function confirmCrop() {
+  const img = cropImgRef.value
+  if (!img?.naturalWidth || !cropSrc.value) return
+  const s = cropScale()
+  // 舞台坐标 → 原图像素坐标（覆盖整个圆形裁剪区）
+  const srcX = (0 - cropPos.value.x) / s
+  const srcY = (0 - cropPos.value.y) / s
+  const srcSize = CROP_SIZE / s
+  const out = 400   // 输出 400×400，显示时用圆角裁成纯圆
+  const canvas = document.createElement('canvas')
+  canvas.width = out
+  canvas.height = out
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, out, out)
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+  closeCrop()
+  uploadAvatar(dataUrl)
 }
 
 async function uploadAvatar(dataUrl) {
@@ -646,7 +765,7 @@ onMounted(async () => {
 /* ── 账号信息 ── */
 .account-main { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .account-avatar {
-  width: 64px; height: 64px; background: #c0392b; color: white; border-radius: 18px;
+  width: 64px; height: 64px; background: #c0392b; color: white; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 26px; font-weight: bold; flex-shrink: 0;
   cursor: pointer; overflow: hidden; position: relative;
@@ -660,7 +779,45 @@ onMounted(async () => {
   font-size: 12px; font-weight: 500;
 }
 .account-avatar.photo { background: #f4ecdd; }
-.account-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.account-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+
+/* ── 头像裁剪弹窗 ── */
+.avatar-crop-mask {
+  position: fixed; inset: 0; z-index: 3100;
+  background: rgba(61, 31, 10, 0.55);
+  display: flex; align-items: center; justify-content: center;
+}
+.avatar-crop-card {
+  background: #fff; border-radius: 20px; padding: 22px 24px 18px;
+  width: 92%; max-width: 360px; text-align: center;
+  box-shadow: 0 12px 40px rgba(61, 31, 10, 0.35);
+}
+.avatar-crop-title { font-size: 15px; color: #3d1f0a; margin: 0 0 14px; }
+.avatar-crop-stage {
+  position: relative; width: 280px; height: 280px; margin: 0 auto;
+  overflow: hidden; border-radius: 50%; background: #f0e8da;
+  cursor: grab; touch-action: none; user-select: none;
+}
+.avatar-crop-stage:active { cursor: grabbing; }
+.avatar-crop-img {
+  position: absolute; left: 0; top: 0; transform-origin: 0 0;
+  will-change: transform; pointer-events: none;
+}
+/* 圆形取景环：圈内清晰、圈外压暗 */
+.avatar-crop-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 9999px rgba(20, 12, 4, 0.55);
+  pointer-events: none;
+}
+.avatar-crop-zoom {
+  display: flex; align-items: center; gap: 10px;
+  margin: 14px 8px 4px;
+}
+.avatar-crop-zoom-label { font-size: 12.5px; color: #9a7d64; flex-shrink: 0; }
+.avatar-crop-slider { flex: 1; accent-color: #c9984a; }
+.avatar-crop-actions { display: flex; gap: 12px; margin-top: 12px; }
+.avatar-crop-actions .profile-btn { flex: 1; }
 .account-info { flex: 1; min-width: 180px; }
 .account-name { font-size: 20px; color: #3d1f0a; margin: 0 0 4px; }
 .account-meta { font-size: 13px; color: #9a7d64; margin: 2px 0 0; }
