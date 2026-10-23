@@ -12,7 +12,7 @@
         </p>
         <div class="hero-btns">
           <button class="btn-primary" @click="router.push('/teaching')">开始体验</button>
-          <button class="btn-outline" @click="router.push('/culture')">了解刺绣文化</button>
+          <button class="btn-outline" @click="router.push('/culture')">向绫韵提问</button>
         </div>
       </div>
     </div>
@@ -20,12 +20,12 @@
     <div class="home-features">
       <div class="home-feature-card" @click="router.push('/culture')">
         <div class="hf-icon">📖</div>
-        <div class="hf-title">刺绣文化</div>
-        <div class="hf-desc">深入了解四大名绣的历史渊源与艺术特色</div>
+        <div class="hf-title">绫韵问答</div>
+        <div class="hf-desc">和刺绣数字人绫韵聊天，问答之间了解四大名绣与针法技艺</div>
       </div>
       <div class="home-feature-card" @click="router.push('/teaching')">
         <div class="hf-icon">🎓</div>
-        <div class="hf-title">教学体验</div>
+        <div class="hf-title">动画体验</div>
         <div class="hf-desc">数字人引导员逐步讲解针法，动画演示全过程</div>
       </div>
       <div class="home-feature-card" @click="router.push('/3d')">
@@ -43,8 +43,13 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Navbar from '../components/Navbar.vue'
+import { guideOnPageEnter } from '../utils/voiceGuide.js'
 
 const router = useRouter()
+
+// 语音引导：首次进入播报首页介绍
+onMounted(() => guideOnPageEnter('home'))
 </script>

@@ -284,6 +284,12 @@
   color: var(--c-light) !important;
 }
 
+/* 胶囊与三键组：桌面端对布局透明（四键与输入框同行，保持原样式），移动端各自成行 */
+.culture-chat-panel .input-capsule,
+.culture-chat-panel .input-ctrl-row {
+  display: contents;
+}
+
 .culture-chat-panel .input-area button:first-of-type {
   /* 发送按钮 */
   background: var(--c-brown) !important;
@@ -522,16 +528,82 @@
     overflow-y: auto;
   }
 
-  .culture-left {
-    width: 100%;
-    min-width: 0;
-    height: 360px;
-    border-right: none;
-    border-bottom: 1px solid var(--c-border);
+  /* 平板/缩窗：卡片按可用宽度自适应列数（越宽列数越多、占位越矮） */
+  .page-culture .culture-mini-grid {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   }
 
-  .culture-mini-grid {
-    grid-template-columns: repeat(2, 1fr);
+  /* 平板/缩窗下聊天区加高、卡片区压缩。
+     注意加 .page-culture 前缀提高优先级：本块位于全局 180px/210px 固定值规则之前，
+     同优先级同 !important 时后写的会赢，必须用更高特异性压过 */
+  .page-culture .culture-chat-panel .chat-history {
+    min-height: 48vh !important;
+  }
+
+  .page-culture .culture-cards-panel {
+    min-height: 0 !important;
+    padding: 10px 14px 12px !important;
+  }
+
+  .page-culture .culture-mini-card {
+    padding: 8px 10px !important;
+    gap: 3px !important;
+  }
+
+  .page-culture .culture-mini-card .mini-card-tag {
+    display: none;
+  }
+
+  /* 移动端：数字人舞台改为右下角悬浮圆形小头像，聊天区获得完整宽度；
+     语音模式仍是全屏数字人（不受小头像规则影响） */
+  .page-culture:not(.voice-mode) .culture-left {
+    position: fixed;
+    top: calc(50vh - 260px);
+    right: auto;
+    bottom: auto;
+    left: 2px;
+    width: 116px !important;
+    height: 116px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 2px solid rgba(201, 152, 74, 0.5);
+    border-radius: 50% !important;
+    overflow: hidden;
+    z-index: 60;
+    background: radial-gradient(circle at 50% 30%, #fdf6ec, #f2e3c8);
+    box-shadow: 0 8px 24px rgba(92, 61, 32, 0.28);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .page-culture:not(.voice-mode) .culture-left .character-section,
+  .page-culture:not(.voice-mode) .culture-left .character-3d {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .page-culture:not(.voice-mode) .culture-left .emotion-switch {
+    display: none;
+  }
+
+  /* 聊天区底部留白，滚到底时内容不被小头像压住 */
+  .page-culture:not(.voice-mode) .culture-right {
+    padding-bottom: 64px;
+  }
+
+  /* 语音模式：舞台撑满整个视口（覆盖 360px 固定高度） */
+  .voice-mode .culture-left {
+    height: calc(100vh - 64px) !important;
+  }
+
+  .voice-mode .culture-dashboard {
+    overflow: hidden;
   }
 }
 
@@ -861,19 +933,99 @@
 
 /* ═══ 移动端适配（640px 以下微调） ═══ */
 @media (max-width: 640px) {
-  .culture-left {
-    height: 300px;
-  }
-
-  .culture-mini-grid {
-    grid-template-columns: 1fr;
-  }
-
   .culture-right {
     padding: 10px;
   }
 
   .culture-chat-panel .input-area {
     gap: 4px;
+  }
+
+  /* 聊天区加高：占约半屏，保证对话空间 */
+  .culture-chat-panel .chat-history {
+    min-height: 44vh !important;
+  }
+
+  /* 输入区改版：外容器透明只负责布局，输入框自带胶囊样式，
+     四个按钮独立成一行右对齐，不再挤在提问框内部 */
+  .culture-chat-panel .input-area {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin-bottom: 4px;
+    gap: 0;
+    flex-wrap: wrap;
+  }
+
+  /* 胶囊：恢复原来输入区的样式（输入框 + 发送键在同一胶囊内，发送键在最后） */
+  .culture-chat-panel .input-capsule {
+    display: flex;
+    flex: 1 1 100%;
+    align-items: center;
+    background: var(--c-panel) !important;
+    border: 1px solid var(--c-border) !important;
+    border-radius: 40px !important;
+    padding: 8px 8px 8px 24px;
+    box-shadow: 0 2px 8px var(--c-shadow);
+  }
+
+  .culture-chat-panel .input-area input {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    font-size: 16px !important;
+    padding: 6px 0;
+    min-height: 22px;
+  }
+
+  /* 发送键：胶囊内右端（保持圆形小键样式） */
+  .culture-chat-panel .input-area button:first-of-type {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* 其余三键（暂停/停止/语音）：下一行右对齐 */
+  .culture-chat-panel .input-area button {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .culture-chat-panel .input-ctrl-row {
+    display: flex;
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    gap: 3px;
+    margin-top: 8px;
+  }
+
+  /* 知识卡片区：两列紧凑排布，占位减半 */
+  .culture-cards-panel {
+    min-height: 0 !important;
+    padding: 10px 12px 12px !important;
+  }
+
+  .culture-mini-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .culture-mini-card {
+    padding: 8px 10px !important;
+    gap: 3px !important;
+  }
+
+  .culture-mini-card .mini-card-name {
+    font-size: 12.5px;
+  }
+
+  .culture-mini-card .mini-card-tag {
+    display: none;
   }
 }

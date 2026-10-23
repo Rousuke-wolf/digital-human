@@ -13,6 +13,7 @@ import { startLipsync, stopLipsync } from './useLive2D.js'
 import { openImagePreview } from '../utils/lightboxBus.js'
 import { goToExhibit } from '../utils/navigation.js'
 import { getTimeGreeting, getFestival, getVoiceGreeting } from '../utils/companion.js'
+import { guideRecentlyScheduled } from '../utils/voiceGuide.js'
 import { useLoginPrompt } from './useLoginPrompt.js'
 
 // 全局登录引导弹窗（与 App.vue 的 LoginPromptModal 共用同一份状态）
@@ -199,6 +200,8 @@ function maybeGreet() {
     _greetVoiceTimer = null
     // 用户已开始提问或已有语音在播：不打扰
     if (!_chatEl || inputLocked.value || ttsPlaying.value) return
+    // 语音引导刚安排过（首次进入的页面介绍）：不重复语音问好
+    if (guideRecentlyScheduled()) return
     const text = getVoiceGreeting()
     if (_usedGreetings().includes(text)) return
     _markGreetingUsed(text)

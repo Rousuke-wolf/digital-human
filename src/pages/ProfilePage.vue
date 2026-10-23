@@ -190,6 +190,51 @@
           </div>
         </div>
       </section>
+
+      <!-- ── 5. 语音引导设置（数字人页面介绍/问候，独立音量）── -->
+      <section class="profile-card">
+        <h3 class="profile-card-title">⚙️ 语音引导设置</h3>
+        <div class="guide-setting-row">
+          <div class="guide-setting-info">
+            <span class="guide-setting-name">绫韵页面引导与问候</span>
+            <span class="guide-setting-desc">
+              首次进入页面时介绍功能，3D 展厅、纹样共创、知识图谱每次进入会随机问候；关闭后不再播报
+            </span>
+          </div>
+          <label class="guide-switch">
+            <input
+              v-model="guideSettings.enabled"
+              type="checkbox"
+              @change="onGuideEnabledChange"
+            />
+            <span class="guide-switch-track"><span class="guide-switch-thumb"></span></span>
+          </label>
+        </div>
+        <div class="guide-setting-row" :class="{ off: !guideSettings.enabled }">
+          <div class="guide-setting-info">
+            <span class="guide-setting-name">引导音量 <b>{{ guideSettings.volume }}</b></span>
+            <span class="guide-setting-desc">
+              只影响页面引导与问候的播报音量，不改变「绫韵问答」对话语音的音量
+            </span>
+          </div>
+          <div class="guide-volume-box">
+            <input
+              v-model.number="guideSettings.volume"
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              :disabled="!guideSettings.enabled"
+              @change="onGuideVolumeChange"
+            />
+            <button
+              class="profile-btn ghost"
+              :disabled="!guideSettings.enabled"
+              @click="previewGuideVoice"
+            >🔊 试听</button>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- 模拟支付弹窗（演示环境，无真实交易） -->
@@ -222,6 +267,9 @@ import { authAPI, userAPI } from '../api/client.js'
 import { loadCloudWorks } from '../utils/worksSync.js'
 import { removeGeneratedModel } from '../utils/state.js'
 import { goToGeneratedModel } from '../utils/navigation.js'
+import {
+  getGuideSettings, saveGuideSettings, guideSpeak, guideStop, guideOnPageEnter,
+} from '../utils/voiceGuide.js'
 
 const router = useRouter()
 const { user, isLoggedIn, quota, logout, refreshQuota } = useAuth()
@@ -463,11 +511,29 @@ const stats = computed(() => {
   }
 })
 
+// ── 语音引导设置（默认开启；音量只影响引导播报，与绫韵问答对话音量独立）──
+const guideSettings = reactive(getGuideSettings())
+
+function onGuideEnabledChange() {
+  saveGuideSettings({ enabled: guideSettings.enabled })
+  if (!guideSettings.enabled) guideStop()   // 关闭开关：停止当前引导播报
+}
+
+function onGuideVolumeChange() {
+  saveGuideSettings({ volume: guideSettings.volume })
+}
+
+function previewGuideVoice() {
+  guideSpeak('你好，我是绫韵。这是语音引导的音量试听，你觉得这个大小合适吗？')
+}
+
 onMounted(async () => {
   if (!isLoggedIn.value) {
     router.replace('/login')
     return
   }
+  // 语音引导：首次进入播报个人中心介绍
+  guideOnPageEnter('profile')
   loadWorksLocal()
   refreshQuota()
   // 从云端同步作品（换设备场景）+ 刷新账号资料（登录响应不含注册时间）
@@ -708,5 +774,47 @@ onMounted(async () => {
   .task-card { flex-wrap: wrap; }
   .task-action { width: 100%; }
   .task-action .work-btn { width: 100%; }
+  .guide-setting-row { flex-direction: column; align-items: stretch; gap: 12px; }
+  .guide-volume-box { width: 100%; }
+  /* 任务网格最小列宽 420px 在窄屏会横向溢出，改为单列 */
+  .task-grid { grid-template-columns: 1fr; }
 }
+
+/* ── 语音引导设置 ── */
+.guide-setting-row {
+  display: flex; align-items: center; gap: 18px;
+  padding: 14px 16px; border-radius: 14px;
+  background: #fdfbf7; border: 1px solid #ede3d0;
+  transition: opacity 0.2s;
+}
+.guide-setting-row + .guide-setting-row { margin-top: 12px; }
+.guide-setting-row.off { opacity: 0.5; }
+.guide-setting-info { flex: 1; min-width: 0; }
+.guide-setting-name { display: block; font-size: 14px; font-weight: 600; color: #3d1f0a; }
+.guide-setting-name b { color: #8b6240; }
+.guide-setting-desc { display: block; font-size: 12px; color: #9a7d64; margin-top: 4px; line-height: 1.6; }
+
+/* 开关：隐藏原生 checkbox，轨道+滑块自绘 */
+.guide-switch { position: relative; flex-shrink: 0; cursor: pointer; }
+.guide-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.guide-switch-track {
+  display: block; width: 48px; height: 26px; border-radius: 999px;
+  background: #e2d5c3; transition: background 0.2s;
+}
+.guide-switch-thumb {
+  position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(92, 61, 32, 0.3);
+  transition: left 0.2s;
+}
+.guide-switch input:checked + .guide-switch-track { background: #c9984a; }
+.guide-switch input:checked + .guide-switch-track .guide-switch-thumb { left: 25px; }
+.guide-switch input:focus-visible + .guide-switch-track { box-shadow: 0 0 0 3px rgba(201, 152, 74, 0.25); }
+
+/* 音量滑杆 + 试听 */
+.guide-volume-box { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.guide-volume-box input[type='range'] {
+  width: 150px; accent-color: #c9984a; cursor: pointer;
+}
+.guide-volume-box input[type='range']:disabled { cursor: not-allowed; }
+.guide-volume-box .profile-btn { white-space: nowrap; }
 </style>

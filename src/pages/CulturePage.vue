@@ -16,7 +16,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount } from 'vue'
+import { onMounted, onBeforeUnmount } from 'vue'
 import '../page/culture/index.css'
 import Navbar from '../components/Navbar.vue'
 import Live2DPanel from '../components/live2d/Live2DPanel.vue'
@@ -26,6 +26,10 @@ import Lightbox from '../components/ui/Lightbox.vue'
 import VoiceOverlay from '../components/chat/VoiceOverlay.vue'
 import { voiceModeActive } from '../composables/useCultureChat.js'
 import { destroyLive2D } from '../composables/useLive2D.js'
+import { guideOnPageEnter } from '../utils/voiceGuide.js'
+
+// 语音引导：首次进入播报「绫韵问答」页面介绍（当次会替代页面自身的语音问好）
+onMounted(() => guideOnPageEnter('culture'))
 
 // 聊天记录由 useCultureChat 自动持久化（切页保留 + 刷新恢复），无需手动保存
 onBeforeUnmount(() => {

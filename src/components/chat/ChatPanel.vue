@@ -59,32 +59,38 @@
 
     <!-- 输入区 -->
     <div class="input-area" :class="{ sending: inputLocked }">
-      <input
-        ref="inputRef"
-        v-model="inputText"
-        type="text"
-        placeholder="输入你想问的问题..."
-        :disabled="inputLocked"
-        @keydown.enter="onSend"
-      />
-      <button title="发送消息" :disabled="inputLocked" @click="onSend">➤</button>
-      <button
-        class="tts-control-btn"
-        :class="{ active: ttsPlaying }"
-        :title="ttsPaused ? '继续语音' : '暂停语音'"
-        @click="toggleTtsPause"
-      >
-        {{ ttsPaused ? '▶' : '⏸' }}
-      </button>
-      <button
-        class="tts-control-btn"
-        :class="{ active: ttsPlaying }"
-        title="停止语音"
-        @click="stopAll"
-      >
-        ⏹
-      </button>
-      <button class="voice-chat-btn" title="切换语音模式" @click="enterVoiceMode">🎤</button>
+      <!-- 胶囊：输入框 + 发送键（桌面端 display:contents 与原布局完全一致） -->
+      <div class="input-capsule">
+        <input
+          ref="inputRef"
+          v-model="inputText"
+          type="text"
+          placeholder="输入你想问的问题..."
+          :disabled="inputLocked"
+          @keydown.enter="onSend"
+        />
+        <button title="发送消息" :disabled="inputLocked" @click="onSend">➤</button>
+      </div>
+      <!-- 暂停/停止/语音三键：桌面端与输入框同行（display:contents），移动端换到下一行 -->
+      <div class="input-ctrl-row">
+        <button
+          class="tts-control-btn"
+          :class="{ active: ttsPlaying }"
+          :title="ttsPaused ? '继续语音' : '暂停语音'"
+          @click="toggleTtsPause"
+        >
+          {{ ttsPaused ? '▶' : '⏸' }}
+        </button>
+        <button
+          class="tts-control-btn"
+          :class="{ active: ttsPlaying }"
+          title="停止语音"
+          @click="stopAll"
+        >
+          ⏹
+        </button>
+        <button class="voice-chat-btn" title="切换语音模式" @click="enterVoiceMode">🎤</button>
+      </div>
     </div>
   </div>
 </template>

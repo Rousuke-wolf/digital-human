@@ -1,5 +1,5 @@
 // Meshy.js — Meshy Text-to-3D API 集成 + AI 展品介绍 + TTS 播放
-import { speak, pause, resume, stop } from '../../tts.js'
+import { infoTtsReset, infoTtsEnable, infoTtsDisable } from './infoTts.js'
 import { MODELS } from '../../utils/models.js'
 import { appState, upsertGeneratedModel, setGeneratedIntro, setGeneratedCloudId } from '../../utils/state.js'
 import { attachViewerLoading } from '../../utils/viewerLoading.js'
@@ -173,73 +173,9 @@ function setTimeTag(visible) {
   document.getElementById('meshyTimeTag')?.classList.toggle('visible', visible)
 }
 
-// ── TTS 状态机 ────────────────────────────────────
-let _ttsState = 'idle'
-
-function _setTtsBtnUI(state) {
-  _ttsState = state
-  const icon = document.getElementById('meshyTtsBtnIcon')
-  const label = document.getElementById('meshyTtsBtnLabel')
-  if (!icon || !label) return
-  switch (state) {
-    case 'loading': icon.textContent = '⏳'; label.textContent = ' 加载中...'; break
-    case 'playing': icon.textContent = '⏸'; label.textContent = ' 暂停朗读'; break
-    case 'paused': icon.textContent = '▶️'; label.textContent = ' 继续朗读'; break
-    default: icon.textContent = '🔊'; label.textContent = ' 朗读介绍'
-  }
-}
-
-function _enableTtsBtn() {
-  const btn = document.getElementById('meshyTtsBtn')
-  if (!btn) return
-  btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'
-}
-
-function _disableTtsBtn() {
-  const btn = document.getElementById('meshyTtsBtn')
-  if (!btn) return
-  btn.disabled = true; btn.style.opacity = '0.4'; btn.style.cursor = 'not-allowed'
-  _setTtsBtnUI('idle')
-}
-
-function _stopTtsOnModelChange() {
-  if (_ttsState !== 'idle') { stop(); _setTtsBtnUI('idle') }
-}
-
-// 供预设切换时停止生成的模型朗读（原 window._meshyStopTts 全局）
-export function meshyStopTts() { _stopTtsOnModelChange() }
-
-function injectTtsButton() {
-  if (document.getElementById('meshyTtsBtn')) return
-  const card = document.querySelector('.model-info-card')
-  if (!card) return
-  const btn = document.createElement('button')
-  btn.id = 'meshyTtsBtn'
-  btn.disabled = true
-  btn.innerHTML = `<span id="meshyTtsBtnIcon">🔊</span><span id="meshyTtsBtnLabel"> 朗读介绍</span>`
-  btn.style.cssText = `
-    margin-top:14px;padding:7px 20px;border:none;border-radius:20px;
-    background:#c8a96e;color:#fff;font-size:14px;font-weight:500;
-    cursor:not-allowed;display:inline-flex;align-items:center;gap:4px;
-    transition:background 0.2s,opacity 0.2s,transform 0.1s;opacity:0.4;
-  `
-  btn.addEventListener('mouseenter', () => { if (!btn.disabled) btn.style.background = '#b8934e' })
-  btn.addEventListener('mouseleave', () => { if (!btn.disabled) btn.style.background = '#c8a96e' })
-  btn.addEventListener('mousedown', () => { if (!btn.disabled) btn.style.transform = 'scale(0.96)' })
-  btn.addEventListener('mouseup', () => { btn.style.transform = 'scale(1)' })
-  btn.addEventListener('click', _handleTtsBtnClick)
-  card.appendChild(btn)
-}
-
-function _handleTtsBtnClick() {
-  if (_ttsState === 'loading') return
-  if (_ttsState === 'playing') { pause(); _setTtsBtnUI('paused'); return }
-  if (_ttsState === 'paused') { resume(); _setTtsBtnUI('playing'); return }
-  const text = document.getElementById('modelIntroText')?.textContent?.trim()
-  if (!text || text === '✨ 正在生成展品介绍...') return
-  _setTtsBtnUI('loading')
-  speak(text, null, () => { _setTtsBtnUI('playing') }, () => { _setTtsBtnUI('idle') })
-}
+// ── TTS 朗读按钮 ──────────────────────────────────
+// 「朗读介绍」按钮常驻 Show3DPage 模板，状态机与播放控制统一在 infoTts.js
+// （预设展品与生成模型共用），此处只负责在模型切换的各个时机复位/启用/禁用
 
 // ── AI 展品介绍 ───────────────────────────────────
 async function generateIntro(prompt) {
@@ -265,7 +201,7 @@ async function generateIntro(prompt) {
 
 // ── 注入 model-viewer ─────────────────────────────
 function loadGeneratedModel(glbUrl, label, intro) {
-  _stopTtsOnModelChange()
+  infoTtsReset()
 
   const wrap = document.getElementById('modelViewerWrap') || document.getElementById('modelViewBox')
   if (!wrap) return
@@ -292,9 +228,9 @@ function loadGeneratedModel(glbUrl, label, intro) {
   if (nameEl) nameEl.textContent = label || 'AI 生成展品'
   if (introEl) introEl.textContent = intro || '✨ 正在生成展品介绍...'
 
-  injectTtsButton()
-  if (intro) _enableTtsBtn()
-  else _disableTtsBtn()
+  // 介绍就绪才允许朗读；生成中按钮禁用
+  if (intro) infoTtsEnable()
+  else infoTtsDisable()
 }
 
 async function afterModelLoaded(glbUrl, prompt) {
@@ -305,7 +241,7 @@ async function afterModelLoaded(glbUrl, prompt) {
   if (_meshyResult) _meshyResult.intro = finalIntro
   // 回写生成记录的介绍（持久化，下次选中直接展示）
   setGeneratedIntro(glbUrl, finalIntro)
-  _enableTtsBtn()
+  infoTtsEnable()
 }
 
 // ── 展示「我的生成」里的模型（下拉框选中时调用）──
@@ -313,7 +249,7 @@ export function showGeneratedModel(index) {
   const g = appState.generatedModels[index]
   if (!g) return
 
-  stop(); _setTtsBtnUI('idle')
+  infoTtsReset()
   loadGeneratedModel(g.glbUrl, g.name, g.intro)
   _meshyResult = { glbUrl: g.glbUrl, prompt: g.prompt, intro: g.intro }
   appState.meshyTask.status = 'success'
@@ -343,8 +279,8 @@ export function clearGeneratedDisplay(glbUrl) {
     appState.meshyTask.prompt = ''
   }
 
-  stop(); _setTtsBtnUI('idle')
-  _disableTtsBtn()
+  infoTtsReset()
+  infoTtsDisable()
 
   const wrap = document.getElementById('modelViewerWrap') || document.getElementById('modelViewBox')
   if (wrap) {
@@ -365,10 +301,10 @@ export function clearGeneratedDisplay(glbUrl) {
   if (inp) inp.value = ''
 }
 
-function injectTtsForPreset() {
+function prepareTtsForPreset() {
   const text = document.getElementById('modelIntroText')?.textContent?.trim()
-  if (!text || text === '暂无展品，请选择或生成内容。') return
-  injectTtsButton(); _enableTtsBtn(); _setTtsBtnUI('idle')
+  infoTtsReset()
+  if (text && text !== '暂无展品，请选择或生成内容。') infoTtsEnable()
 }
 
 // ── 轮询 ─────────────────────────────────────────
@@ -403,7 +339,7 @@ export async function meshyGenerate() {
     return
   }
 
-  stop(); _setTtsBtnUI('idle')
+  infoTtsReset()
   setBtnLoading(true); setTimeTag(true)
 
   // 第一阶段：显示旋转 spinner，清空旧模型
@@ -539,7 +475,7 @@ export function meshyRestoreState() {
     setStatus('⚙️ 生成任务进行中...')
     return
   }
-  injectTtsForPreset()
+  prepareTtsForPreset()
 }
 
 document.addEventListener('keydown', (e) => {

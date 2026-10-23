@@ -9,6 +9,7 @@
 let _app = null
 let _model = null
 let _resizeObserver = null
+let _avatarDragCleanup = null
 let _mouthParam = null
 let _lipsyncSmoothed = 0
 let _lipsyncActive = false
@@ -71,18 +72,54 @@ export async function initLive2D() {
     const ZOOM_MAX = 1.4
     const ZOOM_STEP = 0.08
 
+    // ═══ 移动端圆框「面部特写」可调参数（三个页面共用，改这里即可）═══
+    // headRatio：头部高度占模型包围盒高度的比例（脸被裁大→调小；头太小→调大）
+    // fill：头部高度占圆框直径的比例（越接近 1 脸越满）
+    // offsetY：整体上下微调，正数下移 / 负数上移（单位 px）
+    // offsetX：整体左右微调，负数=脸部在圆框中往左移 / 正数=往右移（单位 px）
+    const AVATAR_HEAD_RATIO = 0.32
+    const AVATAR_FILL = 1.25
+    const AVATAR_OFFSET_Y = -25
+    const AVATAR_OFFSET_X = -13
     function fitModel() {
       const w = container.clientWidth
       const h = container.clientHeight
       app.renderer.resize(w, h)
-      if (model.anchor) model.anchor.set(0.5, 0.28)
-      model.x = w / 2
-      model.y = h * 0.55
-      // 语音模式（文化页）下人物缩小，给右侧面板让位
+      // 移动端悬浮圆形小头像：容器被 CSS 缩成 ~116px 圆形，检测宽度 < 300 切换系数
+      const compact = w < 300
       const isVoiceMode = document.querySelector('.app-wrapper')?.classList.contains('voice-mode')
-      const BASE = isVoiceMode ? 0.00035 : 0.0007
-      model.scale.set(w * BASE * _zoomFactor)
-      _baseScale = w * BASE
+      model.x = w / 2
+      if (compact) {
+        // 面部特写：读取模型真实绘制包围盒（本地坐标，不受缩放影响），
+        // 把头部区域精确平移到圆框中心，缩放让头部填满圆框
+        try {
+          const b = model.getLocalBounds()
+          if (b.height > 10) {
+            const targetH = (h * AVATAR_FILL) / AVATAR_HEAD_RATIO   // 包围盒目标高度
+            const s = targetH / b.height
+            model.anchor.set(0, 0)   // 原点改为画布左上角，坐标计算更直接
+            model.scale.set(s * _zoomFactor)
+            // 头部中心（本地坐标）→ 屏幕圆框中心（offsetX 负值=脸往左移）
+            model.x = w / 2 - s * (b.x + b.width / 2) + AVATAR_OFFSET_X
+            model.y = h / 2 - s * (b.y + (AVATAR_HEAD_RATIO / 2) * b.height) + AVATAR_OFFSET_Y
+            _baseScale = s
+            return
+          }
+        } catch { /* 包围盒异常时退回下方兜底公式 */ }
+        // 兜底：按模型自然高度估算
+        const s = (h * AVATAR_FILL) / AVATAR_HEAD_RATIO / (model.height || 1000)
+        model.scale.set(s * _zoomFactor)
+        model.anchor.set(0.5, 0.28)
+        model.y = h / 2 + (0.28 - AVATAR_HEAD_RATIO / 2) * s * (model.height || 1000)
+        _baseScale = s
+      } else {
+        // 桌面端：锚点定位（语音模式下人物缩小，给右侧面板让位）
+        model.anchor.set(0.5, 0.28)
+        const BASE = isVoiceMode ? 0.00035 : 0.0007
+        model.scale.set(w * BASE * _zoomFactor)
+        _baseScale = w * BASE
+        model.y = h * 0.55
+      }
     }
     fitModel()
 
@@ -94,6 +131,41 @@ export async function initLive2D() {
     const ro = new ResizeObserver(() => fitModel())
     ro.observe(container)
     _resizeObserver = ro
+
+    // ── 移动端小头像拖动（仅圆形悬浮模式下启用）──
+    // 小圆框可拖到屏幕任意位置；拖动时不触发页面滚动
+    const stageEl = container.closest('.left-stage') || container.closest('.culture-left')
+    let _dragState = null
+    const _onAvatarDown = (e) => {
+      if (container.clientWidth >= 300) return   // 非圆形模式（桌面大舞台）不启用
+      const rect = stageEl.getBoundingClientRect()
+      _dragState = { sx: e.clientX, sy: e.clientY, ox: rect.left, oy: rect.top, moved: false }
+      try { stageEl.setPointerCapture(e.pointerId) } catch {}
+    }
+    const _onAvatarMove = (e) => {
+      if (!_dragState) return
+      if (!_dragState.moved && Math.hypot(e.clientX - _dragState.sx, e.clientY - _dragState.sy) < 5) return
+      _dragState.moved = true
+      const d = stageEl.clientWidth
+      const x = Math.min(window.innerWidth - d - 8, Math.max(8, _dragState.ox + e.clientX - _dragState.sx))
+      const y = Math.min(window.innerHeight - d - 8, Math.max(72, _dragState.oy + e.clientY - _dragState.sy))
+      stageEl.style.left = `${x}px`
+      stageEl.style.top = `${y}px`
+      stageEl.style.right = 'auto'
+      stageEl.style.bottom = 'auto'
+    }
+    const _onAvatarUp = () => { _dragState = null }
+    stageEl?.addEventListener('pointerdown', _onAvatarDown)
+    stageEl?.addEventListener('pointermove', _onAvatarMove)
+    stageEl?.addEventListener('pointerup', _onAvatarUp)
+    stageEl?.addEventListener('pointercancel', _onAvatarUp)
+    if (stageEl) stageEl.style.touchAction = 'none'
+    _avatarDragCleanup = stageEl ? () => {
+      stageEl.removeEventListener('pointerdown', _onAvatarDown)
+      stageEl.removeEventListener('pointermove', _onAvatarMove)
+      stageEl.removeEventListener('pointerup', _onAvatarUp)
+      stageEl.removeEventListener('pointercancel', _onAvatarUp)
+    } : null
 
     // ── 滚轮缩放 ─────────────────────────────────
     container.addEventListener('wheel', (e) => {
@@ -179,6 +251,7 @@ export function stopLipsync() { _lipsyncActive = false; _lipsyncSmoothed = 0 }
 // ── 销毁：页面离开时调用，释放 PIXI 实例与观察器 ──
 export function destroyLive2D() {
   if (_resizeObserver) { _resizeObserver.disconnect(); _resizeObserver = null }
+  if (_avatarDragCleanup) { _avatarDragCleanup(); _avatarDragCleanup = null }
   if (_app) {
     try { _app.destroy(true, { children: true, texture: true }) } catch {}
     _app = null

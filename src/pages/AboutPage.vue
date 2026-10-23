@@ -99,6 +99,11 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import Navbar from '../components/Navbar.vue'
+import { guideOnPageEnter } from '../utils/voiceGuide.js'
 import '../page/about/index.css'
+
+// 语音引导：首次进入播报「关于我们」页面介绍
+onMounted(() => guideOnPageEnter('about'))
 </script>

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
+import { guideClearPending, guideStop } from '../utils/voiceGuide.js'
 
 const { user } = useAuth()
 
@@ -23,6 +24,9 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
+  // 切页：取消未触发的播报 + 打断正在播放的语音（问候/讲解等，新页面挂载后会重新安排）
+  guideClearPending()
+  guideStop()
   if (to.meta.requiresAuth) {
     const token = localStorage.getItem('token')
     if (!token) {

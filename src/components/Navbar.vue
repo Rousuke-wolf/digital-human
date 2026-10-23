@@ -51,8 +51,8 @@ import { useAuth } from '../composables/useAuth.js'
 
 const tabs = [
   { id: 'home',     path: '/',          label: '首页' },
-  { id: 'culture',  path: '/culture',   label: '刺绣文化' },
-  { id: 'teaching', path: '/teaching',  label: '教学体验' },
+  { id: 'culture',  path: '/culture',   label: '绫韵问答' },
+  { id: 'teaching', path: '/teaching',  label: '动画体验' },
   { id: '3d',       path: '/3d',        label: '3D展厅' },
   { id: 'create',   path: '/create',    label: '纹样共创' },
   { id: 'graph',    path: '/graph',     label: '知识图谱' },

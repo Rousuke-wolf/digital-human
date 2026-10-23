@@ -99,6 +99,7 @@ import {
   stopDemo,
 } from '../page/teach/scripts.js'
 import { openModal } from '../page/teach/game/script.js'
+import { guideOnPageEnter } from '../utils/voiceGuide.js'
 
 // ── 静态文案（原字符串模板迁入）──
 const stepCards = [
@@ -146,6 +147,8 @@ onMounted(() => {
   setPhaseListener((cardIdx) => { activeStep.value = cardIdx })
   // 动画演示需要 DOM 就绪后手动触发
   setTimeout(() => updateDemo(), 150)
+  // 语音引导：首次进入播报「动画体验」页面介绍
+  guideOnPageEnter('teaching')
 })
 
 onBeforeUnmount(() => {

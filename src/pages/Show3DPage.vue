@@ -77,7 +77,9 @@
 
         <!--
           展品介绍卡：同样 v-once。
-          名称/介绍文本与「朗读介绍」按钮由 Meshy.js 命令式更新/注入
+          名称/介绍文本由 preset.js / Meshy.js 命令式更新；
+          「朗读介绍」按钮常驻于此（v-once 只渲染一次），状态由 infoTts.js 命令式管理，
+          预设展品与 AI 生成模型共用
         -->
         <div v-once class="model-info-card">
           <div class="model-info-header">
@@ -85,6 +87,9 @@
           </div>
           <div id="modelInfoName" class="model-info-name"></div>
           <div id="modelIntroText" class="model-info-text"></div>
+          <button id="meshyTtsBtn" class="model-info-tts" disabled @click="handleInfoTtsClick">
+            <span id="meshyTtsBtnIcon">🔊</span><span id="meshyTtsBtnLabel"> 朗读介绍</span>
+          </button>
         </div>
       </div>
     </div>
@@ -99,6 +104,7 @@ import Navbar from '../components/Navbar.vue'
 import { MODELS } from '../utils/models.js'
 import { appState } from '../utils/state.js'
 import { showPresetModel } from '../page/show3D/preset.js'
+import { handleInfoTtsClick, infoTtsEnable, infoTtsDisable } from '../page/show3D/infoTts.js'
 import {
   meshyGenerate,
   meshyRestoreState,
@@ -110,6 +116,7 @@ import { initLive2D, destroyLive2D } from '../composables/useLive2D.js'
 import { attachViewerLoading } from '../utils/viewerLoading.js'
 import { removeGeneratedModel } from '../utils/state.js'
 import { consumeExhibitJump, consumeGeneratedJump } from '../utils/navigation.js'
+import { guideOnPageEnter } from '../utils/voiceGuide.js'
 import { useAuth } from '../composables/useAuth.js'
 import { userAPI } from '../api/client.js'
 
@@ -153,6 +160,10 @@ function buildInitialViewer() {
   if (nameEl) nameEl.textContent = title
   const introEl = document.getElementById('modelIntroText')
   if (introEl) introEl.textContent = intro
+
+  // 朗读介绍：有展品内容时可播报，空态禁用
+  if (src) infoTtsEnable()
+  else infoTtsDisable()
 }
 
 // ── 下拉框选中项同步（挂载/删除生成条目后调用）──
@@ -230,6 +241,8 @@ onMounted(() => {
   initLive2D()
   // 仅在 Meshy 任务非空闲时恢复生成状态；跳转指定展品时跳过恢复
   if (appState.meshyTask.status !== 'idle') meshyRestoreState()
+  // 语音引导：首次进入播报展厅介绍，之后每次进入随机问候
+  guideOnPageEnter('3d')
 })
 
 onBeforeUnmount(() => {

@@ -12,12 +12,12 @@
           <button
             class="view-btn"
             :class="{ active: viewMode === 'graph' }"
-            @click="viewMode = 'graph'"
+            @click="setViewMode('graph')"
           >🔗 图谱视图</button>
           <button
             class="view-btn"
             :class="{ active: viewMode === 'list' }"
-            @click="viewMode = 'list'"
+            @click="setViewMode('list')"
           >📋 列表视图</button>
         </div>
       </div>
@@ -114,6 +114,16 @@
             </div>
             <h3 class="ov-name">{{ selectedNode.name }}</h3>
             <p class="ov-intro">{{ selectedNode.intro }}</p>
+
+            <!-- 语音讲解：朗读节点介绍 + 关联节点，并询问是否想继续了解（再次点击停止） -->
+            <button
+              class="ov-speak"
+              :class="{ playing: speakingId === selectedNode.id }"
+              @click="toggleSpeak"
+            >
+              <span class="ov-speak-eq" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span>{{ speakingId === selectedNode.id ? '停止播报' : '🔊 语音讲解' }}</span>
+            </button>
 
             <template v-if="relatedNodes.length">
               <div class="ov-sec">🔗 关联节点（{{ relatedNodes.length }}）</div>
@@ -370,11 +380,25 @@ import '../page/graph/index.css'
 // 成长体系：图谱探索任务上报（注意本页不得 import qwen.js，client/useAuth 安全）
 import { userAPI } from '../api/client.js'
 import { useAuth } from '../composables/useAuth.js'
+// 语音讲解：流式 TTS 播放器（CosyVoice /tts 代理，失败自动降级浏览器语音）
+import { speak, stop as ttsStop } from '../tts.js'
+// 语音引导：进入问候 + 3D（图谱视图下首次看到）/列表 首次切换介绍
+import { guideOnPageEnter, guideOnGraphSwitchList, guideOnGraphView3D } from '../utils/voiceGuide.js'
 
 const { isLoggedIn } = useAuth()
 
 const viewMode = ref('graph')
 const renderMode = ref('2d')   // '2d' | '3d'：图谱视图的渲染模式（状态共享，仅渲染层切换）
+
+// 图谱/列表视图切换：
+// · 首次切到列表视图 → 语音介绍
+// · 若之前在列表视图下选中过 3D 星图，切回图谱视图时补播 3D 介绍
+function setViewMode(mode) {
+  if (viewMode.value === mode) return
+  viewMode.value = mode
+  if (mode === 'list') guideOnGraphSwitchList()
+  else if (renderMode.value === '3d') guideOnGraphView3D()
+}
 const selectedId = ref(null)
 const activeFilter = ref(null)
 const tip = ref(null)
@@ -414,8 +438,12 @@ function switchRenderMode(mode) {
       graph3d = null
       g3dError.value = err?.message || '3D 初始化失败'
       renderMode.value = '2d'
+      return
     }
   }
+  // 语音引导：当且仅当「首次选中 3D 星图且当前处于图谱视图」时介绍一次
+  // （列表视图下切换 3D 不播报；2D 说明已并入首次进入的页面介绍，切回 2D 不再单独播报）
+  if (mode === '3d' && viewMode.value === 'graph') guideOnGraphView3D()
 }
 
 // 状态变化 → 3D 场景实时同步（2D 状态为唯一来源）
@@ -475,6 +503,45 @@ const nodeExhibit = computed(() => {
   const ex = selectedNode.value?.exhibit
   if (ex == null || !MODELS[ex]) return null
   return { index: ex, name: MODELS[ex].name }
+})
+
+// ── 语音讲解：介绍 + 关联节点，结尾询问是否想了解关联节点 ──
+const speakingId = ref(null)   // 正在播报的节点 id（按钮切换 讲解/停止 状态）
+
+function narrationText(n) {
+  const rel = relatedNodes.value.map((r) => r.name)
+  if (rel.length) {
+    return `${n.name}。${n.intro}与「${n.name}」相连的节点有：${rel.join('、')}。`
+      + '想进一步了解这些关联节点吗？点击卡片中的关联节点，即可继续探索。'
+  }
+  // 锚星在图中不画连线，改为介绍其星座内的星点
+  if (n.isHub) {
+    const leaves = NODES.filter((x) => x.cat === n.cat).map((x) => x.name)
+    return `${n.name}。${n.intro}这个星座里共有 ${leaves.length} 颗星点，它们是：${leaves.join('、')}。`
+      + '想了解这些星点吗？回到星图，点击它们开始探索。'
+  }
+  // 中心主星：介绍三大星座
+  return `${n.name}。${n.intro}想继续探索吗？点击三大星座的锚星，或任意星点，开始你的知识之旅。`
+}
+
+// 播放/停止语音讲解；切换节点、关闭浮层时自动停止
+function toggleSpeak() {
+  const n = selectedNode.value
+  if (!n) return
+  if (speakingId.value === n.id) {
+    ttsStop()
+    speakingId.value = null
+    return
+  }
+  speakingId.value = n.id
+  speak(narrationText(n), null, null, () => {
+    if (speakingId.value === n.id) speakingId.value = null
+  })
+}
+
+watch(selectedId, () => {
+  ttsStop()
+  speakingId.value = null
 })
 
 // 当前聚焦（仅选中时高亮关联；悬停只放大自身，保证响应流畅）
@@ -932,11 +999,14 @@ onMounted(() => {
   select(svgEl).call(zoomBehavior).on('dblclick.zoom', null)
   // 初始视角：默认 100%（整图居中完整展示）
   applyCam(0, 0, DEFAULT_K)
+  // 语音引导：首次进入播报「自由探索」页面介绍，之后每次进入随机问候
+  guideOnPageEnter('graph')
 })
 
 onBeforeUnmount(() => {
   clearInterval(factTimer)
   canvasWrapRef.value?.removeEventListener('wheel', onWrapWheel)
+  ttsStop()   // 离开页面停止语音讲解
   graph3d?.dispose()
   graph3d = null
   if (camRafId != null) cancelAnimationFrame(camRafId)

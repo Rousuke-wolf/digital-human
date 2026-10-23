@@ -277,6 +277,7 @@ import { useAuth } from '../composables/useAuth.js'
 import { useLoginPrompt } from '../composables/useLoginPrompt.js'
 import { authHeaders } from '../utils/guestId.js'
 import { userAPI } from '../api/client.js'
+import { guideOnPageEnter, guidePatternGenerate, guidePatternDone } from '../utils/voiceGuide.js'
 import '../page/pattern/index.css'
 
 const { isLoggedIn } = useAuth()
@@ -536,6 +537,9 @@ async function onGenerate() {
     return
   }
 
+  // 数字人反馈：开始创作
+  guidePatternGenerate()
+
   status.value = 'generating'
   elapsed.value = 0
   clearInterval(elapsedTimer)
@@ -551,7 +555,9 @@ async function onGenerate() {
     analysis.value = ana
     resetFilters()
     status.value = url ? 'done' : 'error'
-    if (!url) toast('图片生成失败，请稍后重试')
+    // 数字人反馈：生成成功后简单点评
+    if (url) guidePatternDone(theme.value.trim())
+    else toast('图片生成失败，请稍后重试')
   } catch (e) {
     console.error('[pattern] 生成失败:', e.message)
     status.value = 'error'
@@ -724,6 +730,8 @@ const REUSE_KEY = 'zhichuan-pattern-reuse'
 
 onMounted(() => {
   document.addEventListener('click', onDocClick)
+  // 语音引导：首次进入播报共创页介绍，之后每次进入随机问候
+  guideOnPageEnter('create')
   // 个人中心「复用」：恢复指定作品到预览区，继续二次创作
   try {
     const raw = sessionStorage.getItem(REUSE_KEY)

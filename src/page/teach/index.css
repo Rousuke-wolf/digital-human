@@ -364,7 +364,14 @@
   }
 
   .demo-canvas-box {
-    height: 260px;
+    /* 减内边距、加高外框：保证内部画布高度与桌面端一致（350-84 ≈ 300-28），
+       针法动画内容不再超出被裁 */
+    height: 300px;
+    padding: 14px;
+  }
+
+  .demo-visual {
+    border-radius: 24px;
   }
 
   .step-cards-row {
@@ -375,5 +382,48 @@
   .stitch-controls .control-row {
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  /* 移动端：数字人舞台改为右下角悬浮圆形小头像，教学区获得完整宽度 */
+  .teaching-dashboard .left-stage {
+    position: fixed;
+    top: calc(50vh - 58px);
+    right: auto;
+    bottom: auto;
+    left: 14px;
+    width: 116px !important;
+    height: 116px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 2px solid rgba(201, 152, 74, 0.5);
+    border-radius: 50% !important;
+    overflow: hidden;
+    z-index: 60;
+    background: radial-gradient(circle at 50% 30%, #fdf6ec, #f2e3c8);
+    box-shadow: 0 8px 24px rgba(92, 61, 32, 0.28);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .teaching-dashboard .left-stage .section-label,
+  .teaching-dashboard .left-stage .live2d-scene-info {
+    display: none;
+  }
+
+  .teaching-dashboard .left-stage .character-section,
+  .teaching-dashboard .left-stage .character-3d {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* 教学区底部留白，滚到底时控件不被小头像压住 */
+  .teaching-dashboard .right-panel {
+    padding-bottom: 64px;
   }
 }

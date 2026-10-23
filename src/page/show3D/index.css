@@ -247,6 +247,37 @@
   color: #7a6248;
 }
 
+/* 朗读介绍按钮（原 Meshy.js 内联样式迁入；禁用态半透明） */
+.model-info-tts {
+  margin-top: 14px;
+  padding: 7px 20px;
+  border: none;
+  border-radius: 20px;
+  background: #c8a96e;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: not-allowed;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.4;
+  transition: background 0.2s, opacity 0.2s, transform 0.1s;
+}
+
+.model-info-tts:not(:disabled) {
+  opacity: 1;
+  cursor: pointer;
+}
+
+.model-info-tts:not(:disabled):hover {
+  background: #b8934e;
+}
+
+.model-info-tts:not(:disabled):active {
+  transform: scale(0.96);
+}
+
 /* 语音/返回按钮 */
 .intro-audio-btn {
   background: #fffefb;
@@ -283,15 +314,43 @@
     min-height: 0;
   }
 
-  .left-stage {
-    width: 100%;
-    height: 300px;
-    min-height: 0;
+  /* 移动端：数字人舞台改为右下角悬浮圆形小头像，展厅区获得完整宽度 */
+  .main-dashboard .left-stage {
+    position: fixed;
+    top: calc(50vh - 58px);
+    right: auto;
+    bottom: auto;
+    left: 14px;
+    width: 116px !important;
+    height: 116px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 2px solid rgba(201, 152, 74, 0.5);
+    border-radius: 50% !important;
+    overflow: hidden;
+    z-index: 60;
+    background: radial-gradient(circle at 50% 30%, #fdf6ec, #f2e3c8);
+    box-shadow: 0 8px 24px rgba(92, 61, 32, 0.28);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .main-dashboard .left-stage .character-section,
+  .main-dashboard .left-stage .character-3d {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   /* 3D 页 canvas 内联宽度 45vw 的覆盖 */
   #live2d {
     width: 100% !important;
+    height: 100% !important;
   }
 
   .model-right-panel {
@@ -309,5 +368,10 @@
   .meshy-gen-btn {
     flex: 1;
     min-width: 88px;
+  }
+
+  /* 展厅区底部留白，滚到底时介绍卡不被小头像压住 */
+  .main-dashboard .model-right-panel {
+    padding-bottom: 64px;
   }
 }
