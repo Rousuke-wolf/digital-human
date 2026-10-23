@@ -2345,3 +2345,41 @@ body {
     min-width: 0;
   }
 }
+
+/* ═══ 品牌 logo「智绣」（整合时从队友 style.css 补回：左上角书法字样式）═══ */
+.navbar .nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  margin-right: 0;
+}
+
+/* 品牌主文字「智绣」：深棕书法字，纯文字无底色，体现非遗底蕴 */
+.navbar .nav-logo .nav-logo-name {
+  font-family: 'Ma Shan Zheng', 'STXingkai', 'Xingkai SC', 'KaiTi', cursive;
+  font-size: 28px;
+  line-height: 1;
+  color: #4a2e1b;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+/* 副标题：小号衬线字 + 极细半透明竖线分隔，弱化存在感 */
+.navbar .nav-logo .nav-logo-sub {
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #a08a70;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  padding-left: 12px;
+  border-left: 1px solid rgba(92, 61, 32, 0.22);
+}
+
+/* 窄屏：只保留「智绣」主文字，副标题收起 */
+@media (max-width: 640px) {
+  .navbar .nav-logo-sub {
+    display: none;
+  }
+}

@@ -67,7 +67,6 @@ export async function initLive2D() {
     app.stage.addChild(model)
 
     // ── 自适应尺寸 ──────────────────────────────
-    let _baseScale = container.clientWidth * 0.0007
     const ZOOM_MIN = 0.8
     const ZOOM_MAX = 1.4
     const ZOOM_STEP = 0.08
@@ -110,7 +109,6 @@ export async function initLive2D() {
             // 头部中心（本地坐标）→ 屏幕圆框中心（offsetX 负值=脸往左移）
             model.x = w / 2 - s * (b.x + b.width / 2) + AVATAR_OFFSET_X
             model.y = h / 2 - s * (b.y + (AVATAR_HEAD_RATIO / 2) * b.height) + AVATAR_OFFSET_Y
-            _baseScale = s
             return
           }
         } catch { /* 包围盒异常时退回下方兜底公式 */ }
@@ -119,7 +117,6 @@ export async function initLive2D() {
         model.scale.set(s * _zoomFactor)
         model.anchor.set(0.5, 0.28)
         model.y = h / 2 + (0.28 - AVATAR_HEAD_RATIO / 2) * s * (model.height || 1000)
-        _baseScale = s
       } else {
         // 桌面端：高度按舞台比例（与右侧对话框对齐），顶部贴齐舞台顶部；
         // 用模型真实包围盒计算，缩放与定位不依赖猜测的模型尺寸
@@ -132,7 +129,6 @@ export async function initLive2D() {
             model.scale.set(s * _zoomFactor)
             model.x = w / 2 - s * (b.x + b.width / 2)
             model.y = DESK_MODEL_TOP_OFFSET - s * b.y
-            _baseScale = s
           } else {
             throw new Error('bounds empty')
           }
@@ -141,7 +137,6 @@ export async function initLive2D() {
           model.anchor.set(0.5, 0.28)
           const BASE = isVoiceMode ? 0.00035 : 0.0007
           model.scale.set(w * BASE * _zoomFactor)
-          _baseScale = w * BASE
           model.y = h * 0.55
         }
       }
@@ -197,7 +192,8 @@ export async function initLive2D() {
       e.preventDefault()
       const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP
       _zoomFactor = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _zoomFactor + delta))
-      model.scale.set(_baseScale * _zoomFactor)
+      // 重新走完整布局（重新居中/顶部对齐），原地缩放而不是从左上角斜着漂移
+      fitModel()
     }, { passive: false })
 
     // ── 口型同步 ─────────────────────────────────
