@@ -1,10 +1,13 @@
 import { ref } from 'vue'
-import { authAPI } from '../api/client.js'
+import { authAPI, userAPI } from '../api/client.js'
+import { mergeLocalWorks, loadCloudWorks } from '../utils/worksSync.js'
 
 // 全局单例状态（跨组件共享；导航条登录态由 Navbar.vue 响应式渲染）
 const user = ref(null)
 const isLoggedIn = ref(false)
 const loading = ref(true)
+// 额度状态（必做项 4）：登录后为 { quotas: [...] }，未登录为 null
+const quota = ref(null)
 
 // 本地缓存（后端不可用时也能保持登录态）
 const CACHE_KEY = 'auth_cache'
@@ -23,6 +26,25 @@ function _clearCache() {
   localStorage.removeItem('token')
 }
 
+// 登录成功后：游客本地作品合并上云 + 拉取额度（均不阻塞登录流程）
+async function _afterLogin() {
+  await mergeLocalWorks()
+  await refreshQuota()
+}
+
+// 拉取个人额度（未登录或失败时置空，页面据此隐藏额度卡片）
+async function refreshQuota() {
+  if (!isLoggedIn.value) {
+    quota.value = null
+    return
+  }
+  try {
+    quota.value = await userAPI.usage()
+  } catch {
+    quota.value = null
+  }
+}
+
 export function useAuth() {
   async function login(email, credential, mode = 'password') {
     const body = mode === 'code'
@@ -33,6 +55,7 @@ export function useAuth() {
     _saveCache({ username: data.user.username, email: data.user.email, avatar: data.user.avatar })
     user.value = data.user
     isLoggedIn.value = true
+    _afterLogin()
     return data.user
   }
 
@@ -42,6 +65,7 @@ export function useAuth() {
     _saveCache({ username: data.user.username, email: data.user.email, avatar: data.user.avatar })
     user.value = data.user
     isLoggedIn.value = true
+    _afterLogin()
     return data.user
   }
 
@@ -58,6 +82,9 @@ export function useAuth() {
       user.value = data.user
       isLoggedIn.value = true
       _saveCache({ username: data.user.username, email: data.user.email, avatar: data.user.avatar })
+      // 恢复登录态后：同步云端作品（换设备场景）+ 拉取额度
+      loadCloudWorks()
+      refreshQuota()
     } catch {
       // 后端不可用 → 从本地缓存恢复
       const cache = _loadCache()
@@ -78,9 +105,10 @@ export function useAuth() {
     _clearCache()
     user.value = null
     isLoggedIn.value = false
+    quota.value = null
   }
 
-  return { user, isLoggedIn, loading, login, register, checkAuth, logout }
+  return { user, isLoggedIn, loading, quota, login, register, checkAuth, logout, refreshQuota }
 }
 
 

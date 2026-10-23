@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <defs>
+    <radialGradient id="paper" cx="50%" cy="44%" r="78%">
+      <stop offset="0%" stop-color="#f8f1e1"/>
+      <stop offset="58%" stop-color="#f3e9d2"/>
+      <stop offset="100%" stop-color="#e9d7b4"/>
+    </radialGradient>
+    <radialGradient id="vign" cx="50%" cy="46%" r="72%">
+      <stop offset="62%" stop-color="#3d1f0a" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#3d1f0a" stop-opacity="0.12"/>
+    </radialGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <path id="petal" d="M600 400 C556 322 556 244 600 200 C644 244 644 322 600 400 Z" fill="#b03a2e" stroke="#e2c189" stroke-width="2.5"/>
+    <path id="petalMid" d="M600 400 C566 340 566 282 600 250 C634 282 634 340 600 400 Z" fill="#c0392b" stroke="#eccf9a" stroke-width="2"/>
+    <path id="petalIn" d="M600 400 C578 356 578 312 600 288 C622 312 622 356 600 400 Z" fill="#e8a9a0" stroke="#f4e2bb" stroke-width="1.5"/>
+    <path id="leaf" d="M600 440 C556 352 548 246 600 156 C652 246 644 352 600 440 Z" fill="#5a6b3f" stroke="#c9984a" stroke-width="2.5"/>
+    <g id="outerPair"><use href="#petal"/><use href="#petal" transform="rotate(30 600 400)"/></g>
+    <g id="midPair"><use href="#petalMid" transform="rotate(15 600 400)"/><use href="#petalMid" transform="rotate(45 600 400)"/></g>
+    <g id="inPair"><use href="#petalIn"/><use href="#petalIn" transform="rotate(30 600 400)"/></g>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#paper)"/>
+  <rect width="1200" height="800" filter="url(#grain)" opacity="0.045"/>
+
+  <!-- 四角叶片（45° 对角线，垫在花瓣之下） -->
+  <g>
+    <use href="#leaf" transform="rotate(45 600 400)"/>
+    <use href="#leaf" transform="rotate(135 600 400)"/>
+    <use href="#leaf" transform="rotate(225 600 400)"/>
+    <use href="#leaf" transform="rotate(315 600 400)"/>
+    <path d="M600 400 L600 176" stroke="#e2c189" stroke-width="2" transform="rotate(45 600 400)"/>
+    <path d="M600 400 L600 176" stroke="#e2c189" stroke-width="2" transform="rotate(135 600 400)"/>
+    <path d="M600 400 L600 176" stroke="#e2c189" stroke-width="2" transform="rotate(225 600 400)"/>
+    <path d="M600 400 L600 176" stroke="#e2c189" stroke-width="2" transform="rotate(315 600 400)"/>
+  </g>
+
+  <!-- 三层花瓣：外深红 / 中朱砂 / 内浅粉 -->
+  <g>
+    <use href="#outerPair"/>
+    <use href="#outerPair" transform="rotate(60 600 400)"/>
+    <use href="#outerPair" transform="rotate(120 600 400)"/>
+    <use href="#outerPair" transform="rotate(180 600 400)"/>
+    <use href="#outerPair" transform="rotate(240 600 400)"/>
+    <use href="#outerPair" transform="rotate(300 600 400)"/>
+    <use href="#midPair"/>
+    <use href="#midPair" transform="rotate(60 600 400)"/>
+    <use href="#midPair" transform="rotate(120 600 400)"/>
+    <use href="#midPair" transform="rotate(180 600 400)"/>
+    <use href="#midPair" transform="rotate(240 600 400)"/>
+    <use href="#midPair" transform="rotate(300 600 400)"/>
+    <use href="#inPair"/>
+    <use href="#inPair" transform="rotate(60 600 400)"/>
+    <use href="#inPair" transform="rotate(120 600 400)"/>
+    <use href="#inPair" transform="rotate(180 600 400)"/>
+    <use href="#inPair" transform="rotate(240 600 400)"/>
+    <use href="#inPair" transform="rotate(300 600 400)"/>
+  </g>
+
+  <!-- 花蕊 -->
+  <circle cx="600" cy="400" r="30" fill="#c9984a" stroke="#e2c189" stroke-width="2.5"/>
+  <g fill="#f8f1e1">
+    <circle cx="600" cy="382" r="3.4"/>
+    <circle cx="600" cy="382" r="3.4" transform="rotate(60 600 400)"/>
+    <circle cx="600" cy="382" r="3.4" transform="rotate(120 600 400)"/>
+    <circle cx="600" cy="382" r="3.4" transform="rotate(180 600 400)"/>
+    <circle cx="600" cy="382" r="3.4" transform="rotate(240 600 400)"/>
+    <circle cx="600" cy="382" r="3.4" transform="rotate(300 600 400)"/>
+  </g>
+
+  <rect width="1200" height="800" fill="url(#vign)"/>
+  <rect x="30" y="30" width="1140" height="740" fill="none" stroke="#c9984a" stroke-width="2.5" opacity="0.75"/>
+  <rect x="38" y="38" width="1124" height="724" fill="none" stroke="#c9984a" stroke-width="1" opacity="0.4"/>
+  <g transform="translate(1088 690)">
+    <rect width="64" height="64" rx="6" fill="#c0392b" opacity="0.92"/>
+    <text x="32" y="46" text-anchor="middle" font-family="STKaiti, KaiTi, SimSun, serif" font-size="40" font-weight="700" fill="#f8f1e1">绣</text>
+  </g>
+</svg>

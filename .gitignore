@@ -34,3 +34,15 @@ server/.env
 # SQLite 数据库文件（数据持久化，勿删除）
 server/data/
 server/data.db*
+
+# 需求/规划草稿（仅本地，不入库）
+require
+require2
+
+# 环境变量文件（含密钥，任何 .env* 变体都不入库）
+*.env*
+
+# 图鉴上传文件与抓取缓存（运行时生成）
+server/public/uploads/
+server/data/gallery.json
+server/data/news.json

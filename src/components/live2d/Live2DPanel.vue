@@ -12,7 +12,7 @@
           :class="{ active: current === e.key }"
           @click="set(e.key)"
         >
-          {{ e.icon }} <span>{{ e.label }}</span>
+          <span>{{ e.label }}</span>
         </button>
       </div>
     </div>
@@ -24,11 +24,11 @@ import { ref, onMounted } from 'vue'
 import { initLive2D, setEmotion } from '../../composables/useLive2D.js'
 
 const emotions = [
-  { key: 'happy', icon: '😊', label: '开心' },
-  { key: 'peace', icon: '😌', label: '平静' },
-  { key: 'thoughtful', icon: '🤔', label: '思考' },
-  { key: 'surprised', icon: '😲', label: '惊讶' },
-  { key: 'gentle', icon: '🥰', label: '温柔' },
+  { key: 'happy', label: '开心' },
+  { key: 'peace', label: '平静' },
+  { key: 'thoughtful', label: '思考' },
+  { key: 'surprised', label: '惊讶' },
+  { key: 'gentle', label: '温柔' },
 ]
 const current = ref('happy')
 

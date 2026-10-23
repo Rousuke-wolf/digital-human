@@ -50,8 +50,10 @@ function _stopPrevious() {
   _isFallback = false;
 }
 
-// ── speak(text, onDuration, onStart, onEnd) ──────────
-export function speak(text, onDuration, onStart, onEnd) {
+// ── speak(text, onDuration, onStart, onEnd, opts) ──────────
+// opts 为可选音量参数（{ volume, rate }）：传入时优先于 window._ttsSettings，
+// 供语音引导等独立场景使用（不修改文化页共享的 _ttsSettings）
+export function speak(text, onDuration, onStart, onEnd, opts) {
   if (!text?.trim()) return;
 
   _speakActive  = true;
@@ -77,8 +79,8 @@ export function speak(text, onDuration, onStart, onEnd) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text,
-          volume: settings.volume ?? 50,
-          rate:   settings.rate   ?? 1.2
+          volume: opts?.volume ?? settings.volume ?? 50,
+          rate:   opts?.rate   ?? settings.rate   ?? 1.2
         }),
         signal: abortCtrl.signal
       });

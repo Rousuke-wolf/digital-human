@@ -3,6 +3,7 @@
 import { MODELS } from '../../utils/models.js'
 import { appState } from '../../utils/state.js'
 import { attachViewerLoading } from '../../utils/viewerLoading.js'
+import { infoTtsReset, infoTtsEnable } from './infoTts.js'
 
 // 展示指定下标的预设展品；viewer 不存在时（空态）直接在位构建
 export function showPresetModel(index) {
@@ -22,7 +23,7 @@ export function showPresetModel(index) {
       wrap.querySelector('.model-empty-hint')?.remove()
       wrap.innerHTML = `
         <model-viewer id="mainModelViewer" src="${model.src}" alt="3D模型展示"
-          auto-rotate camera-controls shadow-intensity="1" exposure="1"
+          auto-rotate camera-controls environment-image="neutral" exposure="1.05" shadow-intensity="0.6"
           style="width:100%;height:100%;background:transparent;"></model-viewer>`
       attachViewerLoading(document.getElementById('mainModelViewer'))
     }
@@ -32,6 +33,10 @@ export function showPresetModel(index) {
   if (nameEl) nameEl.textContent = model.name
   const introEl = document.getElementById('modelIntroText')
   if (introEl) introEl.textContent = model.intro
+
+  // 朗读介绍：预设展品介绍就绪即启用（切换展品先停止上一次播报）
+  infoTtsReset()
+  infoTtsEnable()
 
   // 下拉框同步（含「输入预设名点生成」的守卫路径）
   const dropdown = document.getElementById('modelDropdown')

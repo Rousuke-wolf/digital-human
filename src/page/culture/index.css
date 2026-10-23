@@ -226,6 +226,16 @@
   color: #fff !important;
 }
 
+/* 情感化陪伴气泡：与普通 AI 回复区分（金色左描边 + 米金底色）
+   当前问候已改用普通气泡样式，此规则保留备用 */
+.culture-chat-panel .message.companion-bubble {
+  background: #fdf6e8 !important;
+  border: 1px solid #e8d5a3 !important;
+  border-left: 3px solid #c8a96e !important;
+  color: #6b4a2a !important;
+}
+
+
 .culture-chat-panel .message.thinking {
   background: transparent !important;
   color: var(--c-light) !important;
@@ -236,7 +246,7 @@
   background: var(--c-gold) !important;
 }
 
-/* 欢迎横幅 */
+/* 欢迎横幅（保留设计，禁止修改，见 CLAUDE.md） */
 .culture-chat-panel .welcome-banner {
   background: linear-gradient(135deg, rgba(139, 98, 64, 0.07), rgba(201, 152, 74, 0.05)) !important;
   border: 1px solid rgba(139, 98, 64, 0.18) !important;
@@ -272,6 +282,12 @@
 
 .culture-chat-panel .input-area input::placeholder {
   color: var(--c-light) !important;
+}
+
+/* 胶囊与三键组：桌面端对布局透明（四键与输入框同行，保持原样式），移动端各自成行 */
+.culture-chat-panel .input-capsule,
+.culture-chat-panel .input-ctrl-row {
+  display: contents;
 }
 
 .culture-chat-panel .input-area button:first-of-type {
@@ -512,16 +528,82 @@
     overflow-y: auto;
   }
 
-  .culture-left {
-    width: 100%;
-    min-width: 0;
-    height: 360px;
-    border-right: none;
-    border-bottom: 1px solid var(--c-border);
+  /* 平板/缩窗：卡片按可用宽度自适应列数（越宽列数越多、占位越矮） */
+  .page-culture .culture-mini-grid {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   }
 
-  .culture-mini-grid {
-    grid-template-columns: repeat(2, 1fr);
+  /* 平板/缩窗下聊天区加高、卡片区压缩。
+     注意加 .page-culture 前缀提高优先级：本块位于全局 180px/210px 固定值规则之前，
+     同优先级同 !important 时后写的会赢，必须用更高特异性压过 */
+  .page-culture .culture-chat-panel .chat-history {
+    min-height: 48vh !important;
+  }
+
+  .page-culture .culture-cards-panel {
+    min-height: 0 !important;
+    padding: 10px 14px 12px !important;
+  }
+
+  .page-culture .culture-mini-card {
+    padding: 8px 10px !important;
+    gap: 3px !important;
+  }
+
+  .page-culture .culture-mini-card .mini-card-tag {
+    display: none;
+  }
+
+  /* 移动端：数字人舞台改为右下角悬浮圆形小头像，聊天区获得完整宽度；
+     语音模式仍是全屏数字人（不受小头像规则影响） */
+  .page-culture:not(.voice-mode) .culture-left {
+    position: fixed;
+    top: calc(50vh - 260px);
+    right: auto;
+    bottom: auto;
+    left: 2px;
+    width: 116px !important;
+    height: 116px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 2px solid rgba(201, 152, 74, 0.5);
+    border-radius: 50% !important;
+    overflow: hidden;
+    z-index: 60;
+    background: radial-gradient(circle at 50% 30%, #fdf6ec, #f2e3c8);
+    box-shadow: 0 8px 24px rgba(92, 61, 32, 0.28);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .page-culture:not(.voice-mode) .culture-left .character-section,
+  .page-culture:not(.voice-mode) .culture-left .character-3d {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .page-culture:not(.voice-mode) .culture-left .emotion-switch {
+    display: none;
+  }
+
+  /* 聊天区底部留白，滚到底时内容不被小头像压住 */
+  .page-culture:not(.voice-mode) .culture-right {
+    padding-bottom: 64px;
+  }
+
+  /* 语音模式：舞台撑满整个视口（覆盖 360px 固定高度） */
+  .voice-mode .culture-left {
+    height: calc(100vh - 64px) !important;
+  }
+
+  .voice-mode .culture-dashboard {
+    overflow: hidden;
   }
 }
 
@@ -851,14 +933,6 @@
 
 /* ═══ 移动端适配（640px 以下微调） ═══ */
 @media (max-width: 640px) {
-  .culture-left {
-    height: 300px;
-  }
-
-  .culture-mini-grid {
-    grid-template-columns: 1fr;
-  }
-
   .culture-right {
     padding: 10px;
   }
@@ -866,4 +940,561 @@
   .culture-chat-panel .input-area {
     gap: 4px;
   }
+
+  /* 聊天区加高：占约半屏，保证对话空间 */
+  .culture-chat-panel .chat-history {
+    min-height: 44vh !important;
+  }
+
+  /* 输入区改版：外容器透明只负责布局，输入框自带胶囊样式，
+     四个按钮独立成一行右对齐，不再挤在提问框内部 */
+  .culture-chat-panel .input-area {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin-bottom: 4px;
+    gap: 0;
+    flex-wrap: wrap;
+  }
+
+  /* 胶囊：恢复原来输入区的样式（输入框 + 发送键在同一胶囊内，发送键在最后） */
+  .culture-chat-panel .input-capsule {
+    display: flex;
+    flex: 1 1 100%;
+    align-items: center;
+    background: var(--c-panel) !important;
+    border: 1px solid var(--c-border) !important;
+    border-radius: 40px !important;
+    padding: 8px 8px 8px 24px;
+    box-shadow: 0 2px 8px var(--c-shadow);
+  }
+
+  .culture-chat-panel .input-area input {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    font-size: 16px !important;
+    padding: 6px 0;
+    min-height: 22px;
+  }
+
+  /* 发送键：胶囊内右端（保持圆形小键样式） */
+  .culture-chat-panel .input-area button:first-of-type {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* 其余三键（暂停/停止/语音）：下一行右对齐 */
+  .culture-chat-panel .input-area button {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .culture-chat-panel .input-ctrl-row {
+    display: flex;
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    gap: 3px;
+    margin-top: 8px;
+  }
+
+  /* 知识卡片区：两列紧凑排布，占位减半 */
+  .culture-cards-panel {
+    min-height: 0 !important;
+    padding: 10px 12px 12px !important;
+  }
+
+  .culture-mini-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .culture-mini-card {
+    padding: 8px 10px !important;
+    gap: 3px !important;
+  }
+
+  .culture-mini-card .mini-card-name {
+    font-size: 12.5px;
+  }
+
+  .culture-mini-card .mini-card-tag {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   第三轮重构：宣纸融合 + 信笺级聊天 + 猜你想问胶囊
+   1. 页面背景与首页一致的宣纸米黄渐变，去硬边框割裂
+   2. 左侧立绘：无卡片底/无边框，渐变遮罩融入宣纸
+   3. 聊天区：透明悬浮 + 信笺气泡 + 侧边小头像
+   4. 功能栏：右上角极简线框幽灵按钮
+   5. 底部知识卡片 → 「猜你想问」胶囊标签
+   ═══════════════════════════════════════════════════════ */
+
+/* ── 全局：宣纸米黄（与首页同源） ── */
+.page-culture,
+.page-culture .app-wrapper {
+  background:
+    radial-gradient(1200px 600px at 50% -8%, rgba(201, 152, 74, 0.16), transparent 62%),
+    linear-gradient(180deg, #faf6ef 0%, #f6eedd 46%, #efe3c8 100%) !important;
+}
+
+.culture-dashboard {
+  background: transparent !important;
+  padding: 18px 28px 20px;
+  gap: 24px;
+}
+
+/* ── 左侧：立绘融入宣纸 ── */
+.culture-left {
+  background: transparent !important;
+  border-right: none !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.culture-left .character-section {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.culture-left .character-3d {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  /* 渐变遮罩：底部+左右边缘自然融入宣纸，绣娘如静坐画中 */
+  -webkit-mask-image:
+    linear-gradient(to top, transparent 0%, black 26%),
+    linear-gradient(to right, transparent 0%, black 12%),
+    linear-gradient(to left, transparent 0%, black 12%);
+  mask-image:
+    linear-gradient(to top, transparent 0%, black 26%),
+    linear-gradient(to right, transparent 0%, black 12%),
+    linear-gradient(to left, transparent 0%, black 12%);
+}
+
+/* 情绪切换：透明毛玻璃胶囊，纯文字无 Emoji */
+.culture-left .emotion-switch {
+  background: rgba(255, 252, 245, 0.55) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(160, 122, 74, 0.22) !important;
+  box-shadow: 0 4px 14px rgba(92, 61, 32, 0.05) !important;
+  border-radius: 30px !important;
+  width: fit-content !important;
+  align-self: center;
+  margin-top: 14px !important;
+  padding: 5px 8px !important;
+  gap: 2px;
+}
+
+.culture-left .emotion-btn {
+  font-size: 13px !important;
+  padding: 5px 14px !important;
+  color: #8a7357 !important;
+  gap: 0 !important;
+  letter-spacing: 1px;
+  border: 1px solid transparent;
+}
+
+.culture-left .emotion-btn span {
+  font-size: 13px !important;
+}
+
+.culture-left .emotion-btn:hover {
+  background: rgba(160, 122, 74, 0.08) !important;
+  color: #5c3d20 !important;
+}
+
+.culture-left .emotion-btn.active {
+  background: rgba(192, 57, 43, 0.08) !important;
+  border: 1px solid rgba(192, 57, 43, 0.35) !important;
+  color: #a93226 !important;
+}
+
+/* ── 右侧：透明容器，对话自然悬浮 ── */
+.culture-right {
+  background: transparent !important;
+}
+
+.culture-chat-panel {
+  padding: 6px 4px 12px !important;
+  border-bottom: none !important;
+}
+
+/* ── 功能栏：右上角极简幽灵按钮（线框图标 + 浅灰文字） ── */
+.culture-chat-panel .function-bar {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 6px 12px !important;
+  margin-bottom: 4px !important;
+  justify-content: flex-end !important;
+}
+
+.culture-chat-panel .function-group {
+  gap: 10px !important;
+}
+
+.culture-chat-panel .func-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent !important;
+  border: 1px solid rgba(160, 122, 74, 0.28) !important;
+  color: #8a7357 !important;
+  border-radius: 20px !important;
+  padding: 4px 14px !important;
+  font-size: 12px !important;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.culture-chat-panel .func-item:hover {
+  background: rgba(255, 252, 245, 0.75) !important;
+  color: #5c3d20 !important;
+  border-color: rgba(139, 98, 64, 0.55) !important;
+  transform: translateY(-1px);
+}
+
+.culture-chat-panel .func-item i {
+  display: inline-flex;
+  align-items: center;
+  color: inherit !important;
+  font-size: 13px !important;
+}
+
+/* 语音设置面板：毛玻璃 */
+.culture-chat-panel .voice-settings-panel {
+  background: rgba(255, 252, 245, 0.6) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(160, 122, 74, 0.22) !important;
+  box-shadow: 0 6px 18px rgba(92, 61, 32, 0.05);
+  border-radius: 14px !important;
+}
+
+.culture-chat-panel .vs-label {
+  color: #8a7357 !important;
+}
+
+.culture-chat-panel .vs-val {
+  color: #a93226 !important;
+}
+
+.culture-chat-panel .vs-slider {
+  accent-color: #c9984a !important;
+}
+
+/* ── 聊天历史：透明信笺，仅内部滚动 ── */
+.culture-chat-panel .chat-history {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 8px 6px !important;
+  margin-bottom: 10px !important;
+  overflow-y: auto !important;
+}
+
+/* ── 气泡：信笺级质感 + 侧边小头像 ── */
+.culture-chat-panel .message {
+  max-width: 78% !important;
+  position: relative;
+}
+
+/* 绣娘气泡：纯白 + 极柔和阴影，左上角小圆角（从左侧发出） */
+.culture-chat-panel .message.ai {
+  background: #ffffff !important;
+  color: #4a3a2a !important;
+  border: none !important;
+  border-radius: 16px 16px 16px 4px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+  margin-left: 46px !important;
+  padding: 12px 18px !important;
+}
+
+/* 绣娘小头像（复用团队国风头像图） */
+.culture-chat-panel .message.ai::before {
+  content: '';
+  position: absolute;
+  left: -38px;
+  bottom: 2px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: url('/team/avatar.svg') center / cover no-repeat;
+  box-shadow: 0 2px 6px rgba(92, 61, 32, 0.12);
+}
+
+/* 用户气泡：浅茶色低饱和 + 深棕文字，右上角小圆角（右侧发出） */
+.culture-chat-panel .message.user {
+  background: #f0e2cd !important;
+  color: #4a3222 !important;
+  border: none !important;
+  border-radius: 16px 16px 4px 16px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+  margin-right: 46px !important;
+  padding: 12px 18px !important;
+}
+
+/* 用户小头像：极简人形线稿 */
+.culture-chat-panel .message.user::before {
+  content: '';
+  position: absolute;
+  right: -38px;
+  bottom: 2px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(160, 122, 74, 0.3);
+  background: rgba(255, 252, 245, 0.9)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a7357' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3.5'/%3E%3Cpath d='M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6'/%3E%3C/svg%3E")
+    center / 62% no-repeat;
+}
+
+/* 思考中：与绣娘气泡对齐 */
+.culture-chat-panel .message.thinking {
+  background: transparent !important;
+  border: none !important;
+  color: #8a7357 !important;
+  margin-left: 46px !important;
+}
+
+/* ── 输入区：毛玻璃圆角长条，轻盈 ── */
+.culture-chat-panel .input-area {
+  background: rgba(255, 252, 245, 0.6) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(160, 122, 74, 0.28) !important;
+  border-radius: 26px !important;
+  box-shadow: 0 4px 14px rgba(92, 61, 32, 0.05) !important;
+  padding: 6px 8px 6px 20px !important;
+  margin-bottom: 0 !important;
+}
+
+.culture-chat-panel .input-area input {
+  color: #4a3a2a !important;
+  font-size: 15px !important;
+}
+
+.culture-chat-panel .input-area input::placeholder {
+  color: #b3a08a !important;
+}
+
+/* 发送按钮：朱砂红圆形极简图标 */
+.culture-chat-panel .input-area button:first-of-type {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background: #c0392b !important;
+  color: white !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  font-size: 16px !important;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.culture-chat-panel .input-area button:first-of-type:hover {
+  background: #a93226 !important;
+  box-shadow: none !important;
+  transform: scale(1.05);
+}
+
+/* TTS 控制：透明线框幽灵按钮 */
+.culture-chat-panel .tts-control-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent !important;
+  border: 1px solid rgba(160, 122, 74, 0.25) !important;
+  color: #8a7357 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.culture-chat-panel .tts-control-btn:hover {
+  border-color: #8b6240 !important;
+  color: #8b6240 !important;
+}
+
+.culture-chat-panel .tts-control-btn.active {
+  background: rgba(139, 98, 64, 0.1) !important;
+  border-color: #8b6240 !important;
+  color: #8b6240 !important;
+}
+
+/* 语音模式按钮：透明线框 */
+.culture-chat-panel .voice-chat-btn {
+  background: transparent !important;
+  border: 1px solid rgba(160, 122, 74, 0.25) !important;
+  color: #8a7357 !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+.culture-chat-panel .voice-chat-btn:hover {
+  background: transparent !important;
+  border-color: #c0392b !important;
+  color: #c0392b !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ── 底部：「猜你想问」轻量胶囊标签条 ── */
+.culture-cards-panel {
+  background: transparent !important;
+  border-top: none !important;
+  padding: 10px 6px 16px !important;
+  min-height: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+.culture-cards-header {
+  margin-bottom: 10px !important;
+}
+
+.culture-cards-title {
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #5c3d20 !important;
+  letter-spacing: 2px !important;
+  border-left: 3px solid #c0392b !important;
+  padding-left: 10px !important;
+}
+
+.culture-cards-refresh {
+  background: transparent !important;
+  border: 1px solid rgba(160, 122, 74, 0.28) !important;
+  color: #8a7357 !important;
+  font-size: 12px !important;
+  border-radius: 16px !important;
+  padding: 3px 12px !important;
+}
+
+.culture-cards-refresh:hover {
+  color: #5c3d20 !important;
+  border-color: rgba(139, 98, 64, 0.55) !important;
+}
+
+/* 胶囊标签：浅色透明底 + 极细浅棕边框，悬停加深并微浮 */
+.culture-ask-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.culture-ask-pill {
+  background: rgba(255, 252, 245, 0.35);
+  border: 1px solid rgba(160, 122, 74, 0.3);
+  border-radius: 20px;
+  padding: 7px 16px;
+  font-size: 13px;
+  color: #6b4a2a;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+}
+
+.culture-ask-pill:hover {
+  border-color: rgba(139, 98, 64, 0.65);
+  color: #4a2e1b;
+  background: rgba(255, 252, 245, 0.75);
+  transform: translateY(-2px);
+}
+
+.culture-ask-pill.locked {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+/* ── 响应式微调 ── */
+@media (max-width: 1024px) {
+  .culture-dashboard {
+    padding: 14px 16px !important;
+  }
+
+  .culture-left {
+    height: 320px !important;
+    border-bottom: none !important;
+  }
+
+  .culture-chat-panel .message {
+    max-width: 86% !important;
+  }
+}
+
+/* ═══ 还原调整（整合后）：聊天区恢复带框卡片质感 ═══ */
+/* 功能栏：恢复胶囊底色与边框，两个按钮移到左侧 */
+.culture-chat-panel .function-bar {
+  background: var(--c-panel) !important;
+  border: 1px solid var(--c-border) !important;
+  box-shadow: 0 2px 6px var(--c-shadow) !important;
+  border-radius: 40px !important;
+  padding: 8px 18px !important;
+  margin-bottom: 8px !important;
+  justify-content: flex-start !important;
+}
+
+.culture-chat-panel .func-item {
+  background: var(--c-bg2) !important;
+  border: 1px solid var(--c-border) !important;
+  color: var(--c-mid) !important;
+  border-radius: 40px !important;
+  padding: 6px 14px !important;
+}
+
+.culture-chat-panel .func-item:hover {
+  background: var(--c-bg) !important;
+  color: var(--c-dark) !important;
+  transform: none;
+}
+
+/* 聊天面板：恢复原内边距与底部分隔线 */
+.culture-chat-panel {
+  padding: 16px 20px 12px !important;
+  border-bottom: 1px solid var(--c-border) !important;
+}
+
+/* 聊天历史：纯白背景 + 圆角边框（有框的感觉） */
+.culture-chat-panel .chat-history {
+  background: #ffffff !important;
+  border: 1px solid var(--c-border) !important;
+  border-radius: 20px !important;
+  box-shadow: inset 0 2px 8px var(--c-shadow) !important;
+  padding: 14px 16px !important;
+}
+
+/* 白底上 AI 气泡改用浅米色，保持层次（用户气泡原浅茶色不变） */
+.culture-chat-panel .message.ai {
+  background: var(--c-bg2) !important;
+}
+
+/* ═══ 用户头像（个人中心可设置）：照片替换聊天气泡旁的小头像 ═══ */
+.culture-chat-panel .message.user::before {
+  background-color: rgba(255, 252, 245, 0.9);
+  background-image: var(--user-avatar, none),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a7357' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3.5'/%3E%3Cpath d='M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6'/%3E%3C/svg%3E");
+  background-size: cover, 62%;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
 }

@@ -27,8 +27,8 @@ let _curStitch = 'flat';
 let _curType   = 'su';
 let _curSpeed  = 0.08;
 
-// ─── 步骤指示条高度 ───────────────────────────
-const SH = 66;
+// ─── 步骤指示条高度：窄画布（移动端）自动加高，容纳换行后的完整说明文字 ───
+let SH = 66;
 
 // ─────────────────────────────────────────────
 //  数字人台词表  [stitch][type][stepCard 0~2]
@@ -214,10 +214,28 @@ function drawHeader(ctx, W, stitch, phase, phP) {
   }
 
   // 当前步骤说明
-  const cur=steps[phase], tx=sx+(n-1)*gap+dotR+18;
+  const cur=steps[phase];
   ctx.textAlign='left';
+  ctx.textBaseline='top';
+
+  // 窄画布（移动端）：标题与说明下移一行，说明自动换行完整显示（不省略），
+  // 指示条高度由 renderFrame 同步加高
+  if (W < 480) {
+    ctx.font=`bold 13px "Noto Sans SC","Microsoft YaHei",sans-serif`;
+    ctx.fillStyle='#6b3e18';
+    ctx.fillText(`${phase+1}. ${cur.title}`, 16, 38);
+    ctx.font=`11.5px "Noto Sans SC","Microsoft YaHei",sans-serif`;
+    ctx.fillStyle='#a08060';
+    _wrapText(ctx, cur.desc, 16, 56, W - 32, 14, 2);
+    const bx=16, bw=W-32, by=SH-12;
+    ctx.fillStyle='#ece3cf'; ctx.beginPath(); _rr(ctx,bx,by,bw,5,3); ctx.fill();
+    ctx.fillStyle='#c8a060'; ctx.beginPath(); _rr(ctx,bx,by,Math.max(0,bw*ease(phP)),5,3); ctx.fill();
+    return
+  }
+
+  const tx=sx+(n-1)*gap+dotR+18;
   ctx.font=`bold 13px "Noto Sans SC","Microsoft YaHei",sans-serif`;
-  ctx.fillStyle='#6b3e18'; ctx.textBaseline='top';
+  ctx.fillStyle='#6b3e18';
   ctx.fillText(`${phase+1}. ${cur.title}`, tx, 6);
   ctx.font=`11.5px "Noto Sans SC","Microsoft YaHei",sans-serif`;
   ctx.fillStyle='#a08060';
@@ -227,6 +245,24 @@ function drawHeader(ctx, W, stitch, phase, phP) {
   const bx=tx, bw=Math.min(W-tx-16, 240), by=SH-12;
   ctx.fillStyle='#ece3cf'; ctx.beginPath(); _rr(ctx,bx,by,bw,5,3); ctx.fill();
   ctx.fillStyle='#c8a060'; ctx.beginPath(); _rr(ctx,bx,by,Math.max(0,bw*ease(phP)),5,3); ctx.fill();
+}
+
+// 文本自动换行：按字符折行，最多 maxLines 行（超出不显示，文案已按两行适配）
+function _wrapText(ctx, text, x, y, maxW, lineH, maxLines) {
+  let line = ''
+  let lines = 0
+  for (const ch of text) {
+    const t = line + ch
+    if (ctx.measureText(t).width > maxW && line) {
+      ctx.fillText(line, x, y + lines * lineH)
+      line = ch
+      lines++
+      if (lines >= maxLines) return
+    } else {
+      line = t
+    }
+  }
+  if (lines < maxLines && line) ctx.fillText(line, x, y + lines * lineH)
 }
 
 function _rr(ctx,x,y,w,h,r){
@@ -431,6 +467,9 @@ function drawBlanket(ctx, W, H, ct, nDone, isMiao) {
 function renderFrame(ctx, W, H) {
   const speed  = _curSpeed;
   const nDone  = Math.floor(_T * speed) % 8;
+
+  // 窄画布：指示条加高以完整显示（自动换行）的步骤说明
+  SH = W < 480 ? 92 : 66;
 
   // ── 循环重置：超过 MAX_CYCLES 轮后归零 ──
   if (_T * speed >= MAX_CYCLES) { _T = 0; }

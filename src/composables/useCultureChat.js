@@ -12,6 +12,12 @@ import { speak, stop, pause, resume } from '../tts.js'
 import { startLipsync, stopLipsync } from './useLive2D.js'
 import { openImagePreview } from '../utils/lightboxBus.js'
 import { goToExhibit } from '../utils/navigation.js'
+import { getTimeGreeting, getFestival, getVoiceGreeting } from '../utils/companion.js'
+import { guideRecentlyScheduled } from '../utils/voiceGuide.js'
+import { useLoginPrompt } from './useLoginPrompt.js'
+
+// 全局登录引导弹窗（与 App.vue 的 LoginPromptModal 共用同一份状态）
+const { promptLogin } = useLoginPrompt()
 
 // ── 共享响应式状态 ──────────────────────────────────
 export const inputLocked = ref(false)   // 回复进行中：锁定输入与知识卡片
@@ -42,15 +48,59 @@ let _typingPaused = false
 let _typingResume = null
 let _typingResolve = null
 
+let _greetVoiceTimer = null   // 语音问好的 1 秒延迟定时器
+
 // ── 对话持久化（localStorage：气泡 HTML + 上下文消息数组）──
 const CHAT_STORAGE_KEY = 'zhichuan-culture-chat'
+// 历史记录上限：最多保留最近 50 条消息（刷新/切换路由后仍保留）
+const MAX_PERSISTED_MESSAGES = 50
+
+// ── 情感化陪伴：已问候文案记录（localStorage，同一文案只触发一次）──
+const USED_GREETINGS_KEY = 'zhichuan-used-greetings'
+
+function _usedGreetings() {
+  try {
+    const raw = localStorage.getItem(USED_GREETINGS_KEY)
+    const data = raw ? JSON.parse(raw) : []
+    return Array.isArray(data) ? data : []
+  } catch { return [] }
+}
+
+function _markGreetingUsed(text) {
+  try {
+    const used = _usedGreetings()
+    if (!used.includes(text)) {
+      used.push(text)
+      localStorage.setItem(USED_GREETINGS_KEY, JSON.stringify(used))
+    }
+  } catch {}
+}
 
 function persistChat() {
   if (!_chatEl) return
   try {
+    // 问候气泡不入持久化历史：每次进入页面由 maybeGreet 重新生成一组，
+    // 避免多次进入后历史里堆积重复问候
+    const clone = _chatEl.cloneNode(true)
+    // 同时清掉早期版本的问候气泡类名（金边 companion-bubble）
+    clone.querySelectorAll('.greeting-bubble, .companion-bubble').forEach((n) => n.remove())
+    // 历史上限：气泡只保留最近 50 条（欢迎横幅不是 .message，不受影响）
+    const bubbles = clone.querySelectorAll('.message')
+    if (bubbles.length > MAX_PERSISTED_MESSAGES) {
+      bubbles.forEach((n, i) => {
+        if (i < bubbles.length - MAX_PERSISTED_MESSAGES) n.remove()
+      })
+    }
+    // 上下文数组同样裁剪：保留 system 首条 + 最近 50 条对话
+    const sys = _historyMessages.length && _historyMessages[0]?.role === 'system'
+      ? [_historyMessages[0]]
+      : []
+    const recent = _historyMessages
+      .filter((m) => m?.role !== 'system')
+      .slice(-MAX_PERSISTED_MESSAGES)
     localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
-      html: _chatEl.innerHTML,
-      messages: _historyMessages,
+      html: clone.innerHTML,
+      messages: [...sys, ...recent],
     }))
   } catch {
     // 存储满/隐私模式等场景静默失败，仅影响刷新恢复
@@ -76,19 +126,109 @@ export function registerChatUI({ chatEl, inputEl }) {
   _chatEl = chatEl
   _inputEl = inputEl
 
+  // 捕获模板里的欢迎横幅卡片（存档恢复会覆盖整个容器，之后按需补回；
+  // 横幅本身是保留设计，禁止修改，见 CLAUDE.md）
+  const bannerEl = _chatEl.querySelector('.welcome-banner')
+  const bannerHTML = bannerEl?.outerHTML ?? ''
+
   // 刷新页面后恢复上次对话（气泡 + 多轮上下文）
   const saved = loadPersistedChat()
   if (saved?.html) {
     _chatEl.innerHTML = saved.html
+    // 迁移：清除早期「普通气泡版欢迎语」，并保证顶部横幅卡片存在
+    _chatEl.querySelectorAll('.message.welcome-bubble').forEach((n) => n.remove())
+    if (bannerHTML && !_chatEl.querySelector('.welcome-banner')) {
+      _chatEl.insertAdjacentHTML('afterbegin', bannerHTML)
+    }
+    // 旧版本存档可能残留问候气泡，先清掉，稍后 maybeGreet 生成新的一组
+    _chatEl.querySelectorAll('.greeting-bubble, .companion-bubble').forEach((n) => n.remove())
     _chatEl.scrollTop = _chatEl.scrollHeight
     if (saved.messages) _historyMessages = saved.messages
   }
+
+  // 每次进入：绫韵主动问候（文字气泡 + 1 秒后语音问好）
+  maybeGreet()
 }
 
 export function unregisterChatUI() {
   _chatEl = null
   _inputEl = null
+  if (_greetVoiceTimer) { clearTimeout(_greetVoiceTimer); _greetVoiceTimer = null }
   stopAll()
+}
+
+// ── 情感化陪伴：追加问候气泡（普通 AI 气泡样式，仅文字不触发 TTS）──
+function _appendGreetingBubble(text) {
+  if (!_chatEl) return
+  const div = document.createElement('div')
+  div.className = 'message ai greeting-bubble'
+  div.innerText = text
+  _chatEl.appendChild(div)
+  _chatEl.scrollTop = _chatEl.scrollHeight
+  persistChat()
+}
+
+// ── 系统提示气泡（额度超限等非对话内容）──
+function _appendSystemNotice(text) {
+  if (!_chatEl) return
+  const div = document.createElement('div')
+  div.className = 'message ai system-notice'
+  div.innerText = text
+  _chatEl.appendChild(div)
+  _chatEl.scrollTop = _chatEl.scrollHeight
+  persistChat()
+}
+
+// ── 额度/登录类错误处理（必做项 4）──
+// LOGIN_REQUIRED / GUEST_QUOTA_EXCEEDED → 登录引导弹窗（游客）
+// QUOTA_EXCEEDED → 登录用户额度用完，系统气泡提示（不引导登录）
+function handleAIError(err) {
+  if (err?.code === 'LOGIN_REQUIRED' || err?.code === 'GUEST_QUOTA_EXCEEDED') {
+    promptLogin('chat')
+    return
+  }
+  _appendSystemNotice(err?.message || '绣娘正在穿针引线，请稍后再试')
+}
+
+// 进入文化页时调用：文字问候（时间段 + 节日）+ 1 秒后语音问好
+// 同一文案（如「晚上好～」）在本地记录中出现过一次后不再触发，语音同理
+function maybeGreet() {
+  if (!_chatEl) return
+  // 幂等：先移除已有问候气泡（热更重挂载/历史恢复场景），保证同时只有一组问候
+  _chatEl.querySelectorAll('.greeting-bubble, .companion-bubble').forEach((n) => n.remove())
+
+  const used = _usedGreetings()
+  const fest = getFestival()
+
+  // 文字问候：该文案未出现过才追加
+  const timeText = getTimeGreeting()
+  if (!used.includes(timeText)) {
+    _appendGreetingBubble(timeText)
+    _markGreetingUsed(timeText)
+  }
+  if (fest && !used.includes(fest.greeting)) {
+    _appendGreetingBubble(fest.greeting)
+    _markGreetingUsed(fest.greeting)
+  }
+
+  // 语音问好：该文案未播过才播
+  _greetVoiceTimer = setTimeout(() => {
+    _greetVoiceTimer = null
+    // 用户已开始提问或已有语音在播：不打扰
+    if (!_chatEl || inputLocked.value || ttsPlaying.value) return
+    // 语音引导刚安排过（首次进入的页面介绍）：不重复语音问好
+    if (guideRecentlyScheduled()) return
+    const text = getVoiceGreeting()
+    if (_usedGreetings().includes(text)) return
+    _markGreetingUsed(text)
+    speak(text, null, null, () => {
+      // 语音问好播完：复位播报状态与嘴型
+      ttsPlaying.value = false
+      stopLipsync()
+    })
+    startLipsync()
+    ttsPlaying.value = true
+  }, 1000)
 }
 
 // ── 清空对话（ChatPanel「清空对话」按钮）──
@@ -102,7 +242,7 @@ export function clearChat() {
   _historyMessages = [{ role: 'system', content: systemPrompt.trim() }]
   unlockInput()
   if (_chatEl) {
-    // 只移除消息气泡，保留模板里的欢迎横幅
+    // 只移除消息气泡，保留模板里的欢迎横幅卡片
     _chatEl.querySelectorAll('.message').forEach((n) => n.remove())
     _chatEl.scrollTop = _chatEl.scrollHeight
   }
@@ -248,13 +388,19 @@ async function appendAIStream(historyMessages, userInput, onDone) {
   let finalData = null
 
   const stream = chatWithAIStream(historyMessages, userInput)
-  for await (const chunk of stream) {
-    if (isAborted()) break
-    if (chunk.__done) { finalData = chunk; break }
-    const chars = chunk.__message != null
-      ? [chunk.__message]
-      : [...(chunk.delta ?? '')]
-    for (const c of chars) { if (c) collectedMessage += c }
+  try {
+    for await (const chunk of stream) {
+      if (isAborted()) break
+      if (chunk.__done) { finalData = chunk; break }
+      const chars = chunk.__message != null
+        ? [chunk.__message]
+        : [...(chunk.delta ?? '')]
+      for (const c of chars) { if (c) collectedMessage += c }
+    }
+  } catch (err) {
+    // 额度/登录类错误：气泡已创建但无内容，先移除再上抛给 _send 处理
+    div.remove()
+    throw err
   }
 
   // ── 被终止：移除空气泡，干净退出 ─────────────
@@ -400,7 +546,13 @@ async function appendImageToDiv(div, imagePrompt) {
 
   } catch (err) {
     placeholder.remove()
-    console.error('图片追加失败:', err)
+    // 额度/登录类错误：游客引导登录，登录用户提示额度（必做项 4）
+    if (err?.code === 'LOGIN_REQUIRED') {
+      promptLogin('image')
+      persistChat()
+      return
+    }
+    _appendSystemNotice(err?.message || '图片生成失败，请稍后再试')
     persistChat()
   }
 }
@@ -427,11 +579,18 @@ async function _send(text, { clearInput = true } = {}) {
 
   lockInput()
   appendUser(text)
-  if (clearInput && _inputEl) _inputEl.value = ''
+  // clearInput=true（键盘发送）：清空输入框；false（快捷提问/语音）：把文字回填输入框
+  if (_inputEl) _inputEl.value = clearInput ? '' : text
   appendThinking()
-  await appendAIStream(getContextForAPI(), text, (res) => {
-    _onAIDone(text, res.message)
-  })
+  try {
+    await appendAIStream(getContextForAPI(), text, (res) => {
+      _onAIDone(text, res.message)
+    })
+  } catch (err) {
+    // 额度/登录类错误：清掉 thinking 气泡，按错误码提示
+    removeThinking()
+    handleAIError(err)
+  }
   if (!_replyStopped) {
     unlockInput()
     _inputEl?.focus()

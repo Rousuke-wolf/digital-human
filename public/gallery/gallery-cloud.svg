@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <defs>
+    <radialGradient id="paper" cx="50%" cy="44%" r="78%">
+      <stop offset="0%" stop-color="#f8f1e1"/>
+      <stop offset="58%" stop-color="#f3e9d2"/>
+      <stop offset="100%" stop-color="#e9d7b4"/>
+    </radialGradient>
+    <radialGradient id="vign" cx="50%" cy="46%" r="72%">
+      <stop offset="62%" stop-color="#3d1f0a" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#3d1f0a" stop-opacity="0.12"/>
+    </radialGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <pattern id="meander" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M4 44 V4 H44" fill="none" stroke="#c9984a" stroke-width="5"/>
+    </pattern>
+    <!-- 祥云头：三道同心彩虹弧（朱砂/鎏金/墨色）+ 拖尾卷云 -->
+    <g id="cloud" fill="none" stroke-linecap="round">
+      <path d="M0 -78 A78 78 0 0 0 156 -78" stroke="#c0392b" stroke-width="14"/>
+      <path d="M16 -78 A62 62 0 0 0 140 -78" stroke="#c9984a" stroke-width="11"/>
+      <path d="M32 -78 A46 46 0 0 0 124 -78" stroke="#3d1f0a" stroke-width="9"/>
+      <path d="M0 -78 H-140" stroke="#c0392b" stroke-width="14"/>
+      <path d="M-140 -78 a22 22 0 1 0 0 -44" stroke="#c9984a" stroke-width="11"/>
+      <path d="M-40 -78 q-34 18 -62 14" stroke="#c9984a" stroke-width="11"/>
+    </g>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#paper)"/>
+  <rect width="1200" height="800" filter="url(#grain)" opacity="0.045"/>
+
+  <!-- 祥云群 -->
+  <use href="#cloud" transform="translate(600 470) scale(1.35)"/>
+  <use href="#cloud" transform="translate(300 330) scale(0.72)"/>
+  <use href="#cloud" transform="translate(900 340) scale(-0.8 0.8)"/>
+  <use href="#cloud" transform="translate(330 610) scale(0.5)"/>
+  <use href="#cloud" transform="translate(870 620) scale(-0.55 0.55)"/>
+
+  <!-- 上下回纹带 -->
+  <g>
+    <line x1="84" y1="64" x2="1116" y2="64" stroke="#3d1f0a" stroke-width="2" opacity="0.5"/>
+    <rect x="84" y="72" width="1032" height="48" fill="url(#meander)" opacity="0.8"/>
+    <line x1="84" y1="128" x2="1116" y2="128" stroke="#3d1f0a" stroke-width="2" opacity="0.5"/>
+    <line x1="84" y1="672" x2="1116" y2="672" stroke="#3d1f0a" stroke-width="2" opacity="0.5"/>
+    <rect x="84" y="680" width="1032" height="48" fill="url(#meander)" opacity="0.8"/>
+    <line x1="84" y1="736" x2="1116" y2="736" stroke="#3d1f0a" stroke-width="2" opacity="0.5"/>
+  </g>
+
+  <rect width="1200" height="800" fill="url(#vign)"/>
+  <rect x="30" y="30" width="1140" height="740" fill="none" stroke="#c9984a" stroke-width="2.5" opacity="0.75"/>
+  <rect x="38" y="38" width="1124" height="724" fill="none" stroke="#c9984a" stroke-width="1" opacity="0.4"/>
+  <g transform="translate(1088 690)">
+    <rect width="64" height="64" rx="6" fill="#c0392b" opacity="0.92"/>
+    <text x="32" y="46" text-anchor="middle" font-family="STKaiti, KaiTi, SimSun, serif" font-size="40" font-weight="700" fill="#f8f1e1">绣</text>
+  </g>
+</svg>

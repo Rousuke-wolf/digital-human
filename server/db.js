@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import { existsSync, mkdirSync, copyFileSync, readdirSync, unlinkSync, statSync } from 'fs'
+import { existsSync, mkdirSync, copyFileSync, readdirSync, unlinkSync, statSync, utimesSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
@@ -27,6 +27,10 @@ function autoBackup() {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)
     const dest = join(backupDir, `database-${stamp}.db`)
     copyFileSync(dbPath, dest)
+    // Windows 下 copyFileSync 会继承源文件 mtime；WAL 模式下 database.db 的 mtime
+    // 是上次 checkpoint 时间（可能很旧），会被下方 7 天清理误删，这里显式刷新为当前时间
+    const nowTime = Date.now() / 1000
+    utimesSync(dest, nowTime, nowTime)
     console.log(`📦 数据库已备份: ${dest}`)
 
     // 清理 7 天前的旧备份
@@ -91,6 +95,114 @@ export function initDB() {
   `)
   db.exec(`CREATE INDEX IF NOT EXISTS idx_verifications_email_code ON email_verifications(email, code)`)
   db.exec(`CREATE INDEX IF NOT EXISTS idx_verifications_expires ON email_verifications(expires_at)`)
+
+  // ── 额度用量流水（个人中心，必做项 4）──
+  // 每条 = 一次 AI 功能调用；day 为本地日期（中国时区），额度按日重置
+  // source：'daily' 日常额度 / 'credit' 兑换额度包（成长体系）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS usage_events (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER DEFAULT NULL,
+      guest_id    TEXT    DEFAULT NULL,
+      feature     TEXT    NOT NULL,
+      day         TEXT    NOT NULL,
+      source      TEXT    DEFAULT 'daily',
+      created_at  TEXT    DEFAULT (datetime('now'))
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_user_day ON usage_events(user_id, feature, day)`)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_guest_day ON usage_events(guest_id, feature, day)`)
+
+  // 已有库补列：usage_events 建表时无 source 列（额度包机制后加）
+  const usageCols = db.prepare('PRAGMA table_info(usage_events)').all()
+  if (!usageCols.some((c) => c.name === 'source')) {
+    db.exec(`ALTER TABLE usage_events ADD COLUMN source TEXT DEFAULT 'daily'`)
+  }
+
+  // ── 用户作品（个人中心，必做项 4）──
+  // data：纹样=图片URL / 3D=glbUrl；payload：其余字段 JSON（theme/filters/analysis/prompt...）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_works (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL,
+      type        TEXT    NOT NULL,
+      name        TEXT    DEFAULT '',
+      data        TEXT    NOT NULL,
+      payload     TEXT    DEFAULT '{}',
+      created_at  TEXT    DEFAULT (datetime('now'))
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_works_user ON user_works(user_id)`)
+
+  // ── 成长体系（必做项 4 扩展：任务 / 会员 / 兑换码）──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_task_events (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL,
+      task_key    TEXT    NOT NULL,
+      day         TEXT    NOT NULL,
+      created_at  TEXT    DEFAULT (datetime('now'))
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_task_events_user ON user_task_events(user_id, task_key, day)`)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_task_claims (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL,
+      task_key    TEXT    NOT NULL,
+      day         TEXT    NOT NULL,
+      created_at  TEXT    DEFAULT (datetime('now')),
+      UNIQUE(user_id, task_key, day)
+    )
+  `)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_membership (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL UNIQUE,
+      level       TEXT    DEFAULT 'vip',
+      expires_at  TEXT    NOT NULL,
+      created_at  TEXT    DEFAULT (datetime('now')),
+      updated_at  TEXT    DEFAULT (datetime('now'))
+    )
+  `)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_orders (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL,
+      plan        TEXT    NOT NULL,
+      amount      REAL    DEFAULT 0,
+      created_at  TEXT    DEFAULT (datetime('now'))
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_orders_user ON user_orders(user_id)`)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS quota_credits (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL,
+      feature     TEXT    NOT NULL,
+      amount      INTEGER NOT NULL,
+      created_at  TEXT    DEFAULT (datetime('now'))
+    )
+  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_credits_user ON quota_credits(user_id, feature)`)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS redeem_codes (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      code        TEXT    NOT NULL UNIQUE,
+      package     TEXT    NOT NULL,
+      amount      INTEGER DEFAULT 0,
+      batch       TEXT    DEFAULT '',
+      used_by     INTEGER DEFAULT NULL,
+      used_at     TEXT    DEFAULT NULL,
+      revoked     INTEGER DEFAULT 0,
+      created_at  TEXT    DEFAULT (datetime('now'))
+    )
+  `)
 
   // 启动时自动备份（只有数据库已存在且有数据时才备份）
   const [row] = db.prepare("SELECT COUNT(*) as cnt FROM users").all()

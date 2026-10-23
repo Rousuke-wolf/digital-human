@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <defs>
+    <radialGradient id="paper" cx="50%" cy="44%" r="78%">
+      <stop offset="0%" stop-color="#f8f1e1"/>
+      <stop offset="58%" stop-color="#f3e9d2"/>
+      <stop offset="100%" stop-color="#e9d7b4"/>
+    </radialGradient>
+    <radialGradient id="vign" cx="50%" cy="46%" r="72%">
+      <stop offset="62%" stop-color="#3d1f0a" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#3d1f0a" stop-opacity="0.12"/>
+    </radialGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <!-- 单侧蝶翼（铜鼓纹圆点装饰） -->
+    <g id="wingSide">
+      <ellipse cx="452" cy="318" rx="168" ry="108" fill="#c0392b" stroke="#e2c189" stroke-width="3.5" transform="rotate(-28 452 318)"/>
+      <ellipse cx="452" cy="318" rx="118" ry="70" fill="#e8a9a0" stroke="#c9984a" stroke-width="2" transform="rotate(-28 452 318)"/>
+      <circle cx="428" cy="288" r="12" fill="#c9984a"/>
+      <circle cx="506" cy="352" r="9" fill="#e2c189"/>
+      <circle cx="392" cy="360" r="7" fill="#c9984a"/>
+      <circle cx="476" cy="262" r="6" fill="#f8f1e1" stroke="#c9984a" stroke-width="2"/>
+      <ellipse cx="468" cy="512" rx="118" ry="74" fill="#c9984a" stroke="#3d1f0a" stroke-width="3" transform="rotate(18 468 512)"/>
+      <ellipse cx="468" cy="512" rx="80" ry="46" fill="#e2c189" stroke="#c0392b" stroke-width="1.6" transform="rotate(18 468 512)"/>
+      <circle cx="450" cy="506" r="8" fill="#c0392b"/>
+      <circle cx="505" cy="528" r="6" fill="#3d1f0a"/>
+    </g>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#paper)"/>
+  <rect width="1200" height="800" filter="url(#grain)" opacity="0.045"/>
+
+  <!-- 苗绣铜鼓纹点阵环 -->
+  <circle cx="600" cy="420" r="330" fill="none" stroke="#c9984a" stroke-width="3" stroke-dasharray="0.1 26" stroke-linecap="round" opacity="0.65"/>
+  <circle cx="600" cy="420" r="300" fill="none" stroke="#c0392b" stroke-width="1.2" stroke-dasharray="2 10" opacity="0.4"/>
+
+  <!-- 蝴蝶妈妈：左右对称蝶翼 -->
+  <use href="#wingSide"/>
+  <use href="#wingSide" transform="translate(1200 0) scale(-1 1)"/>
+
+  <!-- 蝶身与触角 -->
+  <ellipse cx="600" cy="430" rx="20" ry="88" fill="#3d1f0a"/>
+  <circle cx="600" cy="318" r="24" fill="#3d1f0a"/>
+  <path d="M588 298 C560 262 534 244 506 236" fill="none" stroke="#3d1f0a" stroke-width="5" stroke-linecap="round"/>
+  <path d="M612 298 C640 262 666 244 694 236" fill="none" stroke="#3d1f0a" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="506" cy="236" r="9" fill="#c0392b"/>
+  <circle cx="694" cy="236" r="9" fill="#c0392b"/>
+
+  <rect width="1200" height="800" fill="url(#vign)"/>
+  <rect x="30" y="30" width="1140" height="740" fill="none" stroke="#c9984a" stroke-width="2.5" opacity="0.75"/>
+  <rect x="38" y="38" width="1124" height="724" fill="none" stroke="#c9984a" stroke-width="1" opacity="0.4"/>
+  <g transform="translate(1088 690)">
+    <rect width="64" height="64" rx="6" fill="#c0392b" opacity="0.92"/>
+    <text x="32" y="46" text-anchor="middle" font-family="STKaiti, KaiTi, SimSun, serif" font-size="40" font-weight="700" fill="#f8f1e1">绣</text>
+  </g>
+</svg>

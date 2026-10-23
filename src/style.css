@@ -827,7 +827,7 @@ body {
   max-width: 280px;
 }
 
-/* ── 欢迎横幅卡片 ─────────────────────────── */
+/* ── 欢迎横幅卡片（保留设计，禁止修改，见 CLAUDE.md） ── */
 .welcome-banner {
   background: linear-gradient(135deg, #1e2e44 0%, #1a2638 100%);
   border: 1px solid rgba(251, 191, 36, 0.2);
@@ -2267,13 +2267,18 @@ body {
     width: 100%;
   }
 
-  /* 导航条：换行布局，tab 行可横向滚动 */
+  /* 导航条：换行布局（覆盖桌面端 grid 三栏 !important），tab 行可横向滚动 */
   .navbar {
+    display: flex !important;
     flex-wrap: wrap;
-    height: auto;
+    height: auto !important;
     min-height: 64px;
-    padding: 8px 14px;
+    padding: 8px 14px !important;
     gap: 6px;
+  }
+
+  .nav-right {
+    margin-left: auto;
   }
 
   .nav-center {
@@ -2281,6 +2286,13 @@ body {
     width: 100%;
     justify-content: flex-start;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .nav-center::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -2292,6 +2304,14 @@ body {
   .navbar .nav-tab {
     font-size: 13px;
     padding: 6px 10px;
+    white-space: nowrap;
+  }
+
+  /* 用户名过长时不挤压导航（省略号截断，会员徽章不丢） */
+  .navbar .nav-user-name {
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 

@@ -26,7 +26,13 @@
           <div class="section-label">步骤教学区</div>
           <div style="display:flex;gap:10px;align-items:center;">
             <button class="glass-game-btn" @click="openModal()">
-              <span class="btn-icon">🎮</span>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="6" x2="10" y1="11" y2="11" />
+                <line x1="8" x2="8" y1="9" y2="13" />
+                <line x1="15" x2="15.01" y1="12" y2="12" />
+                <line x1="18" x2="18.01" y1="10" y2="10" />
+                <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
+              </svg>
             </button>
             <button class="demo-icon-btn" :class="{ paused: animPaused }" @click="onToggleAnim">
               <span :class="animPaused ? 'icon-play' : 'icon-pause'"></span>
@@ -99,6 +105,7 @@ import {
   stopDemo,
 } from '../page/teach/scripts.js'
 import { openModal } from '../page/teach/game/script.js'
+import { guideOnPageEnter } from '../utils/voiceGuide.js'
 
 // ── 静态文案（原字符串模板迁入）──
 const stepCards = [
@@ -146,6 +153,8 @@ onMounted(() => {
   setPhaseListener((cardIdx) => { activeStep.value = cardIdx })
   // 动画演示需要 DOM 就绪后手动触发
   setTimeout(() => updateDemo(), 150)
+  // 语音引导：首次进入播报「动画体验」页面介绍
+  guideOnPageEnter('teaching')
 })
 
 onBeforeUnmount(() => {

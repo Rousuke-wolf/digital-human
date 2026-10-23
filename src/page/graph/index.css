@@ -1,0 +1,1412 @@
+/* graph/index.css — 非遗知识图谱页样式（敦煌星图式）
+   画布为浅米宣纸底 + 绢布肌理 + 稀疏暗金碎星；节点为星点（微光），
+   悬停放大浮出名称；同星座连线淡色、跨星座金色微光重点突出。 */
+
+.page-graph {
+  --gp-brown: #8b6240;
+  --gp-gold: #c9984a;
+  --gp-panel: #fffaf3;
+  --gp-border: #e8ddcb;
+  --gp-text: #4a3a2a;
+  --gp-mid: #9a8468;
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 480px at 85% -10%, rgba(201, 152, 74, 0.10), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(139, 98, 64, 0.08), transparent 60%),
+    #faf6ef;
+}
+
+.graph-main {
+  max-width: 1280px;
+  margin: 22px auto 32px;
+  padding: 0 24px;
+}
+
+/* ── 页头 ─────────────────────────────────────── */
+.graph-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.graph-title {
+  margin: 0;
+  font-size: 24px;
+  color: var(--gp-text);
+  letter-spacing: 1px;
+}
+
+.graph-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--gp-mid);
+}
+
+.view-switch {
+  display: flex;
+  gap: 8px;
+}
+
+.view-btn {
+  padding: 8px 18px;
+  border: 1px solid var(--gp-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--gp-mid);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-btn:hover {
+  border-color: var(--gp-gold);
+}
+
+.view-btn.active {
+  background: var(--gp-brown);
+  border-color: var(--gp-brown);
+  color: #fff;
+}
+
+/* ── 探索轨迹条 ───────────────────────────────── */
+.graph-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 16px;
+  background: var(--gp-panel);
+  border: 1px solid var(--gp-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(139, 98, 64, 0.06);
+  font-size: 13px;
+}
+
+.trail-label {
+  font-weight: 600;
+  color: var(--gp-text);
+}
+
+.trail-arrow {
+  color: var(--gp-gold);
+  font-size: 12px;
+}
+
+.trail-chip {
+  padding: 4px 12px;
+  border: 1px solid var(--gp-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--gp-brown);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.trail-chip:hover {
+  border-color: var(--gp-brown);
+  background: #fdf6ec;
+}
+
+.trail-chip.current {
+  background: var(--gp-brown);
+  border-color: var(--gp-brown);
+  color: #fff;
+}
+
+.trail-empty {
+  color: var(--gp-mid);
+  font-size: 12.5px;
+}
+
+.trail-progress {
+  margin-left: auto;
+  color: var(--gp-gold);
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+/* ── 顶部图例条（可点击聚焦分类） ─────────────── */
+.graph-legend-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 10px 16px;
+  background: var(--gp-panel);
+  border: 1px solid var(--gp-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(139, 98, 64, 0.06);
+  font-size: 13px;
+}
+
+.lgbar-label {
+  font-weight: 600;
+  color: var(--gp-text);
+}
+
+.lgbar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--gp-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lgbar-item:hover {
+  border-color: var(--gp-gold);
+}
+
+.lgbar-item.on {
+  border-color: var(--gp-brown);
+  background: #fdf6ec;
+  font-weight: 600;
+}
+
+.lgbar-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.lgbar-hint {
+  margin-left: auto;
+  color: var(--gp-mid);
+  font-size: 12px;
+}
+
+/* ── 2D/3D 渲染模式切换 ───────────────────────────── */
+.render-switch {
+  display: flex;
+  gap: 6px;
+}
+.render-btn {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--gp-border);
+  background: transparent;
+  color: var(--gp-text);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.render-btn:hover { border-color: var(--gp-gold); }
+.render-btn.active {
+  background: var(--gp-brown);
+  border-color: var(--gp-brown);
+  color: #f6e8cf;
+  font-weight: 600;
+}
+
+/* ── 3D 深空场景 ──────────────────────────────────── */
+.graph-scene3d {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: 15px;
+  overflow: hidden;
+}
+.g3d-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 7;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: rgba(13, 18, 40, 0.55);
+  color: #d8e0f5;
+  font-size: 12px;
+  pointer-events: none;
+}
+.g3d-hint.error {
+  background: rgba(120, 24, 10, 0.85);
+  color: #ffd9c8;
+}
+
+/* ── 3D 标签（CSS2D，深色背景上的亮色文字）── */
+.g3d-label {
+  color: #e8e0cc;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.95);
+}
+.g3d-label-center {
+  color: #ffd98a;
+  font-size: 14px;
+}
+.g3d-label-hub { color: #f0e6d0; }
+.g3d-label-leaf { color: #d8e0f5; font-size: 11px; }
+
+/* ══ 星图画布：浅米宣纸底 + 绢布肌理 ═════════════ */
+.graph-canvas-wrap {
+  position: relative;
+  min-width: 0;
+  /* 高度由容器自身保证（与子元素显隐解耦）：2D 的 SVG 或 3D 的 canvas
+     任一隐藏时画布不塌陷（3D 容器是 absolute 定位，靠容器撑高度） */
+  min-height: 600px;
+  border: 1px solid var(--gp-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(139, 98, 64, 0.10);
+  overflow: hidden;
+  user-select: none;
+  background:
+    repeating-linear-gradient(45deg, rgba(139, 98, 64, 0.012) 0 8px, transparent 8px 16px),
+    repeating-linear-gradient(-45deg, rgba(139, 98, 64, 0.012) 0 8px, transparent 8px 16px),
+    linear-gradient(180deg, #fdfaf3 0%, #faf3e6 100%);
+}
+
+.graph-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 600px;
+  cursor: move;          /* 画布普通状态：拖动光标 */
+  touch-action: none;
+}
+
+/* 宣纸上的暗金碎星（静态、微弱） */
+.gold-star {
+  fill: #b08d3f;
+  pointer-events: none;
+}
+
+/* 扇区边界：极淡放射虚线（柔和，无实线框） */
+.sector-line {
+  stroke: #b08d3f;
+  stroke-width: 1;
+  stroke-dasharray: 2 9;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+/* 边渐显入场 */
+.edges-in {
+  opacity: 0;
+  animation: edges-in 0.9s ease 0.25s forwards;
+}
+
+@keyframes edges-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 星状连线：极细淡金/浅灰，不发白光（纯颜色/透明度，无 filter 保证流畅） */
+.graph-edge {
+  stroke-width: 1;
+  opacity: 0.35;
+  pointer-events: none;
+  transition: all 0.25s;
+}
+
+/* 跨星座重点关联：淡金稍深 */
+.graph-edge.cross {
+  stroke-width: 1.2;
+  opacity: 0.6;
+}
+
+.graph-edge.active {
+  stroke: #e0a354;
+  stroke-width: 2.2;
+  opacity: 0.95;
+}
+
+.graph-edge.dimmed {
+  opacity: 0.035;
+}
+
+/* 节点入场：从中心向外依次点亮（动画只在内层 g，不覆盖定位） */
+.gnode-in {
+  opacity: 0;
+  animation: gnode-in 0.5s ease-out forwards;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes gnode-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 星点微动：逐个错开的轻柔起伏（探索后转为静态） */
+.star-pulse {
+  animation: star-bob 3s ease-in-out infinite;
+}
+
+@keyframes star-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.gnode.explored .star-pulse {
+  animation: none;
+  transform: none;
+}
+
+/* 探索过的节点名称：沿径向向外浮现，白描边防压线 */
+.gnode-explored-label {
+  fill: #6b5638;
+  font-size: 12px;
+  font-weight: 600;
+  stroke: #fdfaf3;
+  stroke-width: 3px;
+  paint-order: stroke;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 节点：普通点击光标 */
+.gnode {
+  cursor: default;
+}
+
+/* 隐形点击区：放大悬停命中范围，响应更跟手 */
+.gnode-hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+/* 星点本体：纯色填充（光晕由渐变圆承担，无 filter，性能友好） */
+.star-shape {
+  transition: stroke 0.15s ease;
+}
+
+.star-skill {
+  fill: #4a7a6b;
+}
+
+.star-ethnic {
+  fill: #5b7fa6;
+}
+
+.star-totem {
+  fill: #a63a2b;
+}
+
+/* 星点柔光晕：渐变圆，悬停时增强 */
+.star-halo {
+  opacity: 0.8;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
+/* 悬停：光晕增强 + 白圈描边（纯透明度/描边变化，零几何重算，响应快） */
+.gnode:hover .star-halo {
+  opacity: 1;
+}
+
+.gnode:hover .star-shape {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 2;
+}
+
+/* 选中涟漪：光环扩散 */
+.gnode-halo {
+  fill: none;
+  stroke-width: 2;
+  animation: halo-pulse 1.8s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes halo-pulse {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.6);
+  }
+  70% {
+    opacity: 0.15;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+/* 变暗作用在子元素上（入场动画 fill 会覆盖 g 的 opacity，避免冲突） */
+.gnode.dimmed {
+  pointer-events: none;
+}
+
+.gnode.dimmed .star-shape,
+.gnode.dimmed .star-halo,
+.gnode.dimmed .gnode-label,
+.gnode.dimmed .gnode-explored-label,
+.gnode.dimmed .gnode-core-char {
+  opacity: 0.12;
+}
+
+/* 锚星名称（常驻，小字）与中心主星名称：深墨棕 + 白色发光描边 */
+.gnode-label {
+  fill: #3e2723;
+  font-size: 12.5px;
+  font-weight: 600;
+  stroke: #fdf9f1;
+  stroke-width: 3px;
+  paint-order: stroke;
+  pointer-events: none;
+  user-select: none;
+}
+
+.gnode-label-center {
+  fill: #3e2723;
+  font-size: 15px;
+  stroke: #fdf9f1;
+  stroke-width: 3.5px;
+  paint-order: stroke;
+}
+
+/* 中心主星「绣」字 */
+.gnode-core-char {
+  fill: #fff;
+  font-size: 22px;
+  font-weight: 600;
+  font-family: "STKaiti", "KaiTi", "FangSong", Georgia, serif;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 缩放控制（右上角，暗色透明玻璃） */
+.graph-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 8;
+  display: flex;
+  gap: 8px;
+}
+
+.graph-controls button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(201, 152, 74, 0.4);
+  border-radius: 11px;
+  background: rgba(42, 32, 22, 0.82);
+  color: #f3ead9;
+  font-size: 17px;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(6px);
+}
+
+.graph-controls button:hover {
+  border-color: #e8c188;
+  color: #e8c188;
+}
+
+/* 视口滚动条：默认半透明，悬停才显色；滑块行程限制在轨道内 */
+.graph-scrollbar {
+  position: absolute;
+  z-index: 6;
+  background: rgba(139, 98, 64, 0.05);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+.graph-scrollbar:hover {
+  background: rgba(139, 98, 64, 0.13);
+}
+
+.vsbar {
+  top: 76px;
+  bottom: 30px;
+  left: 10px;
+  width: 10px;
+}
+
+.hsbar {
+  left: 28px;
+  right: 28px;
+  bottom: 10px;
+  height: 10px;
+}
+
+.scrollbar-thumb {
+  position: absolute;
+  background: rgba(42, 32, 22, 0.3);
+  border: 1px solid rgba(201, 152, 74, 0.35);
+  border-radius: 999px;
+  cursor: default;
+  transition: background 0.2s, border-color 0.2s;
+  touch-action: none;
+}
+
+.graph-scrollbar:hover .scrollbar-thumb {
+  background: rgba(42, 32, 22, 0.75);
+  border-color: rgba(201, 152, 74, 0.7);
+}
+
+.vsbar .scrollbar-thumb {
+  left: 0;
+  right: 0;
+  min-height: 34px;
+}
+
+.hsbar .scrollbar-thumb {
+  top: 0;
+  bottom: 0;
+  min-width: 34px;
+}
+
+.graph-scrollbar.locked .scrollbar-thumb {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* 当前缩放幅度 */
+.zoom-pct {
+  align-self: center;
+  padding: 6px 10px;
+  border: 1px solid rgba(201, 152, 74, 0.35);
+  border-radius: 9px;
+  background: rgba(42, 32, 22, 0.82);
+  color: #e8c188;
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+}
+
+/* 节点专属界面浮层（右上控制钮下方，按住标题栏可拖动） */
+.node-overlay {
+  position: absolute;
+  top: 64px;
+  right: 14px;
+  z-index: 7;
+  width: 310px;
+  max-width: calc(100% - 28px);
+  max-height: calc(100% - 78px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 18px;
+  background: rgba(42, 32, 22, 0.9);
+  border: 1px solid rgba(201, 152, 74, 0.4);
+  border-radius: 16px;
+  box-shadow: 0 14px 40px rgba(74, 58, 42, 0.35);
+  backdrop-filter: blur(8px);
+  color: #f3ead9;
+}
+
+.overlay-in-enter-active,
+.overlay-in-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.overlay-in-enter-from,
+.overlay-in-leave-to {
+  opacity: 0;
+  transform: translateX(16px);
+}
+
+.ov-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+
+.ov-tag {
+  padding: 3px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+}
+
+.ov-close {
+  border: none;
+  background: transparent;
+  color: #b7a48d;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.ov-close:hover {
+  color: #e8c188;
+}
+
+.ov-name {
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: #fff;
+}
+
+.ov-intro {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #e8dcc8;
+}
+
+/* 语音讲解按钮：朗读节点介绍与关联节点，播放中显示跳动音柱 */
+.ov-speak {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 7px 14px;
+  border: 1px solid rgba(201, 152, 74, 0.45);
+  border-radius: 999px;
+  background: rgba(201, 152, 74, 0.12);
+  color: #e8c188;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ov-speak:hover {
+  background: rgba(201, 152, 74, 0.24);
+  border-color: #e8c188;
+}
+
+.ov-speak.playing {
+  background: rgba(201, 152, 74, 0.28);
+}
+
+.ov-speak-eq {
+  display: none;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.ov-speak.playing .ov-speak-eq {
+  display: inline-flex;
+}
+
+.ov-speak-eq i {
+  width: 3px;
+  height: 4px;
+  border-radius: 2px;
+  background: #e8c188;
+  animation: speak-eq 0.9s ease-in-out infinite;
+}
+
+.ov-speak-eq i:nth-child(2) { animation-delay: 0.15s; }
+.ov-speak-eq i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes speak-eq {
+  0%, 100% { height: 4px; }
+  50% { height: 12px; }
+}
+
+.ov-sec {
+  margin: 14px 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.ov-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ov-chip {
+  padding: 6px 13px;
+  border: 1px solid rgba(201, 152, 74, 0.4);
+  border-radius: 999px;
+  background: rgba(201, 152, 74, 0.1);
+  color: #e8c188;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ov-chip:hover {
+  background: rgba(201, 152, 74, 0.22);
+  border-color: #e8c188;
+}
+
+.ov-exhibit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(201, 152, 74, 0.4);
+  border-radius: 10px;
+  background: rgba(201, 152, 74, 0.1);
+  color: #f3ead9;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ov-exhibit:hover {
+  background: rgba(201, 152, 74, 0.2);
+}
+
+.ov-back {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #c9984a, #a67a4e);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+
+.ov-back:hover {
+  filter: brightness(1.08);
+}
+
+/* 助手面板（右上控制钮下方，可收起） */
+.canvas-side-panel {
+  position: absolute;
+  top: 64px;
+  right: 14px;
+  z-index: 7;
+  width: 310px;
+  max-width: calc(100% - 28px);
+  max-height: calc(100% - 78px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 16px;
+  background: rgba(42, 32, 22, 0.9);
+  border: 1px solid rgba(201, 152, 74, 0.4);
+  border-radius: 16px;
+  box-shadow: 0 14px 40px rgba(74, 58, 42, 0.35);
+  backdrop-filter: blur(8px);
+  color: #f3ead9;
+}
+
+.csp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.csp-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.csp-close:hover {
+  background: rgba(201, 152, 74, 0.15);
+}
+
+.csp-close-line {
+  display: inline-block;
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: #b7a48d;
+  transition: background 0.2s;
+}
+
+.csp-close:hover .csp-close-line {
+  background: #e8c188;
+}
+
+.csp-sec {
+  margin: 12px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.csp-based {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: #b7a48d;
+}
+
+.csp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.csp-chip {
+  padding: 6px 13px;
+  border: 1px solid rgba(201, 152, 74, 0.4);
+  border-radius: 999px;
+  background: rgba(201, 152, 74, 0.1);
+  color: #e8c188;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.csp-chip:hover {
+  background: rgba(201, 152, 74, 0.22);
+  border-color: #e8c188;
+}
+
+.csp-exhibit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 13px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(201, 152, 74, 0.4);
+  border-radius: 10px;
+  background: rgba(201, 152, 74, 0.1);
+  color: #f3ead9;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.csp-exhibit:hover {
+  background: rgba(201, 152, 74, 0.2);
+}
+
+.csp-facts {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(201, 152, 74, 0.35);
+}
+
+.csp-fact-text {
+  margin: 0;
+  min-height: 58px;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: #e8dcc8;
+}
+
+.csp-hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #b7a48d;
+}
+
+/* 面板收起后的重开小胶囊 */
+.csp-reopen {
+  position: absolute;
+  top: 64px;
+  right: 14px;
+  z-index: 7;
+  padding: 8px 16px;
+  border: 1px solid rgba(201, 152, 74, 0.45);
+  border-radius: 999px;
+  background: rgba(42, 32, 22, 0.85);
+  color: #e8c188;
+  font-size: 13px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: all 0.2s;
+}
+
+.csp-reopen:hover {
+  border-color: #e8c188;
+  background: rgba(42, 32, 22, 0.95);
+}
+
+.fact-dots {
+  display: flex;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.fact-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--gp-gold);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fact-dot:hover {
+  transform: scale(1.25);
+}
+
+.fact-dot.on {
+  background: var(--gp-gold);
+}
+
+/* 悬浮提示（星点名称） */
+.graph-tip {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: rgba(42, 32, 22, 0.88);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(74, 58, 42, 0.3);
+}
+
+.tip-name {
+  font-weight: 600;
+}
+
+.tip-cat {
+  opacity: 0.7;
+}
+
+/* ── 列表视图（亮色） ─────────────────────────── */
+.graph-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.list-group {
+  background: var(--gp-panel);
+  border: 1px solid var(--gp-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 16px rgba(139, 98, 64, 0.06);
+}
+
+.list-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.list-group-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gp-text);
+}
+
+.list-group-count {
+  font-size: 12px;
+  color: var(--gp-mid);
+}
+
+.lg-mark {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.list-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 6px;
+  border: none;
+  border-bottom: 1px dashed var(--gp-border);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.list-row:last-child {
+  border-bottom: none;
+}
+
+.list-row:hover {
+  background: #fdf6ec;
+  border-radius: 8px;
+}
+
+.list-row-name {
+  flex: 0 0 86px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gp-brown);
+}
+
+.list-row-intro {
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--gp-mid);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.list-row-rel {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--gp-gold);
+}
+
+/* ── 响应式 ───────────────────────────────────── */
+@media (max-width: 640px) {
+  .graph-main {
+    margin-top: 16px;
+    padding: 0 12px;
+  }
+
+  .graph-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .graph-svg {
+    min-height: 430px;
+  }
+
+  .graph-canvas-wrap {
+    min-height: 430px;
+  }
+
+  .page-graph.theme-3d .graph-canvas-wrap {
+    min-height: 560px;
+  }
+
+  .lgbar-hint {
+    display: none;
+  }
+
+  .node-overlay,
+  .canvas-side-panel {
+    width: 250px;
+    padding: 14px;
+  }
+
+  .list-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .list-row-name {
+    flex: none;
+  }
+}
+
+/* ══ 3D 深空主题（renderMode==='3d' 时页面根节点挂 .theme-3d）════ */
+/* 重定义页面级 CSS 变量 + 覆盖少量硬编码浅色元素 + 导航条暗化，
+   全页（页头/图例/轨迹/面板/导航条）切换到契合星图的深星空色 */
+.page-graph.theme-3d {
+  --gp-brown: #c9984a;
+  --gp-gold: #e8c188;
+  --gp-panel: #141b38;
+  --gp-border: #2a3358;
+  --gp-text: #e8e0cc;
+  --gp-mid: #8f9bc0;
+  /* 星空感页面背景：碎星点（确定性散布，白/金混色）+ 两团星云柔光 */
+  background:
+    radial-gradient(1.2px 1.2px at 8% 12%, rgba(255, 255, 255, 0.65) 50%, transparent 51%),
+    radial-gradient(1px 1px at 22% 6%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 35% 14%, rgba(255, 217, 154, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 47% 8%, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 58% 16%, rgba(255, 255, 255, 0.7) 50%, transparent 51%),
+    radial-gradient(1px 1px at 69% 7%, rgba(255, 217, 154, 0.45) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 81% 13%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 92% 5%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 5% 32%, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 16% 25%, rgba(255, 217, 154, 0.4) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 28% 38%, rgba(255, 255, 255, 0.35) 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 41% 29%, rgba(255, 255, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 53% 40%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 64% 33%, rgba(255, 217, 154, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 76% 44%, rgba(255, 255, 255, 0.35) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 88% 37%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 96% 26%, rgba(255, 255, 255, 0.45) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 11% 52%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1px 1px at 24% 61%, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 37% 55%, rgba(255, 217, 154, 0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px at 49% 66%, rgba(255, 255, 255, 0.35) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 61% 58%, rgba(255, 255, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 73% 70%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 85% 63%, rgba(255, 217, 154, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 94% 71%, rgba(255, 255, 255, 0.45) 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 3% 76%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1px 1px at 18% 84%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 31% 78%, rgba(255, 217, 154, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 44% 89%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 57% 82%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 68% 93%, rgba(255, 255, 255, 0.35) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 79% 86%, rgba(255, 217, 154, 0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px at 90% 95%, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 99% 82%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1100px 480px at 85% -10%, rgba(84, 116, 210, 0.16), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(201, 152, 74, 0.10), transparent 60%),
+    #0a0f22;
+}
+
+/* 视图切换按钮（图谱/列表） */
+.page-graph.theme-3d .view-btn {
+  background: #141b38;
+  color: var(--gp-mid);
+}
+.page-graph.theme-3d .view-btn.active {
+  background: #c9984a;
+  color: #241a08;
+}
+
+/* 探索轨迹 chips */
+.page-graph.theme-3d .trail-chip {
+  background: #141b38;
+  color: #e8c188;
+}
+.page-graph.theme-3d .trail-chip.current {
+  background: rgba(201, 152, 74, 0.18);
+}
+
+/* 图例选中态 */
+.page-graph.theme-3d .lgbar-item.on {
+  background: rgba(201, 152, 74, 0.16);
+}
+
+/* 助手面板重开小胶囊 */
+.page-graph.theme-3d .csp-reopen {
+  background: #141b38;
+  border-color: #2a3358;
+  color: #e8c188;
+}
+
+/* 3D 模式：星图窗口加高（各角度下整张星图更容易完整入画），2D 保持原尺寸 */
+.page-graph.theme-3d .graph-canvas-wrap {
+  min-height: 800px;
+}
+
+/* ── 深空蓝面板：详情浮层/助手面板/悬浮提示/重开胶囊统一冷色深调 ── */
+.page-graph.theme-3d .node-overlay,
+.page-graph.theme-3d .canvas-side-panel {
+  background: rgba(16, 23, 49, 0.92);
+  border: 1px solid #2a3358;
+  backdrop-filter: blur(8px);
+}
+.page-graph.theme-3d .graph-tip {
+  background: rgba(16, 23, 49, 0.92);
+  border: 1px solid #2a3358;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+/* ── 导航条暗化（深空模式；style.css 的 navbar 规则带 !important，这里同步加）── */
+.page-graph.theme-3d .navbar {
+  background: #101731 !important;
+  border-bottom-color: #232c52 !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.35) !important;
+  color: #e8e0cc !important;
+}
+.page-graph.theme-3d .navbar .nav-logo-name {
+  color: #e8e0cc !important;
+}
+.page-graph.theme-3d .navbar .nav-logo-sub {
+  color: #c9bfa8 !important;
+  border-left-color: rgba(232, 224, 204, 0.25) !important;
+}
+.page-graph.theme-3d .navbar .nav-tab { color: #aab4d8 !important; }
+.page-graph.theme-3d .navbar .nav-tab:hover { color: #e8c188 !important; }
+.page-graph.theme-3d .navbar .nav-tab.active {
+  color: #e8c188 !important;
+  border-bottom-color: #c9984a !important;
+}
+.page-graph.theme-3d .navbar .nav-user-name { color: #d8e0f5 !important; }
+.page-graph.theme-3d .navbar .nav-profile-link { color: #e8c188 !important; }
+.page-graph.theme-3d .navbar .nav-user-logout { color: #aab4d8 !important; }
+.page-graph.theme-3d .navbar .nav-login-btn,
+.page-graph.theme-3d .navbar .nav-register-btn {
+  background: #141b38 !important;
+  border-color: #2a3358 !important;
+  color: #e8e0cc !important;
+}
+
+/* 3D 模式：html/body 底色同步（页面滚动到底部不再露白边） */
+html:has(.page-graph.theme-3d),
+body:has(.page-graph.theme-3d) {
+  background: #0a0f22;
+}
+
+/* ═══════════════════════════════════════════════════
+   浅色重构补丁：彻底废除深空/暗色，统一宣纸玻璃风
+   1. 3D 模式页面背景 = 2D 宣纸同底（画布透明透出）
+   2. 暗色元素（浮层/助手面板/控制钮/提示）→ 浅色毛玻璃
+   3. 3D 标签 → 深墨棕 + 白色发光
+   ═══════════════════════════════════════════════════ */
+
+/* 3D 模式：页面与 2D 同底（覆盖旧深空星云背景） */
+.page-graph.theme-3d {
+  background:
+    radial-gradient(1100px 480px at 85% -10%, rgba(201, 152, 74, 0.10), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(139, 98, 64, 0.08), transparent 60%),
+    #faf6ef !important;
+}
+
+/* html/body 不再切深色 */
+html:has(.page-graph.theme-3d),
+body:has(.page-graph.theme-3d) {
+  background: #faf6ef !important;
+}
+
+/* 导航条：3D 模式保持标准暖白导航（覆盖旧暗化规则） */
+.page-graph.theme-3d .navbar { background: #faf7f2 !important; border-bottom-color: #e8ddd0 !important; box-shadow: 0 1px 8px rgba(139, 98, 64, 0.08) !important; color: #5c3d20 !important; }
+.page-graph.theme-3d .navbar .nav-logo-name { color: #4a2e1b !important; }
+.page-graph.theme-3d .navbar .nav-logo-sub { color: #a08a70 !important; border-left-color: rgba(92, 61, 32, 0.22) !important; }
+.page-graph.theme-3d .navbar .nav-tab { color: #6b4226 !important; }
+.page-graph.theme-3d .navbar .nav-tab:hover,
+.page-graph.theme-3d .navbar .nav-tab.active { color: #3d1f0a !important; }
+.page-graph.theme-3d .navbar .nav-user-name { color: #5c3d20 !important; }
+.page-graph.theme-3d .navbar .nav-profile-link { color: #8b6240 !important; }
+.page-graph.theme-3d .navbar .nav-user-logout { color: #8a7357 !important; }
+.page-graph.theme-3d .navbar .nav-login-btn,
+.page-graph.theme-3d .navbar .nav-register-btn { background: transparent !important; border-color: #8b6240 !important; color: #8b6240 !important; }
+
+/* 视图切换/轨迹胶囊：3D 模式维持浅色（覆盖旧深蓝） */
+.page-graph.theme-3d .view-btn { background: #fff; color: var(--gp-mid); }
+.page-graph.theme-3d .view-btn.active { background: #a63a2b; border-color: #a63a2b; color: #fff; }
+.page-graph.theme-3d .trail-chip { background: #fff; color: var(--gp-brown); }
+.page-graph.theme-3d .trail-chip.current { background: #a63a2b; color: #fff; }
+.page-graph.theme-3d .lgbar-item.on { background: rgba(201, 152, 74, 0.16); }
+.page-graph.theme-3d .csp-reopen { background: rgba(255, 252, 245, 0.85); border-color: rgba(160, 122, 74, 0.24); color: var(--gp-text); }
+.page-graph.theme-3d .node-overlay,
+.page-graph.theme-3d .canvas-side-panel { background: rgba(255, 252, 245, 0.85); border: 1px solid rgba(160, 122, 74, 0.24); }
+.page-graph.theme-3d .graph-tip { background: rgba(255, 252, 245, 0.92); border: 1px solid rgba(160, 122, 74, 0.24); box-shadow: 0 6px 18px rgba(92, 61, 32, 0.12); }
+
+/* 3D 提示胶囊：浅色毛玻璃 */
+.g3d-hint { background: rgba(255, 252, 245, 0.75); color: #6b5638; border: 1px solid rgba(160, 122, 74, 0.24); backdrop-filter: blur(8px); }
+.g3d-hint.error { background: rgba(166, 58, 43, 0.12); color: #a63a2b; border-color: rgba(166, 58, 43, 0.35); }
+
+/* 3D 标签：深墨棕 + 白色发光阴影 */
+.g3d-label { color: #3e2723; text-shadow: 0 0 6px rgba(255, 255, 255, 0.95), 0 0 2px rgba(255, 255, 255, 0.95); }
+.g3d-label-center { color: #8b5a2b; }
+.g3d-label-hub { color: #3e2723; }
+.g3d-label-leaf { color: #5c4430; font-size: 11px; }
+
+/* 缩放控制：白底半透明 + 极细浅棕边框 + 圆角 + 悬浮上浮 */
+.graph-controls button {
+  background: rgba(255, 252, 245, 0.75);
+  border: 1px solid rgba(160, 122, 74, 0.28);
+  color: #6b5638;
+  backdrop-filter: blur(8px);
+}
+.graph-controls button:hover { border-color: #8b6240; color: #8b6240; transform: translateY(-2px); }
+.zoom-pct { background: rgba(255, 252, 245, 0.75); border: 1px solid rgba(160, 122, 74, 0.28); color: #8b6240; backdrop-filter: blur(8px); }
+
+/* 节点浮层 / 助手面板：浅色毛玻璃 + 深墨棕文字 */
+.node-overlay,
+.canvas-side-panel {
+  background: rgba(255, 252, 245, 0.85);
+  border: 1px solid rgba(160, 122, 74, 0.24);
+  box-shadow: 0 14px 40px rgba(92, 61, 32, 0.14);
+  backdrop-filter: blur(10px);
+  color: var(--gp-text);
+}
+.ov-close { color: #9a8468; }
+.ov-close:hover { color: #a63a2b; }
+.ov-name { color: #3e2723; }
+.ov-intro { color: #5c4430; }
+.ov-sec { color: #3e2723; }
+.ov-chip { border-color: rgba(160, 122, 74, 0.3); background: rgba(201, 152, 74, 0.08); color: #8b6240; }
+.ov-chip:hover { background: rgba(201, 152, 74, 0.18); border-color: #8b6240; }
+.ov-exhibit { border-color: rgba(160, 122, 74, 0.3); background: rgba(201, 152, 74, 0.08); color: #4a3a2a; }
+.ov-exhibit:hover { background: rgba(201, 152, 74, 0.18); }
+.ov-back { background: linear-gradient(135deg, #c9984a, #a67a4e); color: #fff; }
+.csp-head { color: #3e2723; }
+.csp-close-line { background: #9a8468; }
+.csp-close:hover .csp-close-line { background: #a63a2b; }
+.csp-sec { color: #3e2723; }
+.csp-based { color: #9a8468; }
+.csp-chip { border-color: rgba(160, 122, 74, 0.3); background: rgba(201, 152, 74, 0.08); color: #8b6240; }
+.csp-chip:hover { background: rgba(201, 152, 74, 0.18); border-color: #8b6240; }
+.csp-exhibit { border-color: rgba(160, 122, 74, 0.3); background: rgba(201, 152, 74, 0.08); color: #4a3a2a; }
+.csp-exhibit:hover { background: rgba(201, 152, 74, 0.18); }
+.csp-fact-text { color: #5c4430; }
+.csp-hint { color: #9a8468; }
+
+/* ═══════════════════════════════════════════════════
+   深蓝回归补丁（用户指定）：3D 星图画布与页面底色换回深蓝/藏青
+   只改背景色 CSS：
+   1. 主画布容器 + 页面底层背景 + html/body = #0B132B
+   2. 导航条与页面底色统一为同款深蓝
+   3. 3D 标签文字恢复浅色（深蓝底上保持可读，节点材质与颜色未动）
+   其余全部保持不变：探索轨迹/图例深色面板、助手面板浅色毛玻璃、
+   3D 玉石节点、金星粒子、极细连线
+   ═══════════════════════════════════════════════════ */
+
+/* 页面底层背景：深蓝/藏青 + 两团极淡星云柔光 */
+.page-graph.theme-3d {
+  background:
+    radial-gradient(1100px 480px at 85% -10%, rgba(64, 92, 178, 0.22), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(201, 152, 74, 0.08), transparent 60%),
+    #0B132B !important;
+}
+
+/* html/body 同步深蓝（滚动到底不露宣纸边） */
+html:has(.page-graph.theme-3d),
+body:has(.page-graph.theme-3d) {
+  background: #0B132B !important;
+}
+
+/* 主画布容器（Canvas 容器）：纸纹渐变 → 深蓝底（透明 3D 画布透出） */
+.page-graph.theme-3d .graph-canvas-wrap {
+  background:
+    radial-gradient(1100px 480px at 85% -10%, rgba(64, 92, 178, 0.22), transparent 60%),
+    radial-gradient(900px 420px at -10% 30%, rgba(201, 152, 74, 0.08), transparent 60%),
+    #0B132B !important;
+}
+
+/* 导航条：与页面底色统一为同款深蓝 */
+.page-graph.theme-3d .navbar {
+  background: #0B132B !important;
+  border-bottom-color: #1e2a4d !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.35) !important;
+  color: #e8e0cc !important;
+}
+.page-graph.theme-3d .navbar .nav-logo-name { color: #e8e0cc !important; }
+.page-graph.theme-3d .navbar .nav-logo-sub { color: #9aa6c8 !important; border-left-color: rgba(232, 224, 204, 0.25) !important; }
+.page-graph.theme-3d .navbar .nav-tab { color: #aab4d8 !important; }
+.page-graph.theme-3d .navbar .nav-tab:hover,
+.page-graph.theme-3d .navbar .nav-tab.active { color: #e8c188 !important; }
+.page-graph.theme-3d .navbar .nav-tab.active { border-bottom-color: #c9984a !important; }
+.page-graph.theme-3d .navbar .nav-user-name { color: #d8e0f5 !important; }
+.page-graph.theme-3d .navbar .nav-profile-link { color: #e8c188 !important; }
+.page-graph.theme-3d .navbar .nav-user-logout { color: #aab4d8 !important; }
+.page-graph.theme-3d .navbar .nav-login-btn,
+.page-graph.theme-3d .navbar .nav-register-btn {
+  background: #141b38 !important;
+  border-color: #2a3358 !important;
+  color: #e8e0cc !important;
+}
+
+/* 3D 标签：深蓝底上恢复浅色文字（玉石节点材质与颜色未动） */
+.g3d-label { color: #e8e0cc; text-shadow: 0 0 8px rgba(0, 0, 0, 0.55), 0 0 2px rgba(0, 0, 0, 0.45); }
+.g3d-label-center { color: #f0d9a8; }
+.g3d-label-hub { color: #f0e6d0; }
+.g3d-label-leaf { color: #d8e0f5; }
