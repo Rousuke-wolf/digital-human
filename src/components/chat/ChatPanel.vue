@@ -1,5 +1,5 @@
 <template>
-  <div class="culture-chat-panel">
+  <div class="culture-chat-panel" :style="avatarStyle">
     <!-- 功能栏：右上角极简线框图标 -->
     <div class="function-bar">
       <div class="function-group">
@@ -141,7 +141,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import {
   registerChatUI,
   unregisterChatUI,
@@ -155,6 +155,13 @@ import {
   ttsSettings,
   voiceModeActive,
 } from '../../composables/useCultureChat.js'
+import { useAuth } from '../../composables/useAuth.js'
+
+const { user } = useAuth()
+
+// 用户头像：设置过则通过 CSS 变量替换聊天气泡旁的小头像（未设置走默认线稿）
+const avatarStyle = computed(() =>
+  (user.value?.avatar ? { '--user-avatar': `url(${user.value.avatar})` } : {}))
 
 const chatHistoryRef = ref(null)
 const inputRef = ref(null)

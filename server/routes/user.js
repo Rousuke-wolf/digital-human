@@ -1,8 +1,11 @@
 // user.js — 个人中心数据路由（必做项 4）：额度查询 + 作品管理
-// 成长体系扩展：任务（事件上报/签到/领取）、兑换码、模拟会员购买
+// 成长体系扩展：任务（事件上报/签到/领取）、兑换码、模拟会员购买、头像上传
 // 全部路由需要登录（requireAuth），数据按 user_id 隔离
 import '../env.js'
 import { Router } from 'express'
+import { promises as fs, mkdirSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
 import { query } from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
 import {
@@ -17,6 +20,37 @@ import { REDEEM_PACKAGES, VIP_PLANS } from '../utils/packages.js'
 
 const router = Router()
 router.use(requireAuth)
+
+// ── 头像上传：base64 dataURL → /uploads/avatars/（静态托管）──
+// dataUrl 传 null 时清除头像（恢复默认首字头像）
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const AVATAR_DIR = join(__dirname, '..', 'public', 'uploads', 'avatars')
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024   // 2MB
+
+router.post('/avatar', async (req, res) => {
+  try {
+    const { dataUrl } = req.body || {}
+    if (dataUrl == null) {
+      await query('UPDATE users SET avatar = NULL WHERE id = ?', [req.user.id])
+      return res.json({ avatarUrl: null })
+    }
+    const m = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl))
+    if (!m) return res.status(400).json({ message: '头像格式不正确（仅支持 PNG/JPG/WebP）' })
+    const buf = Buffer.from(m[2], 'base64')
+    if (buf.length > AVATAR_MAX_BYTES) {
+      return res.status(400).json({ message: '头像文件过大（最大 2MB）' })
+    }
+    mkdirSync(AVATAR_DIR, { recursive: true })
+    const filename = `avatar-${req.user.id}.${m[1]}`
+    await fs.writeFile(join(AVATAR_DIR, filename), buf)
+    const avatarUrl = `/uploads/avatars/${filename}?v=${Date.now()}`   // 时间戳防浏览器缓存旧头像
+    await query('UPDATE users SET avatar = ? WHERE id = ?', [avatarUrl, req.user.id])
+    res.json({ avatarUrl })
+  } catch (err) {
+    console.error('[avatar] 上传失败:', err)
+    res.status(500).json({ message: '头像上传失败，请稍后再试' })
+  }
+})
 
 // ── 会员开通/延长（模拟支付与兑换码共用）──
 async function extendMembership(userId, days) {

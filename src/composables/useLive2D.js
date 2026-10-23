@@ -81,6 +81,14 @@ export async function initLive2D() {
     const AVATAR_FILL = 1.25
     const AVATAR_OFFSET_Y = -25
     const AVATAR_OFFSET_X = -13
+
+    // ═══ 桌面端数字人整体位置/高度可调参数（三个页面共用）═══
+    // heightRatio：数字人高度占舞台高度的比例（与右侧对话框高度对齐，调大=人变高）
+    // topOffset：数字人顶部离舞台顶部的距离（px，调大=整体下移）
+    // voiceRatio：语音模式（文化页全屏）下人物高度比例（给右侧面板让位）
+    const DESK_MODEL_HEIGHT_RATIO = 1.5
+    const DESK_MODEL_TOP_OFFSET = -60
+    const VOICE_MODE_HEIGHT_RATIO = 1
     function fitModel() {
       const w = container.clientWidth
       const h = container.clientHeight
@@ -113,12 +121,29 @@ export async function initLive2D() {
         model.y = h / 2 + (0.28 - AVATAR_HEAD_RATIO / 2) * s * (model.height || 1000)
         _baseScale = s
       } else {
-        // 桌面端：锚点定位（语音模式下人物缩小，给右侧面板让位）
-        model.anchor.set(0.5, 0.28)
-        const BASE = isVoiceMode ? 0.00035 : 0.0007
-        model.scale.set(w * BASE * _zoomFactor)
-        _baseScale = w * BASE
-        model.y = h * 0.55
+        // 桌面端：高度按舞台比例（与右侧对话框对齐），顶部贴齐舞台顶部；
+        // 用模型真实包围盒计算，缩放与定位不依赖猜测的模型尺寸
+        try {
+          const b = model.getLocalBounds()
+          if (b.height > 10) {
+            const ratio = isVoiceMode ? VOICE_MODE_HEIGHT_RATIO : DESK_MODEL_HEIGHT_RATIO
+            const s = (h * ratio) / b.height
+            model.anchor.set(0, 0)
+            model.scale.set(s * _zoomFactor)
+            model.x = w / 2 - s * (b.x + b.width / 2)
+            model.y = DESK_MODEL_TOP_OFFSET - s * b.y
+            _baseScale = s
+          } else {
+            throw new Error('bounds empty')
+          }
+        } catch {
+          // 兜底：沿用宽度系数估算（锚点定位）
+          model.anchor.set(0.5, 0.28)
+          const BASE = isVoiceMode ? 0.00035 : 0.0007
+          model.scale.set(w * BASE * _zoomFactor)
+          _baseScale = w * BASE
+          model.y = h * 0.55
+        }
       }
     }
     fitModel()

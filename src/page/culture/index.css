@@ -1442,3 +1442,59 @@
     max-width: 86% !important;
   }
 }
+
+/* ═══ 还原调整（整合后）：聊天区恢复带框卡片质感 ═══ */
+/* 功能栏：恢复胶囊底色与边框，两个按钮移到左侧 */
+.culture-chat-panel .function-bar {
+  background: var(--c-panel) !important;
+  border: 1px solid var(--c-border) !important;
+  box-shadow: 0 2px 6px var(--c-shadow) !important;
+  border-radius: 40px !important;
+  padding: 8px 18px !important;
+  margin-bottom: 8px !important;
+  justify-content: flex-start !important;
+}
+
+.culture-chat-panel .func-item {
+  background: var(--c-bg2) !important;
+  border: 1px solid var(--c-border) !important;
+  color: var(--c-mid) !important;
+  border-radius: 40px !important;
+  padding: 6px 14px !important;
+}
+
+.culture-chat-panel .func-item:hover {
+  background: var(--c-bg) !important;
+  color: var(--c-dark) !important;
+  transform: none;
+}
+
+/* 聊天面板：恢复原内边距与底部分隔线 */
+.culture-chat-panel {
+  padding: 16px 20px 12px !important;
+  border-bottom: 1px solid var(--c-border) !important;
+}
+
+/* 聊天历史：纯白背景 + 圆角边框（有框的感觉） */
+.culture-chat-panel .chat-history {
+  background: #ffffff !important;
+  border: 1px solid var(--c-border) !important;
+  border-radius: 20px !important;
+  box-shadow: inset 0 2px 8px var(--c-shadow) !important;
+  padding: 14px 16px !important;
+}
+
+/* 白底上 AI 气泡改用浅米色，保持层次（用户气泡原浅茶色不变） */
+.culture-chat-panel .message.ai {
+  background: var(--c-bg2) !important;
+}
+
+/* ═══ 用户头像（个人中心可设置）：照片替换聊天气泡旁的小头像 ═══ */
+.culture-chat-panel .message.user::before {
+  background-color: rgba(255, 252, 245, 0.9);
+  background-image: var(--user-avatar, none),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a7357' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3.5'/%3E%3Cpath d='M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6'/%3E%3C/svg%3E");
+  background-size: cover, 62%;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+}

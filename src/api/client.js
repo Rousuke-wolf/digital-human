@@ -52,6 +52,7 @@ export const userAPI = {
   claimTask:   (task, stage) => api('POST', '/user/tasks/claim', { task, stage }),
   redeem:      (code)      => api('POST', '/user/redeem', { code }),
   vipPurchase: (plan)      => api('POST', '/user/vip/purchase', { plan }),
+  setAvatar:   (dataUrl)   => api('POST', '/user/avatar', { dataUrl }),
 }
 
 // ── 管理后台接口（admin 角色，成长体系）──

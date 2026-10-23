@@ -6,13 +6,32 @@
       <!-- ── 1. 账号信息 ── -->
       <section class="profile-card account-card">
         <div class="account-main">
-          <div class="account-avatar">{{ avatarChar }}</div>
+          <div
+            class="account-avatar"
+            :class="{ photo: user?.avatar }"
+            :title="avatarBusy ? '上传中...' : '点击更换头像'"
+            @click="onPickAvatar"
+          >
+            <img v-if="user?.avatar" :src="user.avatar" alt="我的头像" />
+            <template v-else>{{ avatarChar }}</template>
+          </div>
+          <input
+            ref="avatarInput"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            style="display:none"
+            @change="onAvatarFile"
+          />
           <div class="account-info">
             <h2 class="account-name">{{ user?.username || '—' }}</h2>
             <p class="account-meta">{{ user?.email || '' }}</p>
             <p class="account-meta">{{ user?.created_at ? `注册于 ${formatDate(user.created_at)}` : '' }}</p>
+            <p v-if="avatarMsg" class="profile-hint">{{ avatarMsg }}</p>
           </div>
           <div class="account-actions">
+            <button v-if="user?.avatar" class="profile-btn ghost" :disabled="avatarBusy" @click="onResetAvatar">
+              恢复默认头像
+            </button>
             <button class="profile-btn ghost" @click="showPwdForm = !showPwdForm">
               {{ showPwdForm ? '收起' : '🔒 修改密码' }}
             </button>
@@ -292,6 +311,73 @@ function writeLocal(key, list) {
 
 // ── 账号信息 ──────────────────────────────────────
 const avatarChar = computed(() => (user.value?.username?.[0] || '绣'))
+
+// ── 头像设置：点击头像选图 → 压缩为 200×200 JPEG → 上传 → 同步到聊天气泡 ──
+const avatarInput = ref(null)
+const avatarBusy = ref(false)
+const avatarMsg = ref('')
+
+function onPickAvatar() {
+  if (avatarBusy.value) return
+  avatarInput.value?.click()
+}
+
+function onAvatarFile(e) {
+  const file = e.target.files?.[0]
+  e.target.value = ''   // 允许重复选择同一文件
+  if (!file) return
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+    avatarMsg.value = '仅支持 PNG / JPG / WebP 图片'
+    return
+  }
+  const img = new Image()
+  const url = URL.createObjectURL(file)
+  img.onload = () => {
+    // 居中裁剪压缩到 200×200，控制体积（后端限制 2MB）
+    const size = 200
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+    const scale = Math.max(size / img.width, size / img.height)
+    const w = img.width * scale
+    const h = img.height * scale
+    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
+    URL.revokeObjectURL(url)
+    uploadAvatar(canvas.toDataURL('image/jpeg', 0.85))
+  }
+  img.onerror = () => URL.revokeObjectURL(url)
+  img.src = url
+}
+
+async function uploadAvatar(dataUrl) {
+  avatarBusy.value = true
+  avatarMsg.value = '头像上传中...'
+  try {
+    const res = await userAPI.setAvatar(dataUrl)
+    user.value = { ...(user.value || {}), avatar: res.avatarUrl }
+    avatarMsg.value = '头像已更新，聊天中的头像已同步'
+  } catch (err) {
+    avatarMsg.value = err.message
+  } finally {
+    avatarBusy.value = false
+  }
+}
+
+async function onResetAvatar() {
+  if (avatarBusy.value) return
+  avatarBusy.value = true
+  try {
+    await userAPI.setAvatar(null)
+    user.value = { ...(user.value || {}), avatar: null }
+    avatarMsg.value = '已恢复默认头像'
+  } catch (err) {
+    avatarMsg.value = err.message
+  } finally {
+    avatarBusy.value = false
+  }
+}
+
 const showPwdForm = ref(false)
 const submitting = ref(false)
 const pwdError = ref('')
@@ -563,7 +649,18 @@ onMounted(async () => {
   width: 64px; height: 64px; background: #c0392b; color: white; border-radius: 18px;
   display: flex; align-items: center; justify-content: center;
   font-size: 26px; font-weight: bold; flex-shrink: 0;
+  cursor: pointer; overflow: hidden; position: relative;
+  transition: filter 0.2s;
 }
+.account-avatar:hover { filter: brightness(0.92); }
+.account-avatar:hover::after {
+  content: '更换'; position: absolute; inset: 0;
+  background: rgba(61, 31, 10, 0.45); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 500;
+}
+.account-avatar.photo { background: #f4ecdd; }
+.account-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .account-info { flex: 1; min-width: 180px; }
 .account-name { font-size: 20px; color: #3d1f0a; margin: 0 0 4px; }
 .account-meta { font-size: 13px; color: #9a7d64; margin: 2px 0 0; }
