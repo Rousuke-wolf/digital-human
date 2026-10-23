@@ -100,12 +100,12 @@ router.post('/tasks/event', async (req, res) => {
 })
 
 // ── POST /api/user/tasks/checkin ─────────────────────
-// 每日签到：点击即完成（写领取记录，当日生效）
+// 每日签到：点击即完成（写领取记录，当日生效；签到为单阶段任务）
 router.post('/tasks/checkin', async (req, res) => {
   try {
     await query(
       'INSERT OR IGNORE INTO user_task_claims (user_id, task_key, day) VALUES (?, ?, ?)',
-      [req.user.id, 'checkin', todayKey()]
+      [req.user.id, 'checkin-s0', todayKey()]
     )
     res.json({ ok: true })
   } catch (err) {
@@ -115,17 +115,21 @@ router.post('/tasks/checkin', async (req, res) => {
 })
 
 // ── POST /api/user/tasks/claim ───────────────────────
-// 领取任务奖励：进度达标才发放；已领取幂等返回成功
+// 领取任务阶段奖励：{ task, stage }，stage 为阶段序号（0 起）；
+// 该阶段进度达标才发放；已领取幂等返回成功
 router.post('/tasks/claim', async (req, res) => {
   try {
     const task = String(req.body?.task ?? '')
-    const progress = await taskList(req.user.id)
-    const t = progress.find((x) => x.key === task)
+    const stage = Number(req.body?.stage ?? 0)
+    const list = await taskList(req.user.id)
+    const t = list.find((x) => x.key === task)
     if (!t || t.key === 'checkin') return res.status(400).json({ message: '任务不存在' })
-    if (!t.done) return res.status(400).json({ message: '任务尚未完成，继续加油～' })
+    const st = t.stages?.[stage]
+    if (!st) return res.status(400).json({ message: '阶段不存在' })
+    if (!st.done) return res.status(400).json({ message: '该阶段尚未完成，继续加油～' })
     await query(
       'INSERT OR IGNORE INTO user_task_claims (user_id, task_key, day) VALUES (?, ?, ?)',
-      [req.user.id, task, todayKey()]
+      [req.user.id, `${task}-s${stage}`, todayKey()]
     )
     res.json({ ok: true })
   } catch (err) {

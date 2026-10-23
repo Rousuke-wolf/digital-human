@@ -127,21 +127,23 @@ TOKEN2=$(echo $R2 | grep -o '"token":"[^"]*"' | sed 's/"token":"//;s/"//')
 
 check "普通用户访问管理接口 → 403" "403" "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/admin/stats -H "Authorization: Bearer $TOKEN2")"
 
-# 任务：图谱探索事件 ×3 → 进度达标 → 领取 → 纹样额度 10→13
+# 任务（阶段制）：图谱探索事件 ×3 → 阶段0/阶段1 达标 → 分别领取
 for i in 1 2 3; do
   curl -s -X POST $BASE/api/user/tasks/event -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN2" -d '{"task":"graph"}' > /dev/null
 done
 UG2=$(curl -s $BASE/api/user/usage -H "Authorization: Bearer $TOKEN2")
-check "任务进度 graph=3 done" "Y" "$(echo $UG2 | grep -o '"progress":3,"target":3,"done":true' | head -1 | sed 's/.*/Y/')"
-CL=$(curl -s -X POST $BASE/api/user/tasks/claim -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN2" -d '{"task":"graph"}')
-check "领取 graph 任务" "true" "$(echo $CL | grep -o '"ok":true' | sed 's/"ok"://')"
+check "graph 总进度 3/6，阶段0/1 达标" "Y" "$(echo $UG2 | grep -o '"progress":3,"target":6' | head -1 | sed 's/.*/Y/')"
+CL=$(curl -s -X POST $BASE/api/user/tasks/claim -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN2" -d '{"task":"graph","stage":1}')
+check "领取 graph 阶段1（探索3→纹样+3）" "true" "$(echo $CL | grep -o '"ok":true' | sed 's/"ok"://')"
 UG2B=$(curl -s $BASE/api/user/usage -H "Authorization: Bearer $TOKEN2")
-check "纹样额度 10→13（任务加成）" "Y" "$(echo $UG2B | grep -o '"limit":13' | head -1 | sed 's/.*/Y/')"
-check "重复领取幂等 200" "200" "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/user/tasks/claim -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN2" -d '{"task":"graph"}')"
-check "未完成任务领取 → 400" "400" "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/user/tasks/claim -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN2" -d '{"task":"share"}')"
+check "纹样额度 10→13（阶段1加成）" "Y" "$(echo $UG2B | grep -o '"limit":13' | head -1 | sed 's/.*/Y/')"
+CL0=$(curl -s -X POST $BASE/api/user/tasks/claim -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN2" -d '{"task":"graph","stage":0}')
+check "领取 graph 阶段0（探索1→对话+10）" "true" "$(echo $CL0 | grep -o '"ok":true' | sed 's/"ok"://')"
+check "重复领取幂等 200" "200" "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/user/tasks/claim -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN2" -d '{"task":"graph","stage":1}')"
+check "未达标阶段领取 → 400" "400" "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/user/tasks/claim -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN2" -d '{"task":"share","stage":1}')"
 CK=$(curl -s -X POST $BASE/api/user/tasks/checkin -H "Authorization: Bearer $TOKEN2")
 UG2C=$(curl -s $BASE/api/user/usage -H "Authorization: Bearer $TOKEN2")
-check "签到后对话额度 80（+20）" "Y" "$(echo $UG2C | grep -o '"feature":"chat"[^}]*"limit":80' | head -1 | sed 's/.*/Y/')"
+check "签到后对话额度 90（+20 签到 +10 graph阶段0）" "Y" "$(echo $UG2C | grep -o '"feature":"chat"[^}]*"limit":90' | head -1 | sed 's/.*/Y/')"
 check "签到任务进度 1/1" "Y" "$(echo $UG2C | grep -o '"progress":1,"target":1,"done":true' | head -1 | sed 's/.*/Y/')"
 
 # 兑换码：用户1 提为 admin 并重新登录刷新角色 → 生成码 → 用户2 兑换

@@ -49,7 +49,7 @@ export const userAPI = {
   // 成长体系：任务 / 兑换码 / 模拟会员
   tasksEvent:  (task)      => api('POST', '/user/tasks/event', { task }),
   checkin:     ()          => api('POST', '/user/tasks/checkin'),
-  claimTask:   (task)      => api('POST', '/user/tasks/claim', { task }),
+  claimTask:   (task, stage) => api('POST', '/user/tasks/claim', { task, stage }),
   redeem:      (code)      => api('POST', '/user/redeem', { code }),
   vipPurchase: (plan)      => api('POST', '/user/vip/purchase', { plan }),
 }

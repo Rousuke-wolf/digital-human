@@ -64,17 +64,41 @@
             <div class="task-info">
               <div class="task-name-row">
                 <span class="task-name">{{ t.name }}</span>
-                <span class="task-bonus">{{ t.bonusText }}</span>
               </div>
-              <span class="task-progress-text">{{ t.claimed ? '已领取，今日额度已加成' : `${t.progress} / ${t.target}` }}</span>
-              <div class="task-bar"><div class="task-bar-fill" :style="{ width: t.pct }"></div></div>
+
+              <!-- 只显示当前待完成的阶段；完成并领取后自动显示下一阶段 -->
+              <template v-if="t.key === 'checkin'">
+                <span class="task-progress-text">{{ t.claimed ? '已签到，对话额度 +20 已生效' : '未签到' }}</span>
+                <div class="task-bar"><div class="task-bar-fill" :style="{ width: t.pct }"></div></div>
+              </template>
+              <template v-else-if="t.currentStage">
+                <div class="task-stage-row">
+                  <span class="stage-goal">🎯 {{ t.currentStage.label }}</span>
+                  <span class="stage-bonus">{{ t.currentStage.bonusText }}</span>
+                  <button
+                    class="work-btn stage-btn"
+                    :class="{ ready: t.currentStage.done }"
+                    :disabled="!t.currentStage.done"
+                    @click="claimStage(t.key, t.currentStage.idx)"
+                  >{{ t.currentStage.done ? '领取奖励' : '进行中' }}</button>
+                </div>
+                <!-- 进度条 + 右下角阶段计数：0/3 → 1/3 ... -->
+                <div class="task-bar-row">
+                  <div class="task-bar"><div class="task-bar-fill" :style="{ width: t.pct }"></div></div>
+                  <span class="task-counter">{{ t.claimedCount }}/{{ t.stages.length }}</span>
+                </div>
+              </template>
+              <template v-else>
+                <span class="task-progress-text">🎉 全部阶段已完成，额度已加成</span>
+                <div class="task-bar-row">
+                  <div class="task-bar"><div class="task-bar-fill" :style="{ width: t.pct }"></div></div>
+                  <span class="task-counter">{{ t.claimedCount }}/{{ t.stages.length }}</span>
+                </div>
+              </template>
             </div>
             <div class="task-action">
               <button v-if="t.key === 'checkin'" class="work-btn ready" :disabled="t.claimed" @click="doCheckin">
                 {{ t.claimed ? '已签到' : '立即签到' }}
-              </button>
-              <button v-else class="work-btn" :class="{ ready: t.done && !t.claimed }" :disabled="t.claimed || !t.done" @click="claimTask(t.key)">
-                {{ t.claimed ? '已领取' : t.done ? '领取奖励' : '进行中' }}
               </button>
             </div>
           </div>
@@ -325,15 +349,28 @@ function deleteModel(m) {
 // ── 今日任务 ──────────────────────────────────────
 const taskMsg = ref('')
 const taskMsgError = ref(false)
+
+function bonusTextOf(bonus) {
+  return Object.entries(bonus ?? {})
+    .map(([f, amt]) => `${QUOTA_ICONS[f] ?? ''} +${amt}`)
+    .join(' ')
+}
+
 const taskCards = computed(() => {
   const list = quota.value?.tasks ?? []
-  return list.map((t) => ({
-    ...t,
-    pct: `${Math.min(100, Math.round((t.progress / t.target) * 100))}%`,
-    bonusText: Object.entries(t.bonus ?? {})
-      .map(([f, amt]) => `${QUOTA_ICONS[f] ?? ''} +${amt}`)
-      .join(' '),
-  }))
+  return list.map((t) => {
+    const stages = (t.stages ?? []).map((s, idx) => ({ ...s, idx, bonusText: bonusTextOf(s.bonus) }))
+    const claimedCount = stages.filter((s) => s.claimed).length
+    // 当前待完成阶段 = 第一个未领取的阶段；全部领取则为 null
+    const currentStage = claimedCount < stages.length ? stages[claimedCount] : null
+    return {
+      ...t,
+      stages,
+      claimedCount,
+      currentStage,
+      pct: `${Math.min(100, Math.round((t.progress / t.target) * 100))}%`,
+    }
+  })
 })
 
 function showTaskMsg(text, isError = false) {
@@ -351,9 +388,10 @@ async function doCheckin() {
   }
 }
 
-async function claimTask(key) {
+// 领取任务阶段奖励（stage 为阶段序号，0 起）
+async function claimStage(key, stage) {
   try {
-    await userAPI.claimTask(key)
+    await userAPI.claimTask(key, stage)
     showTaskMsg('奖励已领取，今日额度已加成')
     await refreshQuota()
   } catch (err) {
@@ -547,7 +585,7 @@ onMounted(async () => {
 
 /* ── 今日任务 ── */
 .title-hint { font-size: 12px; color: #b0907a; font-weight: normal; margin-left: 8px; }
-.task-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.task-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; }
 .task-card {
   position: relative;
   display: flex; align-items: center; gap: 12px; padding: 14px 16px;
@@ -574,12 +612,38 @@ onMounted(async () => {
 .task-icon { font-size: 24px; flex-shrink: 0; }
 .task-info { flex: 1; min-width: 0; }
 .task-name-row { display: flex; align-items: center; gap: 8px; }
-.task-name { font-size: 14px; font-weight: 600; color: #3d1f0a; }
+.task-name { font-size: 14px; font-weight: 600; color: #3d1f0a; white-space: nowrap; }
 .task-bonus { font-size: 12px; color: #c9984a; font-weight: 700; }
-.task-progress-text { font-size: 12px; color: #9a7d64; display: block; margin: 3px 0 6px; }
+.task-progress-text {
+  font-size: 12px; color: #9a7d64; display: block; margin: 3px 0 6px;
+  line-height: 1.6;
+}
 .task-bar { height: 6px; background: #f0e8da; border-radius: 999px; overflow: hidden; }
 .task-bar-fill { height: 100%; background: linear-gradient(90deg, #c9984a, #8b6240); border-radius: 999px; transition: width 0.4s; }
 .task-action { flex-shrink: 0; }
+
+/* ── 阶段任务：只显示当前待完成的一步 ──
+   布局规则：空间足够时三项一行；不足时整体换行——目标独占一行，
+   奖励 + 按钮在第二行（绝不出现半截折行） */
+.task-stage-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  padding: 6px 10px; margin-bottom: 8px;
+  border-radius: 8px; background: #faf6ef; border: 1px solid #f0e8da;
+}
+.stage-goal {
+  flex: 1 1 170px; min-width: 0; font-size: 12.5px; color: #5c3d20;
+  white-space: nowrap;
+}
+.stage-bonus { font-size: 12px; color: #c9984a; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+.stage-btn { padding: 4px 12px; font-size: 12px; flex-shrink: 0; }
+/* 进度条 + 右下角阶段计数（0/3 → 1/3 ...） */
+.task-bar-row { display: flex; align-items: center; gap: 8px; }
+.task-bar-row .task-bar { flex: 1; }
+.task-counter {
+  font-size: 12px; font-weight: 700; color: #8b6240;
+  padding: 2px 9px; border-radius: 999px; background: #fdf6ec; border: 1px solid #e8d5b8;
+  flex-shrink: 0; white-space: nowrap;
+}
 .work-btn.ready { border-color: #c9984a; color: #8b6240; background: #fdf6ec; }
 .work-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .work-btn:disabled:hover { border-color: #e2d5c3; color: #5c3d20; background: transparent; }

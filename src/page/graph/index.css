@@ -348,7 +348,7 @@
 
 /* 星点微动：逐个错开的轻柔起伏（探索后转为静态） */
 .star-pulse {
-  animation: star-bob 4s ease-in-out infinite;
+  animation: star-bob 3s ease-in-out infinite;
 }
 
 @keyframes star-bob {
@@ -357,7 +357,7 @@
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-2.5px);
+    transform: translateY(-4px);
   }
 }
 
