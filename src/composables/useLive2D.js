@@ -1,283 +1,265 @@
-// useLive2D.js — Live2D 数字人模块（文化页 / 3D 展厅共用）
-// 从原 script.js 全局函数迁移而来：模块级单例，
-// 页面组件 import 后在 onMounted 初始化、onBeforeUnmount 销毁
-//
-// 依赖的浏览器全局（index.html CDN 加载）：
-//   PIXI（pixi.js）、Live2DCubismCore、PIXI.live2d（pixi-live2d-display）
-// 嘴型振幅由 src/tts.js 写入 window._ttsAmplitude（后续批次改为模块通信）
+// 各页面共用的 Live2D 单例；模型资源从 public/model 提供。
+import { reactive } from 'vue'
+import { speechState } from '../utils/speechState.js'
+import {
+  getModelLayout, getPointerFocus, ZOOM_MIN, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_STEP,
+} from '../utils/live2dGeometry.js'
 
-let _app = null
-let _model = null
-let _resizeObserver = null
-let _avatarDragCleanup = null
-let _mouthParam = null
-let _lipsyncSmoothed = 0
-let _lipsyncActive = false
-let _expressionSupported = false
-let _zoomFactor = 1.1
+export const LIVE2D_MODELS = [
+  { id: 'res1', label: '绫韵 · 形象一', url: `${import.meta.env.BASE_URL}model/res1/layout.model3.json` },
+  { id: 'res2', label: '绫韵 · 形象二', url: `${import.meta.env.BASE_URL}model/res2/layout.model3.json` },
+]
+export const live2dState = reactive({
+  modelId: 'res1', loading: false, ready: false, error: '',
+  zoom: ZOOM_DEFAULT, canZoomIn: true, canZoomOut: true, expressionSupported: false,
+})
+
+let app = null
+let model = null
+let container = null
+let bounds = null
+let resizeObserver = null
+let cleanup = []
+let generation = 0
+let pointer = null
+let focus = { x: 0, y: 0 }
+let mouthSmoothed = 0
+let currentEmotion = 'happy'
 
 function showModelError(message) {
-  const canvas = document.getElementById('live2d')
-  if (!canvas?.parentElement) return
-  const container = canvas.parentElement
-  container.querySelector('.live2d-error-message')?.remove()
+  live2dState.error = message
+  container?.querySelector('.live2d-error-message')?.remove()
+  if (!message || !container) return
   const el = document.createElement('div')
   el.className = 'live2d-error-message'
-  el.style.cssText = `
-    color:#fbbf24;text-align:center;padding:20px;
-    background:rgba(0,0,0,0.8);border-radius:10px;
-    position:absolute;top:50%;left:50%;
-    transform:translate(-50%,-50%);width:80%;
-    z-index:100;border:1px solid #fbbf24;line-height:1.6;
-  `
-  el.innerHTML = `<div style="font-size:18px;">❌ ${message}</div>`
+  el.style.cssText = 'position:absolute;inset:35% 10% auto;padding:16px;border-radius:12px;background:#fff8ed;color:#a93226;text-align:center;z-index:5'
+  el.textContent = message
   container.appendChild(el)
 }
 
-// ── 初始化：canvas 存在才执行，重复调用先销毁旧实例 ──
+// PIXI getLocalBounds 返回整张画布（含透明留白）；使用真实绘制网格计算人物区域。
+function getDrawableBounds(instance) {
+  const internal = instance.internalModel
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity
+  for (const id of internal.getDrawableIDs()) {
+    const index = internal.getDrawableIndex(id)
+    if (internal.coreModel.getDrawableOpacity(index) <= 0) continue
+    const vertices = internal.getDrawableVertices(index)
+    for (let i = 0; i < vertices.length; i += 2) {
+      const p = internal.localTransform.apply({ x: vertices[i], y: vertices[i + 1] })
+      left = Math.min(left, p.x)
+      right = Math.max(right, p.x)
+      top = Math.min(top, p.y)
+      bottom = Math.max(bottom, p.y)
+    }
+  }
+  if (right > left && bottom > top) return { x: left, y: top, width: right - left, height: bottom - top }
+  return instance.getLocalBounds()
+}
+
+function fitModel() {
+  if (!app || !model || !container || !bounds) return
+  const w = Math.max(1, container.clientWidth)
+  const h = Math.max(1, container.clientHeight)
+  app.renderer.resize(w, h)
+  const layout = getModelLayout(bounds, w, h, live2dState.zoom)
+  model.anchor.set(0, 0)
+  model.scale.set(layout.scale)
+  model.position.set(layout.x, layout.y)
+}
+
+export function zoomLive2D(direction) {
+  live2dState.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, live2dState.zoom + direction * ZOOM_STEP))
+  live2dState.canZoomOut = live2dState.zoom > ZOOM_MIN + 0.001
+  live2dState.canZoomIn = live2dState.zoom < ZOOM_MAX - 0.001
+  fitModel()
+}
+
+function setupParameters(instance) {
+  const internal = instance.internalModel
+  const core = internal.coreModel
+  // 不能用 setParameterValueById 是否抛异常来探测：Cubism 会为不存在的 ID 创建虚拟参数。
+  const ids = new Set(core.getModel().parameters.ids)
+  const lipIds = internal.settings.getLipSyncParameters?.() || []
+  const mouthIds = [...new Set([...lipIds, 'ParamMouthOpenY', 'PARAM_MOUTH_OPEN_Y', 'ParamMouthOpen'])]
+    .filter((id) => ids.has(id))
+  // 禁用插件自动鼠标交互，呼吸仅保留小幅摆动（自带默认转头幅度过大）。
+  for (const param of internal.breath?.getParameters() || []) {
+    if (param.parameterId !== 'ParamBreath') param.peak *= 0.12
+  }
+  const set = (id, value) => { if (ids.has(id)) core.setParameterValueById(id, value) }
+  // 关键：在动作、表情、物理之后、coreModel.update() 之前写口型，避免被动画覆盖。
+  internal.on('beforeModelUpdate', () => {
+    if (model !== instance || !container) return
+    const rect = container.getBoundingClientRect()
+    const s = instance.scale.x
+    const visibleTop = Math.max(0, instance.y + bounds.y * s)
+    const visibleBottom = Math.min(rect.height, instance.y + (bounds.y + bounds.height) * s)
+    const center = {
+      x: rect.left + instance.x + (bounds.x + bounds.width / 2) * s,
+      y: rect.top + (visibleTop + visibleBottom) / 2,
+    }
+    const target = getPointerFocus(pointer, center, rect.width, rect.height)
+    focus.x += (target.x - focus.x) * 0.12
+    focus.y += (target.y - focus.y) * 0.12
+    set('ParamAngleX', focus.x * 8)
+    set('ParamAngleY', focus.y * 6)
+    set('ParamAngleZ', -focus.x * focus.y * 1.5)
+    set('ParamEyeBallX', focus.x * 0.55)
+    set('ParamEyeBallY', focus.y * 0.45)
+    set('ParamBodyAngleX', focus.x * 1.5)
+    set('ParamBodyAngleY', focus.y * 0.8)
+    set('ParamBodyAngleZ', 0)
+    set('ParamBodyLean', 0)
+    const speaking = speechState.active && !speechState.paused
+    const amplitude = speaking ? speechState.amplitude : 0
+    mouthSmoothed += (amplitude - mouthSmoothed) * (amplitude > mouthSmoothed ? 0.65 : 0.4)
+    for (const id of mouthIds) {
+      const index = core.getParameterIndex(id)
+      const max = core.getParameterMaximumValue(index)
+      core.setParameterValueById(id, speaking ? Math.min(0.85, mouthSmoothed) * max : 0)
+    }
+  })
+}
+
+async function loadModel(id) {
+  if (!app || live2dState.loading) return false
+  const entry = LIVE2D_MODELS.find((item) => item.id === id)
+  if (!entry) return false
+  const myGeneration = generation
+  const owner = app
+  live2dState.loading = true
+  showModelError('')
+  try {
+    const next = await window.PIXI.live2d.Live2DModel.from(entry.url, {
+      autoInteract: false,
+      idleMotionGroup: '__manual__', // 不播放示例中的大幅 Idle/Nod/Shake；保留自动眨眼和轻呼吸。
+    })
+    if (myGeneration !== generation || owner !== app) {
+      next.destroy({ texture: true, baseTexture: true })
+      return false
+    }
+    const nextBounds = getDrawableBounds(next)
+    const previous = model
+    model = next
+    bounds = nextBounds
+    focus = { x: 0, y: 0 }
+    mouthSmoothed = 0
+    setupParameters(next)
+    owner.stage.addChild(next)
+    if (previous) {
+      owner.stage.removeChild(previous)
+      previous.destroy({ texture: true, baseTexture: true })
+    }
+    live2dState.modelId = id
+    live2dState.ready = true
+    live2dState.expressionSupported = !!next.internalModel.motionManager.expressionManager?.expressions?.length
+    fitModel()
+    setEmotion(currentEmotion)
+    return true
+  } catch (error) {
+    if (myGeneration === generation) {
+      console.error('Live2D 模型加载失败:', error)
+      showModelError('模型加载失败，请重试切换形象')
+    }
+    return false
+  } finally {
+    if (myGeneration === generation) live2dState.loading = false
+  }
+}
+
+export function switchLive2DModel() {
+  const index = LIVE2D_MODELS.findIndex((item) => item.id === live2dState.modelId)
+  return loadModel(LIVE2D_MODELS[(index + 1) % LIVE2D_MODELS.length].id)
+}
+
 export async function initLive2D() {
   const canvas = document.getElementById('live2d')
-  if (!canvas) return
-
-  // 销毁旧实例（切页回来 / 重复初始化时避免叠加渲染）
+  if (!canvas) return false
   destroyLive2D()
-  _zoomFactor = 1.1
-
+  container = canvas.closest('.character-3d') || canvas.parentElement
+  live2dState.zoom = ZOOM_DEFAULT
+  live2dState.canZoomIn = live2dState.canZoomOut = true
   try {
-    if (typeof PIXI === 'undefined') { showModelError('PIXI 库加载失败'); return }
-    if (typeof Live2DCubismCore === 'undefined') { showModelError('Cubism Core 未加载'); return }
-    if (!PIXI.live2d?.Live2DModel) { showModelError('Cubism4 插件未正确加载'); return }
-
-    const container = canvas.closest('.character-3d') || canvas.parentElement
-    if (!container) { showModelError('找不到 Live2D 显示区域'); return }
-
-    const app = new PIXI.Application({
-      view: canvas,
-      width: container.clientWidth,
-      height: container.clientHeight,
-      transparent: true,
-      autoStart: true,
-      resolution: window.devicePixelRatio || 1,
-      autoDensity: true,
+    if (!window.PIXI?.live2d?.Live2DModel || !window.Live2DCubismCore) {
+      throw new Error('Live2D 库未加载，请检查网络后刷新')
+    }
+    app = new window.PIXI.Application({
+      view: canvas, width: Math.max(1, container.clientWidth), height: Math.max(1, container.clientHeight),
+      transparent: true, autoStart: true, resolution: window.devicePixelRatio || 1, autoDensity: true,
     })
-    const model = await PIXI.live2d.Live2DModel.from('..\\public\\model\\hiyori\\hiyori.model3.json')
-
-    _app = app
-    _model = model
-    app.stage.addChild(model)
-
-    // ── 自适应尺寸 ──────────────────────────────
-    const ZOOM_MIN = 0.8
-    const ZOOM_MAX = 1.4
-    const ZOOM_STEP = 0.08
-
-    // ═══ 移动端圆框「面部特写」可调参数（三个页面共用，改这里即可）═══
-    // headRatio：头部高度占模型包围盒高度的比例（脸被裁大→调小；头太小→调大）
-    // fill：头部高度占圆框直径的比例（越接近 1 脸越满）
-    // offsetY：整体上下微调，正数下移 / 负数上移（单位 px）
-    // offsetX：整体左右微调，负数=脸部在圆框中往左移 / 正数=往右移（单位 px）
-    const AVATAR_HEAD_RATIO = 0.32
-    const AVATAR_FILL = 1.25
-    const AVATAR_OFFSET_Y = -25
-    const AVATAR_OFFSET_X = -13
-
-    // ═══ 桌面端数字人整体位置/高度可调参数（三个页面共用）═══
-    // heightRatio：数字人高度占舞台高度的比例（与右侧对话框高度对齐，调大=人变高）
-    // topOffset：数字人顶部离舞台顶部的距离（px，调大=整体下移）
-    // voiceRatio：语音模式（文化页全屏）下人物高度比例（给右侧面板让位）
-    const DESK_MODEL_HEIGHT_RATIO = 1.5
-    const DESK_MODEL_TOP_OFFSET = -60
-    const VOICE_MODE_HEIGHT_RATIO = 1
-    function fitModel() {
-      const w = container.clientWidth
-      const h = container.clientHeight
-      app.renderer.resize(w, h)
-      // 移动端悬浮圆形小头像：容器被 CSS 缩成 ~116px 圆形，检测宽度 < 300 切换系数
-      const compact = w < 300
-      const isVoiceMode = document.querySelector('.app-wrapper')?.classList.contains('voice-mode')
-      model.x = w / 2
-      if (compact) {
-        // 面部特写：读取模型真实绘制包围盒（本地坐标，不受缩放影响），
-        // 把头部区域精确平移到圆框中心，缩放让头部填满圆框
-        try {
-          const b = model.getLocalBounds()
-          if (b.height > 10) {
-            const targetH = (h * AVATAR_FILL) / AVATAR_HEAD_RATIO   // 包围盒目标高度
-            const s = targetH / b.height
-            model.anchor.set(0, 0)   // 原点改为画布左上角，坐标计算更直接
-            model.scale.set(s * _zoomFactor)
-            // 头部中心（本地坐标）→ 屏幕圆框中心（offsetX 负值=脸往左移）
-            model.x = w / 2 - s * (b.x + b.width / 2) + AVATAR_OFFSET_X
-            model.y = h / 2 - s * (b.y + (AVATAR_HEAD_RATIO / 2) * b.height) + AVATAR_OFFSET_Y
-            return
-          }
-        } catch { /* 包围盒异常时退回下方兜底公式 */ }
-        // 兜底：按模型自然高度估算
-        const s = (h * AVATAR_FILL) / AVATAR_HEAD_RATIO / (model.height || 1000)
-        model.scale.set(s * _zoomFactor)
-        model.anchor.set(0.5, 0.28)
-        model.y = h / 2 + (0.28 - AVATAR_HEAD_RATIO / 2) * s * (model.height || 1000)
-      } else {
-        // 桌面端：高度按舞台比例（与右侧对话框对齐），顶部贴齐舞台顶部；
-        // 用模型真实包围盒计算，缩放与定位不依赖猜测的模型尺寸
-        try {
-          const b = model.getLocalBounds()
-          if (b.height > 10) {
-            const ratio = isVoiceMode ? VOICE_MODE_HEIGHT_RATIO : DESK_MODEL_HEIGHT_RATIO
-            const s = (h * ratio) / b.height
-            model.anchor.set(0, 0)
-            model.scale.set(s * _zoomFactor)
-            model.x = w / 2 - s * (b.x + b.width / 2)
-            model.y = DESK_MODEL_TOP_OFFSET - s * b.y
-          } else {
-            throw new Error('bounds empty')
-          }
-        } catch {
-          // 兜底：沿用宽度系数估算（锚点定位）
-          model.anchor.set(0.5, 0.28)
-          const BASE = isVoiceMode ? 0.00035 : 0.0007
-          model.scale.set(w * BASE * _zoomFactor)
-          model.y = h * 0.55
-        }
-      }
+    const onPointer = (e) => { if (e.pointerType !== 'touch') pointer = { x: e.clientX, y: e.clientY } }
+    const onLeave = () => { pointer = null }
+    window.addEventListener('pointermove', onPointer)
+    window.addEventListener('blur', onLeave)
+    document.addEventListener('pointerleave', onLeave)
+    const stage = container.closest('.left-stage')
+    let drag = null
+    const onDown = (e) => {
+      if (!stage || container.clientWidth >= 180 || e.target.closest('button')) return
+      const rect = stage.getBoundingClientRect()
+      drag = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top }
+      stage.setPointerCapture(e.pointerId)
     }
-    fitModel()
-
-    model.interactive = true
-    model.on('pointerdown', () => {
-      try { model.motion('TapBody') } catch {}
+    const onMove = (e) => {
+      if (!drag) return
+      stage.style.left = `${Math.max(8, Math.min(window.innerWidth - stage.clientWidth - 8, drag.left + e.clientX - drag.x))}px`
+      stage.style.top = `${Math.max(72, Math.min(window.innerHeight - stage.clientHeight - 8, drag.top + e.clientY - drag.y))}px`
+      stage.style.right = stage.style.bottom = 'auto'
+    }
+    const onUp = () => { drag = null }
+    stage?.addEventListener('pointerdown', onDown)
+    stage?.addEventListener('pointermove', onMove)
+    stage?.addEventListener('pointerup', onUp)
+    stage?.addEventListener('pointercancel', onUp)
+    const onWheel = (e) => { e.preventDefault(); zoomLive2D(e.deltaY < 0 ? 1 : -1) }
+    container.addEventListener('wheel', onWheel, { passive: false })
+    const ownerContainer = container
+    cleanup.push(() => {
+      window.removeEventListener('pointermove', onPointer)
+      window.removeEventListener('blur', onLeave)
+      document.removeEventListener('pointerleave', onLeave)
+      ownerContainer.removeEventListener('wheel', onWheel)
+      stage?.removeEventListener('pointerdown', onDown)
+      stage?.removeEventListener('pointermove', onMove)
+      stage?.removeEventListener('pointerup', onUp)
+      stage?.removeEventListener('pointercancel', onUp)
     })
-
-    const ro = new ResizeObserver(() => fitModel())
-    ro.observe(container)
-    _resizeObserver = ro
-
-    // ── 移动端小头像拖动（仅圆形悬浮模式下启用）──
-    // 小圆框可拖到屏幕任意位置；拖动时不触发页面滚动
-    const stageEl = container.closest('.left-stage') || container.closest('.culture-left')
-    let _dragState = null
-    const _onAvatarDown = (e) => {
-      if (container.clientWidth >= 300) return   // 非圆形模式（桌面大舞台）不启用
-      const rect = stageEl.getBoundingClientRect()
-      _dragState = { sx: e.clientX, sy: e.clientY, ox: rect.left, oy: rect.top, moved: false }
-      try { stageEl.setPointerCapture(e.pointerId) } catch {}
-    }
-    const _onAvatarMove = (e) => {
-      if (!_dragState) return
-      if (!_dragState.moved && Math.hypot(e.clientX - _dragState.sx, e.clientY - _dragState.sy) < 5) return
-      _dragState.moved = true
-      const d = stageEl.clientWidth
-      const x = Math.min(window.innerWidth - d - 8, Math.max(8, _dragState.ox + e.clientX - _dragState.sx))
-      const y = Math.min(window.innerHeight - d - 8, Math.max(72, _dragState.oy + e.clientY - _dragState.sy))
-      stageEl.style.left = `${x}px`
-      stageEl.style.top = `${y}px`
-      stageEl.style.right = 'auto'
-      stageEl.style.bottom = 'auto'
-    }
-    const _onAvatarUp = () => { _dragState = null }
-    stageEl?.addEventListener('pointerdown', _onAvatarDown)
-    stageEl?.addEventListener('pointermove', _onAvatarMove)
-    stageEl?.addEventListener('pointerup', _onAvatarUp)
-    stageEl?.addEventListener('pointercancel', _onAvatarUp)
-    if (stageEl) stageEl.style.touchAction = 'none'
-    _avatarDragCleanup = stageEl ? () => {
-      stageEl.removeEventListener('pointerdown', _onAvatarDown)
-      stageEl.removeEventListener('pointermove', _onAvatarMove)
-      stageEl.removeEventListener('pointerup', _onAvatarUp)
-      stageEl.removeEventListener('pointercancel', _onAvatarUp)
-    } : null
-
-    // ── 滚轮缩放 ─────────────────────────────────
-    container.addEventListener('wheel', (e) => {
-      e.preventDefault()
-      const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP
-      _zoomFactor = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _zoomFactor + delta))
-      // 重新走完整布局（重新居中/顶部对齐），原地缩放而不是从左上角斜着漂移
-      fitModel()
-    }, { passive: false })
-
-    // ── 口型同步 ─────────────────────────────────
-    const MOUTH_PARAMS = ['ParamMouthOpenY', 'PARAM_MOUTH_OPEN_Y', 'ParamMouthOpen']
-    _mouthParam = null
-    for (const name of MOUTH_PARAMS) {
-      try {
-        model.internalModel.coreModel.setParameterValueById(name, 0)
-        _mouthParam = name
-        break
-      } catch {}
-    }
-    if (!_mouthParam) {
-      try {
-        const count = model.internalModel.coreModel.getParameterCount()
-        for (let i = 0; i < count; i++) {
-          const id = model.internalModel.coreModel.getParameterId(i)
-          if (id?.toLowerCase().includes('mouth') && id?.toLowerCase().includes('open')) {
-            _mouthParam = id
-            break
-          }
-        }
-      } catch {}
-    }
-
-    const _lipsyncTicker = () => {
-      if (!_mouthParam) return
-      if (!_lipsyncActive) {
-        try { model.internalModel.coreModel.setParameterValueById(_mouthParam, 0) } catch {}
-        return
-      }
-      const raw = window._ttsAmplitude ?? 0
-      _lipsyncSmoothed = _lipsyncSmoothed * 0.30 + raw * 0.70
-      const val = Math.min(1, _lipsyncSmoothed * 5.0)
-      try { model.internalModel.coreModel.setParameterValueById(_mouthParam, val) } catch {}
-    }
-    app.ticker.add(_lipsyncTicker, null, PIXI.UPDATE_PRIORITY?.NORMAL ?? 0)
-
-    // ── 表情探测：expressionManager 里真实存在表情数据才支持 ──
-    _expressionSupported = false
-    try {
-      const exprMgr = model.internalModel?.motionManager?.expressionManager
-      const exprCount = exprMgr?.expressions?.length ?? 0
-      if (exprCount > 0) {
-        _expressionSupported = true
-        try { model.expression(0) } catch {}
-      }
-    } catch {
-      _expressionSupported = false
-    }
-
-    // 表情栏显隐（按钮 active 状态由 Live2DPanel 的 ref 自行管理）
-    const emotionSwitch = document.querySelector('.emotion-switch')
-    if (emotionSwitch) emotionSwitch.style.display = _expressionSupported ? '' : 'none'
-
-    console.log('✅ Live2D 模型加载成功')
+    resizeObserver = new ResizeObserver(fitModel)
+    resizeObserver.observe(container)
+    return await loadModel(live2dState.modelId)
   } catch (error) {
     console.error('Live2D 初始化失败:', error)
-    showModelError('模型加载失败，请检查控制台报错')
+    showModelError(error.message || 'Live2D 初始化失败')
+    return false
   }
 }
 
-// ── 表情切换：只切换模型表情，按钮高亮由组件管理 ──
 export function setEmotion(emotion) {
-  if (!_expressionSupported || !_model) return
-  try {
-    const map = { happy: 'f01', peace: 'f02', thoughtful: 'f03', surprised: 'f04', gentle: 'f05' }
-    _model.expression(map[emotion])
-  } catch {}
+  currentEmotion = emotion
+  const manager = model?.internalModel.motionManager.expressionManager
+  if (!manager) return
+  const map = { happy: '微笑', gentle: '微笑', surprised: '惊讶', thoughtful: '悲伤' }
+  if (emotion === 'peace') manager.resetExpression()
+  else model.expression(map[emotion] || '微笑').catch(console.warn)
 }
 
-// ── 嘴型开关（TTS 播放时调用）──
-export function startLipsync() { _lipsyncActive = true; _lipsyncSmoothed = 0 }
-export function stopLipsync() { _lipsyncActive = false; _lipsyncSmoothed = 0 }
+// 兼容现有调用点；口型开关以实际播放器状态为准，不再受估算时长影响。
+export function startLipsync() { mouthSmoothed = 0 }
+export function stopLipsync() { mouthSmoothed = 0 }
 
-// ── 销毁：页面离开时调用，释放 PIXI 实例与观察器 ──
 export function destroyLive2D() {
-  if (_resizeObserver) { _resizeObserver.disconnect(); _resizeObserver = null }
-  if (_avatarDragCleanup) { _avatarDragCleanup(); _avatarDragCleanup = null }
-  if (_app) {
-    try { _app.destroy(true, { children: true, texture: true }) } catch {}
-    _app = null
-  }
-  _model = null
-  _mouthParam = null
-  _lipsyncActive = false
+  generation++
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  cleanup.forEach((fn) => fn())
+  cleanup = []
+  if (app) app.destroy(false, { children: true, texture: true, baseTexture: true })
+  // 保留 Vue 持有的 canvas：切换路由和重复初始化不能由 PIXI 删除 DOM。
+  container?.querySelector('.live2d-error-message')?.remove()
+  app = model = container = bounds = null
+  pointer = null
+  mouthSmoothed = 0
+  live2dState.loading = live2dState.ready = live2dState.expressionSupported = false
+  live2dState.error = ''
 }

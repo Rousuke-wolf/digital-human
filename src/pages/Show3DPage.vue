@@ -6,8 +6,9 @@
       <div class="left-stage">
         <div class="character-section">
           <div class="character-3d">
-            <canvas id="live2d" style="width:45vw;"></canvas>
+            <canvas id="live2d" style="width:100%;height:100%;display:block;"></canvas>
           </div>
+          <Live2DControls />
         </div>
       </div>
 
@@ -115,6 +116,7 @@ import {
   meshySetStatus,
 } from '../page/show3D/Meshy.js'
 import { initLive2D, destroyLive2D } from '../composables/useLive2D.js'
+import Live2DControls from '../components/live2d/Live2DControls.vue'
 import { attachViewerLoading } from '../utils/viewerLoading.js'
 import { removeGeneratedModel } from '../utils/state.js'
 import { consumeExhibitJump, consumeGeneratedJump } from '../utils/navigation.js'

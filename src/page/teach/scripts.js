@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────
 
 // Live2D 嘴型开关（教学页数字人为 Live2D，与教学页专用 TTS 的振幅联动）
-import { startLipsync, stopLipsync } from '../../composables/useLive2D.js';
+import { stopLipsync } from '../../composables/useLive2D.js';
 
 // ─── 全局动画状态 ─────────────────────────────
 let _isAnimating  = true;
@@ -144,14 +144,8 @@ export function stepCardClicked(cardIdx) {
   const lines = SPEECH[_curStitch]?.[_curType];
   if (lines && lines[cardIdx]) {
     const text = lines[cardIdx];
-    // 估算播放时长：中文约 4 字/秒（语速 1.2x）
-    const estimatedMs = (text.length / (4 * 1.2)) * 1000 + 500;
-    startLipsync();
-    speak(text);
-    // 播完后切回 idle
-    setTimeout(() => {
-      stopLipsync();
-    }, estimatedMs);
+    // 按实际播放结束复位，不再用文本长度猜测时长。
+    speak(text, stopLipsync);
   }
 };
 

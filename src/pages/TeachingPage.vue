@@ -9,6 +9,7 @@
           <div class="character-3d">
             <canvas id="live2d" style="width:100%;height:100%;display:block;"></canvas>
           </div>
+          <Live2DControls />
         </div>
         <div class="live2d-scene-info">
           <div class="scene-title">当前场景：<span>刺绣工坊环境</span></div>
@@ -95,6 +96,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import '../page/teach/index.css'
 import Navbar from '../components/Navbar.vue'
 import GameModal from '../components/teach/GameModal.vue'
+import Live2DControls from '../components/live2d/Live2DControls.vue'
 import { initLive2D, destroyLive2D } from '../composables/useLive2D.js'
 import {
   updateDemo,
