@@ -5,7 +5,7 @@
   离线兜底：预置对话脚本（presetDialogs）+ 知识库数据直答，
            现场断网 / API 抖动也能完整演示「提问 → 回答 → 语音」
   形象方案：AvatarPlayer 双输入 —— 有预录视频段（videoUrl）播视频，
-           无视频时降级 Live2D（hiyori 模型 + TTS 振幅口型同步）
+           无视频时降级 Live2D（sample 双模型 + TTS 振幅口型同步）
   气泡对话（本轮重构）：
      数字人消息居左（绣娘头像 + 气泡 + 时间戳在下），用户消息居右
      （默认图标 + 气泡 + 时间戳在下）；回答以打字机效果写入气泡
@@ -45,11 +45,12 @@
               <canvas id="live2d" style="width: 100%; height: 100%; display: block"></canvas>
             </div>
           </AvatarPlayer>
+          <Live2DControls v-if="!activeVideoUrl" />
         </div>
 
         <!-- 表情切换（模型支持表情数据时由 useLive2D 自动显示） -->
-        <div class="emotion-switch">
-          <button v-for="e in emotions" :key="e.key" class="emotion-btn" :class="{ active: currentEmotion === e.key }" @click="setEmotion(e.key)">
+        <div v-if="live2dState.expressionSupported" class="emotion-switch">
+          <button v-for="e in emotions" :key="e.key" class="emotion-btn" :class="{ active: currentEmotion === e.key }" @click="changeEmotion(e.key)">
             {{ e.icon }} <span>{{ e.label }}</span>
           </button>
         </div>
@@ -98,15 +99,16 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import AvatarPlayer from './AvatarPlayer.vue'
+import Live2DControls from './live2d/Live2DControls.vue'
 import { useLocale } from '../composables/useLocale'
 import { speakWithLocale, stopSpeaking } from '../composables/useTTS'
 import { retrieve, buildContext } from '../composables/useKnowledgeBase'
 import { PRESET_DIALOGS } from '../data/presetDialogs'
 import { EMBROIDERY_WORKS } from '../data/embroideryWorks'
 import { embroideryData } from '../data/embroideryData'
-import { initLive2D, destroyLive2D, setEmotion, startLipsync, stopLipsync } from '../composables/useLive2D'
+import { initLive2D, destroyLive2D, setEmotion, startLipsync, stopLipsync, live2dState } from '../composables/useLive2D'
 
 const props = defineProps({
   autoGreet: { type: Boolean, default: false },
@@ -371,10 +373,13 @@ function openPanel() {
 
 /* ── Live2D 懒初始化（画布需可见，收起态下尺寸为 0） ── */
 let live2dReady = false
-function ensureLive2D() {
+let disposed = false
+async function ensureLive2D() {
   if (live2dReady) return
   live2dReady = true
-  initLive2D()
+  await nextTick()
+  if (disposed) return
+  live2dReady = await initLive2D()
 }
 
 // AvatarPlayer 双输入：答辩现场用 Live2D 兜底；
@@ -389,6 +394,10 @@ const emotions = [
   { key: 'thoughtful', icon: '🤔', label: '思考' },
 ]
 const currentEmotion = ref('gentle')
+function changeEmotion(emotion) {
+  currentEmotion.value = emotion
+  setEmotion(emotion)
+}
 
 const presetQuestions = computed(() => PRESET_DIALOGS[locale.value] || PRESET_DIALOGS.zh)
 
@@ -409,6 +418,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  disposed = true
   clearInterval(typeTimer)
   stopSpeaking()
   destroyLive2D()
@@ -588,7 +598,7 @@ defineExpose({ ask: runDialog, askAbout, greet })
 
 /* 表情切换条（模型支持表情时由 useLive2D 显示） */
 .emotion-switch {
-  display: none;
+  display: flex;
   justify-content: center;
   gap: 6px;
   padding: 8px 14px 0;

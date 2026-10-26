@@ -4,7 +4,8 @@
       <div class="character-3d">
         <canvas id="live2d" style="width:100%;height:100%;display:block;"></canvas>
       </div>
-      <div class="emotion-switch">
+      <Live2DControls />
+      <div v-if="live2dState.expressionSupported" class="emotion-switch">
         <button
           v-for="e in emotions"
           :key="e.key"
@@ -21,7 +22,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { initLive2D, setEmotion } from '../../composables/useLive2D.js'
+import { initLive2D, setEmotion, live2dState } from '../../composables/useLive2D.js'
+import Live2DControls from './Live2DControls.vue'
 
 const emotions = [
   { key: 'happy', label: '开心' },
