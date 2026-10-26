@@ -264,14 +264,6 @@
 			"Name": "handwear-r"
 		},
 		{
-			"Id": "ArtMeshFootwearL",
-			"Name": "footwear-l"
-		},
-		{
-			"Id": "ArtMeshFootwearR",
-			"Name": "footwear-r"
-		},
-		{
 			"Id": "ArtMeshLegwearL",
 			"Name": "legwear-l"
 		},

@@ -29,6 +29,15 @@
 			"Idle": [
 				{
 					"File": "layout.idle.motion3.json"
+				},
+				{
+					"File": "layout.idleRelaxed.motion3.json"
+				},
+				{
+					"File": "layout.speaking.motion3.json"
+				},
+				{
+					"File": "layout.swayBody.motion3.json"
 				}
 			],
 			"Blink": [
@@ -44,6 +53,11 @@
 			"Shake": [
 				{
 					"File": "layout.shake.motion3.json"
+				}
+			],
+			"GentleBow": [
+				{
+					"File": "layout.gentleBow.motion3.json"
 				}
 			]
 		}

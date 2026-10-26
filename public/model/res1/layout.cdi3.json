@@ -180,10 +180,6 @@
 	],
 	"Drawables": [
 		{
-			"Id": "ArtMeshHeadwear",
-			"Name": "headwear"
-		},
-		{
 			"Id": "ArtMeshFrontHair",
 			"Name": "front hair"
 		},
@@ -260,8 +256,16 @@
 			"Name": "back hair"
 		},
 		{
+			"Id": "ArtMeshHeadwear",
+			"Name": "headwear"
+		},
+		{
 			"Id": "ArtMeshHandwearL",
 			"Name": "handwear-l"
+		},
+		{
+			"Id": "ArtMeshTopwear2",
+			"Name": "topwear lining"
 		},
 		{
 			"Id": "ArtMeshFootwearL",
