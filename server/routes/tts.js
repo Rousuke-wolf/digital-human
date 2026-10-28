@@ -38,6 +38,7 @@ router.post('/', (req, res) => {
       'Access-Control-Allow-Origin': '*',
     })
 
+    // 先只发 run-task；Qwen-Audio 系列要求收到 task-started 后才能继续
     ws.send(JSON.stringify({
       header: { action: 'run-task', task_id: taskId, streaming: 'duplex' },
       payload: {
@@ -51,37 +52,47 @@ router.post('/', (req, res) => {
           sample_rate: 22050,
           volume: useVolume,
           rate: useRate,
-          pitch: 1.0
         },
         input: {}
       }
     }))
-
-    ws.send(JSON.stringify({
-      header: { action: 'continue-task', task_id: taskId },
-      payload: { input: { text } }
-    }))
-
-    ws.send(JSON.stringify({
-      header: { action: 'finish-task', task_id: taskId },
-      payload: { input: {} }
-    }))
   })
 
+  let taskStarted = false
   ws.on('message', (data, isBinary) => {
     if (isBinary) {
       res.write(data)
     } else {
       try {
         const msg = JSON.parse(data.toString())
-        if (msg.header?.event === 'task-failed') {
+        const event = msg.header?.event
+        if (event === 'task-started' && !taskStarted) {
+          taskStarted = true
+          ws.send(JSON.stringify({
+            header: { action: 'continue-task', task_id: taskId },
+            payload: { input: { text } }
+          }))
+          ws.send(JSON.stringify({
+            header: { action: 'finish-task', task_id: taskId },
+            payload: { input: {} }
+          }))
+        } else if (event === 'task-finished') {
+          // 音频已全部下发：主动关闭 WebSocket，让 chunked 响应正常收尾
+          // （否则浏览器端 res.arrayBuffer() 永远等不到流结束，前端会降级系统语音）
+          ws.close()
+        } else if (event === 'task-failed') {
           console.error('[TTS] 失败:', msg.header.error_code, msg.header.error_message)
+          ws.close()
         }
       } catch { /* ignore parse errors */ }
     }
   })
 
   ws.on('close', () => res.end())
+  // 兜底：无论如何 20 秒内结束响应，避免异常情况下流挂死
+  setTimeout(() => {
+    if (!res.writableEnded) res.end()
+  }, 20000)
   ws.on('error', (err) => {
     console.error('[TTS] WebSocket 错误:', err.message)
     if (!res.headersSent) res.status(500).json({ message: 'TTS 服务异常' })
