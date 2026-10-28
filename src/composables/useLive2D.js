@@ -6,8 +6,8 @@ import {
 } from '../utils/live2dGeometry.js'
 
 export const LIVE2D_MODELS = [
-  { id: 'res1', label: '绫韵 · 形象一', url: `${import.meta.env.BASE_URL}model/res1/layout.model3.json` },
-  { id: 'res2', label: '绫韵 · 形象二', url: `${import.meta.env.BASE_URL}model/res2/layout.model3.json` },
+  { id: 'res1', label: '绫韵 · 绣娘', avatar: `${import.meta.env.BASE_URL}avatar_1.png`, url: `${import.meta.env.BASE_URL}model/res1/layout.model3.json` },
+  { id: 'res2', label: '绫韵 · 正装', avatar: `${import.meta.env.BASE_URL}avatar_2.png`, url: `${import.meta.env.BASE_URL}model/res2/layout.model3.json` },
 ]
 export const live2dState = reactive({
   modelId: 'res1', loading: false, ready: false, error: '',
@@ -25,6 +25,20 @@ let pointer = null
 let focus = { x: 0, y: 0 }
 let mouthSmoothed = 0
 let currentEmotion = 'happy'
+let loggedParams = false
+
+// ── 动作播放：点击数字人随机动作、播报结束点头 ──
+// 动作会驱动头部角度参数，与焦点跟随冲突：动作期间暂停焦点写入，结束后恢复
+const TAP_MOTIONS = ['Nod', 'Shake', 'GentleBow']
+let motionActive = false
+
+function playMotionSafely(instance, group) {
+  if (motionActive || !instance) return
+  motionActive = true
+  Promise.resolve(instance.motion(group))
+    .catch(() => {})
+    .finally(() => { motionActive = false })
+}
 
 function showModelError(message) {
   live2dState.error = message
@@ -88,7 +102,17 @@ function setupParameters(instance) {
     if (param.parameterId !== 'ParamBreath') param.peak *= 0.12
   }
   const set = (id, value) => { if (ids.has(id)) core.setParameterValueById(id, value) }
+  // 一次性打印模型完整参数表（含取值范围），用于诊断头部跟踪/表情映射
+  if (!loggedParams) {
+    loggedParams = true
+    try {
+      const p = core.getModel().parameters
+      const list = p.ids.map((id, i) => `${id}[${p.minimumValues[i]},${p.maximumValues[i]}]`)
+      console.log(`[Live2D] 模型参数表（${list.length} 个）:`, list.join(' '))
+    } catch { /* 忽略 */ }
+  }
   // 关键：在动作、表情、物理之后、coreModel.update() 之前写口型，避免被动画覆盖。
+  let prevSpeaking = false
   internal.on('beforeModelUpdate', () => {
     if (model !== instance || !container) return
     const rect = container.getBoundingClientRect()
@@ -100,25 +124,44 @@ function setupParameters(instance) {
       y: rect.top + (visibleTop + visibleBottom) / 2,
     }
     const target = getPointerFocus(pointer, center, rect.width, rect.height)
-    focus.x += (target.x - focus.x) * 0.12
-    focus.y += (target.y - focus.y) * 0.12
-    set('ParamAngleX', focus.x * 8)
-    set('ParamAngleY', focus.y * 6)
-    set('ParamAngleZ', -focus.x * focus.y * 1.5)
-    set('ParamEyeBallX', focus.x * 0.55)
-    set('ParamEyeBallY', focus.y * 0.45)
-    set('ParamBodyAngleX', focus.x * 1.5)
-    set('ParamBodyAngleY', focus.y * 0.8)
-    set('ParamBodyAngleZ', 0)
-    set('ParamBodyLean', 0)
+    focus.x += (target.x - focus.x) * 0.2
+    focus.y += (target.y - focus.y) * 0.2
+    // 动作播放期间暂停焦点写入（焦点值持续平滑，动作结束后无缝恢复）
+    // 幅度参照模型参数范围（AngleX ±45 / AngleY ±30 / Body ±10）放大，头部跟随明显可见
+    if (!motionActive) {
+      set('ParamAngleX', focus.x * 16)
+      set('ParamAngleY', focus.y * 12)
+      set('ParamAngleZ', -focus.x * focus.y * 6)
+      set('ParamEyeBallX', focus.x * 0.6)
+      set('ParamEyeBallY', focus.y * 0.5)
+      set('ParamBodyAngleX', focus.x * 4)
+      set('ParamBodyAngleY', focus.y * 3)
+      set('ParamBodyAngleZ', 0)
+      set('ParamBodyLean', 0)
+    }
+    // ── 口型平滑可调参数：值越小嘴巴动得越慢/越平滑 ──
+    // 与语速联动：语速越快（rate 大）口型响应越快；
+    // 在「语音设置」里调语速会自动影响口型速度
+    const MOUTH_ATTACK = 0.35    // 张嘴响应（调小=张嘴更慢）
+    const MOUTH_RELEASE = 0.22   // 闭嘴回落（调小=闭嘴更慢）
+    const rateFactor = Math.max(0.6, Math.min(1.6, (window._ttsSettings?.rate ?? 1.2) / 1.2))
+    const mouthAttack = MOUTH_ATTACK * rateFactor
+    const mouthRelease = MOUTH_RELEASE * rateFactor
     const speaking = speechState.active && !speechState.paused
     const amplitude = speaking ? speechState.amplitude : 0
-    mouthSmoothed += (amplitude - mouthSmoothed) * (amplitude > mouthSmoothed ? 0.65 : 0.4)
-    for (const id of mouthIds) {
-      const index = core.getParameterIndex(id)
-      const max = core.getParameterMaximumValue(index)
-      core.setParameterValueById(id, speaking ? Math.min(0.85, mouthSmoothed) * max : 0)
+    mouthSmoothed += (amplitude - mouthSmoothed) * (amplitude > mouthSmoothed ? mouthAttack : mouthRelease)
+    // 仅在播报中或闭嘴回落过程中强制写口型；完全静默后放手，
+    // 让表情（惊讶张嘴等）和动作能自由驱动嘴部参数
+    if (speaking || mouthSmoothed > 0.02) {
+      for (const id of mouthIds) {
+        const index = core.getParameterIndex(id)
+        const max = core.getParameterMaximumValue(index)
+        core.setParameterValueById(id, speaking ? Math.min(0.85, mouthSmoothed) * max : 0)
+      }
     }
+    // 播报结束（下降沿）→ 点头致意
+    if (prevSpeaking && !speaking) playMotionSafely(instance, 'Nod')
+    prevSpeaking = speaking
   })
 }
 
@@ -156,6 +199,11 @@ async function loadModel(id) {
     live2dState.expressionSupported = !!next.internalModel.motionManager.expressionManager?.expressions?.length
     fitModel()
     setEmotion(currentEmotion)
+    // 点击数字人 → 随机互动动作（点头/摇头/鞠躬）
+    next.interactive = true
+    next.on('pointerdown', () => {
+      playMotionSafely(next, TAP_MOTIONS[Math.floor(Math.random() * TAP_MOTIONS.length)])
+    })
     return true
   } catch (error) {
     if (myGeneration === generation) {
