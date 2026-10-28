@@ -1,11 +1,13 @@
 // 完整解码连续 MP3 后播放：网络分块不等于音频帧，不能逐块 decodeAudioData。
 // 共用播放状态驱动所有页面的 Live2D 口型；暂停、停止、结束时清零振幅。
-import { speechState, setSpeechAmplitude } from './utils/speechState.js'
+import { speechState, setSpeechAmplitude, setSpeechSampler, readSpeechAmplitude } from './utils/speechState.js'
+import { createLipSyncEnvelope, sampleLipSyncEnvelope, createAudibleClock } from './utils/lipSync.js'
 
 let currentCtx = null
 let currentSource = null
 let abortController = null
 let ampRaf = null
+let amplitudeClock = null
 let generation = 0
 let pending = false
 let pauseIntent = false
@@ -14,6 +16,8 @@ let fallback = false
 function stopAmplitude() {
   if (ampRaf !== null) cancelAnimationFrame(ampRaf)
   ampRaf = null
+  amplitudeClock = null
+  setSpeechSampler(null)
   setSpeechAmplitude(0)
 }
 
@@ -36,18 +40,20 @@ function release() {
   fallback = false
 }
 
-function startAmplitude(analyser, myGeneration) {
-  const samples = new Float32Array(analyser.fftSize)
+function startAmplitude(ctx, envelope, startedAt, myGeneration, hasEnded, finish, muted) {
+  const clock = createAudibleClock(ctx)
+  amplitudeClock = clock
+  setSpeechSampler(() => ctx.state !== 'running' || muted
+    ? 0 : sampleLipSyncEnvelope(envelope, clock() - startedAt))
   const loop = () => {
     if (generation !== myGeneration || !speechState.active) return
-    if (speechState.paused) setSpeechAmplitude(0)
-    else {
-      analyser.getFloatTimeDomainData(samples)
-      let energy = 0
-      for (const sample of samples) energy += sample * sample
-      const rms = Math.sqrt(energy / samples.length)
-      setSpeechAmplitude(rms < 0.008 ? 0 : rms * 7)
+    const position = clock() - startedAt
+    if (hasEnded() && position >= envelope.duration && !speechState.paused) {
+      finish()
+      return
     }
+    // RAF 负责生命周期和旧入口；Live2D 自己在绘制前读取同一采样器。
+    readSpeechAmplitude()
     ampRaf = requestAnimationFrame(loop)
   }
   loop()
@@ -91,13 +97,17 @@ export function speak(text, onDuration, onStart, onEnd, opts = {}) {
       speechState.active = true
       speechState.paused = pauseIntent
       onStart?.()
+      if (myGeneration !== generation) return
       if (pauseIntent) window.speechSynthesis.pause()
       // speechSynthesis 无法读取真实波形：用节奏近似口型，不冒充音量分析。
+      setSpeechSampler(() => {
+        if (utterance.volume === 0) return 0
+        const t = performance.now() / 1000
+        return 0.22 + Math.sin(t * 12) * 0.12 + Math.sin(t * 4) * 0.04
+      })
       const loop = () => {
         if (myGeneration !== generation || !speechState.active) return
-        const t = performance.now() / 1000
-        const amplitude = 0.12 + Math.max(0, Math.sin(t * 19)) * 0.38 + Math.max(0, Math.sin(t * 7)) * 0.15
-        setSpeechAmplitude(speechState.paused || utterance.volume === 0 ? 0 : amplitude)
+        readSpeechAmplitude()
         ampRaf = requestAnimationFrame(loop)
       }
       loop()
@@ -120,39 +130,43 @@ export function speak(text, onDuration, onStart, onEnd, opts = {}) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text, volume: settings.volume ?? 50, rate: settings.rate ?? 1.2,
-          voice: settings.voice || 'longling_v2', language: settings.language,
+          voice: settings.voice, language: settings.language,
         }),
         signal: controller.signal,
       })
-      if (!res.ok) throw new Error(`TTS 请求失败 ${res.status}`)
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}))
+        throw new Error(detail.message || `TTS 请求失败 ${res.status}`)
+      }
       const audio = await res.arrayBuffer()
       clearTimeout(timeout)
       if (myGeneration !== generation) return
       if (!ctx) throw new Error('浏览器不支持 Web Audio')
       const decoded = await ctx.decodeAudioData(audio)
       if (myGeneration !== generation) return
-      const analyser = ctx.createAnalyser()
-      analyser.fftSize = 512
-      analyser.smoothingTimeConstant = 0.3
-      analyser.connect(ctx.destination)
+      const envelope = createLipSyncEnvelope(decoded)
       const source = ctx.createBufferSource()
       source.buffer = decoded
-      source.connect(analyser)
+      source.connect(ctx.destination)
       currentSource = source
-      source.onended = finish
+      let sourceEnded = false
+      // onended 发生在渲染结束，扬声器可能仍在播放尾音；等输出时钟走完再释放。
+      source.onended = () => { sourceEnded = true }
       if (pauseIntent) await ctx.suspend()
       else if (ctx.state === 'suspended') await ctx.resume()
       if (myGeneration !== generation) return
-      source.start()
+      const startedAt = ctx.currentTime
+      source.start(startedAt)
       pending = false
       speechState.active = true
       speechState.paused = pauseIntent
-      startAmplitude(analyser, myGeneration)
+      startAmplitude(ctx, envelope, startedAt, myGeneration, () => sourceEnded, finish, Number(settings.volume) === 0)
       onDuration?.(decoded.duration)
       onStart?.()
     } catch (error) {
       clearTimeout(timeout)
       if (myGeneration !== generation) return
+      controller.abort()
       console.warn('[TTS] 降级到浏览器朗读:', error.message)
       // 释放本次 Web Audio，但不 cancel 新建的 utterance。
       if (currentCtx) { currentCtx.close().catch(() => {}); currentCtx = null }
@@ -163,6 +177,7 @@ export function speak(text, onDuration, onStart, onEnd, opts = {}) {
 }
 
 export function pause() {
+  amplitudeClock?.reset()
   pauseIntent = true
   speechState.paused = true
   setSpeechAmplitude(0)
@@ -171,6 +186,7 @@ export function pause() {
 }
 
 export function resume() {
+  amplitudeClock?.reset()
   pauseIntent = false
   speechState.paused = false
   if (currentCtx?.state === 'suspended') currentCtx.resume().catch(() => {})

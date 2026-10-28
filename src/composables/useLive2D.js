@@ -1,6 +1,7 @@
 // 各页面共用的 Live2D 单例；模型资源从 public/model 提供。
 import { reactive } from 'vue'
-import { speechState } from '../utils/speechState.js'
+import { readSpeechAmplitude } from '../utils/speechState.js'
+import { createFocusMotion } from '../utils/motionSmoothing.js'
 import {
   getModelLayout, getPointerFocus, ZOOM_MIN, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_STEP,
 } from '../utils/live2dGeometry.js'
@@ -22,8 +23,6 @@ let resizeObserver = null
 let cleanup = []
 let generation = 0
 let pointer = null
-let focus = { x: 0, y: 0 }
-let mouthSmoothed = 0
 let currentEmotion = 'happy'
 
 function showModelError(message) {
@@ -78,6 +77,7 @@ export function zoomLive2D(direction) {
 function setupParameters(instance) {
   const internal = instance.internalModel
   const core = internal.coreModel
+  const follow = createFocusMotion()
   // 不能用 setParameterValueById 是否抛异常来探测：Cubism 会为不存在的 ID 创建虚拟参数。
   const ids = new Set(core.getModel().parameters.ids)
   const lipIds = internal.settings.getLipSyncParameters?.() || []
@@ -100,8 +100,7 @@ function setupParameters(instance) {
       y: rect.top + (visibleTop + visibleBottom) / 2,
     }
     const target = getPointerFocus(pointer, center, rect.width, rect.height)
-    focus.x += (target.x - focus.x) * 0.12
-    focus.y += (target.y - focus.y) * 0.12
+    const focus = follow(target)
     set('ParamAngleX', focus.x * 8)
     set('ParamAngleY', focus.y * 6)
     set('ParamAngleZ', -focus.x * focus.y * 1.5)
@@ -111,13 +110,12 @@ function setupParameters(instance) {
     set('ParamBodyAngleY', focus.y * 0.8)
     set('ParamBodyAngleZ', 0)
     set('ParamBodyLean', 0)
-    const speaking = speechState.active && !speechState.paused
-    const amplitude = speaking ? speechState.amplitude : 0
-    mouthSmoothed += (amplitude - mouthSmoothed) * (amplitude > mouthSmoothed ? 0.65 : 0.4)
+    // 本渲染帧直接取音频曲线，不复用 TTS RAF 留下的上一帧结果，也不重复缓动。
+    const amplitude = readSpeechAmplitude()
     for (const id of mouthIds) {
       const index = core.getParameterIndex(id)
       const max = core.getParameterMaximumValue(index)
-      core.setParameterValueById(id, speaking ? Math.min(0.85, mouthSmoothed) * max : 0)
+      core.setParameterValueById(id, Math.min(0.9, amplitude) * max)
     }
   })
 }
@@ -143,8 +141,6 @@ async function loadModel(id) {
     const previous = model
     model = next
     bounds = nextBounds
-    focus = { x: 0, y: 0 }
-    mouthSmoothed = 0
     setupParameters(next)
     owner.stage.addChild(next)
     if (previous) {
@@ -245,8 +241,8 @@ export function setEmotion(emotion) {
 }
 
 // 兼容现有调用点；口型开关以实际播放器状态为准，不再受估算时长影响。
-export function startLipsync() { mouthSmoothed = 0 }
-export function stopLipsync() { mouthSmoothed = 0 }
+export function startLipsync() { /* 由播放器驱动，无需手动开启。 */ }
+export function stopLipsync() { /* 由播放器驱动，无需按估算时长关闭。 */ }
 
 export function destroyLive2D() {
   generation++
@@ -259,7 +255,6 @@ export function destroyLive2D() {
   container?.querySelector('.live2d-error-message')?.remove()
   app = model = container = bounds = null
   pointer = null
-  mouthSmoothed = 0
   live2dState.loading = live2dState.ready = live2dState.expressionSupported = false
   live2dState.error = ''
 }
