@@ -11,7 +11,6 @@
         v-for="(q, i) in pills"
         :key="q + i"
         class="culture-ask-pill"
-        :class="{ locked: inputLocked }"
         @click="onPillClick(q)"
       >
         {{ q }}
