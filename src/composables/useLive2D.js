@@ -2,7 +2,7 @@
 import { reactive } from 'vue'
 import { speechState } from '../utils/speechState.js'
 import {
-  getModelLayout, getPointerFocus, ZOOM_MIN, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_STEP,
+  getModelLayout, getPointerFocus, ZOOM_MIN, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_STEP, MOBILE_ZOOM_DEFAULT,
 } from '../utils/live2dGeometry.js'
 
 export const LIVE2D_MODELS = [
@@ -226,7 +226,8 @@ export async function initLive2D() {
   if (!canvas) return false
   destroyLive2D()
   container = canvas.closest('.character-3d') || canvas.parentElement
-  live2dState.zoom = ZOOM_DEFAULT
+  // 移动端悬浮圆框用更大的初始缩放（人物在圆框内更近），桌面端用默认
+  live2dState.zoom = (container?.clientWidth ?? 0) < 300 ? MOBILE_ZOOM_DEFAULT : ZOOM_DEFAULT
   live2dState.canZoomIn = live2dState.canZoomOut = true
   try {
     if (!window.PIXI?.live2d?.Live2DModel || !window.Live2DCubismCore) {
