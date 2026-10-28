@@ -569,7 +569,8 @@
     padding: 0 !important;
     border: 2px solid rgba(201, 152, 74, 0.5);
     border-radius: 50% !important;
-    overflow: hidden;
+    /* 外壳不裁剪（裁剪在画布层 character-3d），形象控件可溢出到圆框上方 */
+    overflow: visible;
     z-index: 60;
     background: radial-gradient(circle at 50% 30%, #fdf6ec, #f2e3c8);
     box-shadow: 0 8px 24px rgba(92, 61, 32, 0.28);
@@ -586,6 +587,11 @@
     border-radius: 50% !important;
     background: transparent !important;
     box-shadow: none !important;
+  }
+
+  /* 画布层裁剪出圆形（外壳不裁剪，画布方角会被裁圆） */
+  .page-culture:not(.voice-mode) .culture-left .character-3d {
+    overflow: hidden !important;
   }
 
   .page-culture:not(.voice-mode) .culture-left .emotion-switch {

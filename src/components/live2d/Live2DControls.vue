@@ -45,11 +45,13 @@ button {
   font-size: 13px;
   cursor: pointer;
 }
-button:hover:not(:disabled), button:focus-visible { background: rgba(160, 122, 74, 0.15); }
+/* 只用 hover 反馈：focus-visible 会在鼠标点击后因焦点残留而卡在"按下"状态 */
+button:hover:not(:disabled) { background: rgba(160, 122, 74, 0.15); }
 button:disabled { opacity: 0.45; cursor: default; }
 .model-index { font-size: 11px; margin-left: 3px; }
 @media (max-width: 900px) {
-  .live2d-controls { top: auto; bottom: 18px; right: 50%; transform: translateX(50%); width: max-content; gap: 0; padding: 2px; }
+  /* 移到悬浮圆框上方（外壳不再裁剪，可溢出显示），居中不遮挡数字人 */
+  .live2d-controls { top: auto; bottom: 100%; margin-bottom: 6px; right: 50%; transform: translateX(50%); width: max-content; gap: 0; padding: 2px; }
   button { padding: 4px; font-size: 10px; }
   .model-index { display: none; }
 }
