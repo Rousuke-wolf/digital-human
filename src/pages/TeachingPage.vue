@@ -18,10 +18,39 @@
       </div>
 
       <div class="right-panel">
-        <div class="section-label">动画演示区</div>
-        <div class="demo-canvas-box">
+        <div class="demo-head-row">
+          <div class="section-label">动画演示区</div>
+          <div class="demo-mode-switch">
+            <button class="demo-mode-btn" :class="{ active: demoMode === 'anim' }" @click="setDemoMode('anim')">🧵 动画演示</button>
+            <button class="demo-mode-btn" :class="{ active: demoMode === 'video' }" @click="setDemoMode('video')">🎬 视频演示</button>
+          </div>
+        </div>
+
+        <!-- 动画演示：canvas 常驻（v-show 保留实例），切换不重建 -->
+        <div v-show="demoMode === 'anim'" class="demo-canvas-box">
           <div id="demoVisual" class="demo-visual"></div>
         </div>
+
+        <!-- 视频演示：AI 生成的分段教学视频 + 台词字幕 + 绫韵播报 -->
+        <div v-show="demoMode === 'video'" class="video-demo-box">
+          <video
+            ref="videoRef"
+            class="video-demo"
+            :src="videoSources[videoSegIdx]"
+            playsinline
+            preload="metadata"
+            @loadeddata="videoError = false"
+            @play="videoPlaying = true"
+            @pause="videoPlaying = false"
+            @ended="onVideoEnded"
+            @error="onVideoError"
+          ></video>
+          <div v-if="videoError" class="video-placeholder">
+            🎬 该步骤视频待生成<br />
+            将视频放入 public/videos/teach/ 后刷新即可
+          </div>
+        </div>
+        <div v-if="demoMode === 'video' && subtitle" class="video-subtitle">{{ subtitle }}</div>
 
         <div class="section-header" style="margin-top:20px;">
           <div class="section-label">步骤教学区</div>
@@ -92,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import '../page/teach/index.css'
 import Navbar from '../components/Navbar.vue'
 import GameModal from '../components/teach/GameModal.vue'
@@ -105,7 +134,9 @@ import {
   toggleStitchAnimation,
   setPhaseListener,
   stopDemo,
+  getSpeechText,
 } from '../page/teach/scripts.js'
+import { teachSpeak, teachStop } from '../tts-teach.js'
 import { openModal } from '../page/teach/game/script.js'
 import { guideOnPageEnter } from '../utils/voiceGuide.js'
 
@@ -131,19 +162,124 @@ const stitchSel = ref('flat')
 const typeSel = ref('su')
 const animPaused = ref(false)
 
+// ── 视频演示模式：AI 生成的分段教学视频 + 台词字幕 + 绫韵播报 ──
+// 行为：播放按钮 → 从当前段连播到末尾；点击步骤卡 → 只播该段，播完定格等待；
+// 视频段（约 5s）比台词（约 8~10s）短：视频播完定格最后一帧，台词播完再进下一段
+const demoMode = ref('anim')   // 'anim' | 'video'
+const VIDEO_MANIFEST = {
+  flat: ['/videos/teach/flat-0.mp4', '/videos/teach/flat-1.mp4', '/videos/teach/flat-2.mp4'],
+  back: ['/videos/teach/back-0.mp4', '/videos/teach/back-1.mp4', '/videos/teach/back-2.mp4'],
+  blanket: ['/videos/teach/blanket-0.mp4', '/videos/teach/blanket-1.mp4', '/videos/teach/blanket-2.mp4'],
+}
+const videoRef = ref(null)
+const videoSegIdx = ref(0)
+const videoPlayAll = ref(false)
+const videoPlaying = ref(false)
+const videoError = ref(false)
+const subtitle = ref('')
+let narrationPending = false   // 当前段台词是否仍在播报
+
+const videoSources = computed(() => VIDEO_MANIFEST[stitchSel.value] || [])
+
+function setDemoMode(mode) {
+  if (demoMode.value === mode) return
+  demoMode.value = mode
+  if (mode === 'video') {
+    teachStop()
+    videoSegIdx.value = 0
+    videoPlayAll.value = false
+    videoPlaying.value = false
+    videoError.value = false
+    subtitle.value = ''
+  }
+}
+
+// 播放第 idx 段；playAll=true 时该段结束后自动进入下一段（台词播完才推进）
+function playSegment(idx, { playAll = false } = {}) {
+  if (!videoSources.value.length) return
+  videoPlayAll.value = playAll
+  videoSegIdx.value = idx
+  videoError.value = false
+  activeStep.value = idx
+  const line = getSpeechText(stitchSel.value, typeSel.value, idx)
+  subtitle.value = line
+  teachStop()
+  narrationPending = false
+  if (line) {
+    narrationPending = true
+    teachSpeak(line, () => {
+      narrationPending = false
+      // 全播模式：台词播完才进入下一段（视频此刻定格在最后一帧）
+      if (videoPlayAll.value && demoMode.value === 'video') advanceSegment()
+    })
+  }
+  const v = videoRef.value
+  if (!v) return
+  v.currentTime = 0
+  v.play().catch(() => {})
+}
+
+function advanceSegment() {
+  const next = videoSegIdx.value + 1
+  if (next >= videoSources.value.length) {
+    videoPlayAll.value = false
+    videoPlaying.value = false
+    return
+  }
+  playSegment(next, { playAll: true })
+}
+
+// 视频段播完：单段模式定格等待台词自然结束；全播模式下若台词已播完则推进
+function onVideoEnded() {
+  videoPlaying.value = false
+  if (videoPlayAll.value && !narrationPending) advanceSegment()
+}
+
+function onVideoError() {
+  videoError.value = true
+  // 视频缺失时仍按台词节奏推进全播（占位提示覆盖画面）
+  if (videoPlayAll.value && !narrationPending) advanceSegment()
+}
+
 function onStepClick(i) {
-  activeStep.value = i   // 即时高亮；下一帧动画相位会通过监听器同步回来
+  activeStep.value = i   // 即时高亮；动画模式下一帧相位会通过监听器同步回来
+  if (demoMode.value === 'video') {
+    playSegment(i, { playAll: false })
+    return
+  }
   stepCardClicked(i)
 }
 function onPickStitch(key) {
   stitchSel.value = key
   selectPill('stitch', key)
+  // 视频模式：切换针法后复位到第一段（不自动播放）
+  if (demoMode.value === 'video') {
+    teachStop()
+    const v = videoRef.value
+    if (v) v.pause()
+    videoSegIdx.value = 0
+    videoPlayAll.value = false
+    videoPlaying.value = false
+    videoError.value = false
+    subtitle.value = ''
+  }
 }
 function onPickType(key) {
   typeSel.value = key
   selectPill('type', key)
 }
 function onToggleAnim() {
+  if (demoMode.value === 'video') {
+    // 视频模式：播放/暂停按钮控制视频；未开始时点击 = 从当前段起连播全部
+    const v = videoRef.value
+    if (videoPlaying.value) { v.pause(); return }
+    if (!subtitle.value) {
+      playSegment(videoSegIdx.value, { playAll: true })
+      return
+    }
+    v.play().catch(() => {})
+    return
+  }
   animPaused.value = !animPaused.value
   toggleStitchAnimation()
 }
@@ -151,8 +287,10 @@ function onToggleAnim() {
 onMounted(() => {
   // 教学页数字人为 Live2D（修复批次4回归：原 __rebindScriptEvents 会在此初始化）
   initLive2D()
-  // 动画相位 → 步骤卡片高亮
-  setPhaseListener((cardIdx) => { activeStep.value = cardIdx })
+  // 动画相位 → 步骤卡片高亮（视频模式由分段逻辑接管，忽略画布相位）
+  setPhaseListener((cardIdx) => {
+    if (demoMode.value === 'anim') activeStep.value = cardIdx
+  })
   // 动画演示需要 DOM 就绪后手动触发
   setTimeout(() => updateDemo(), 150)
   // 语音引导：首次进入播报「动画体验」页面介绍
@@ -161,6 +299,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopDemo()
+  teachStop()
   destroyLive2D()
 })
 </script>

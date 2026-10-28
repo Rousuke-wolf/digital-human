@@ -73,6 +73,11 @@ const SPEECH = {
   },
 };
 
+// 供视频演示模式读取台词（字幕条 + 绫韵播报，与动画模式共用同一份文案）
+export function getSpeechText(stitch, type, cardIdx) {
+  return SPEECH[stitch]?.[type]?.[cardIdx] || ''
+}
+
 // ─────────────────────────────────────────────
 //  步骤指示条 文案（canvas 顶部 SH px）
 // ─────────────────────────────────────────────
