@@ -261,7 +261,7 @@
 }
 
 .culture-chat-panel .welcome-avatar {
-  background: url('/avatar.png') center / cover no-repeat !important;
+  background: var(--lingyun-avatar, url('/avatar_1.png')) center / cover no-repeat !important;
   color: transparent !important;
   font-size: 0 !important;
 }
@@ -1229,7 +1229,7 @@
   padding: 12px 18px !important;
 }
 
-/* 绣娘小头像（复用团队国风头像图） */
+/* 绣娘小头像（跟随当前 Live2D 形象：res1→avatar_1、res2→avatar_2） */
 .culture-chat-panel .message.ai::before {
   content: '';
   position: absolute;
@@ -1238,7 +1238,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: url('/team/avatar.svg') center / cover no-repeat;
+  background: var(--lingyun-avatar, url('/avatar_1.png')) center / cover no-repeat;
   box-shadow: 0 2px 6px rgba(92, 61, 32, 0.12);
 }
 
