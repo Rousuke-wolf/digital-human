@@ -1,18 +1,19 @@
 <template>
   <div class="culture-chat-panel" :style="avatarStyle">
-    <!-- 功能栏：右上角极简线框图标 -->
-    <div class="function-bar">
+    <!-- 会话入口占用现有工具栏，不新增侧栏或压缩聊天区域 -->
+    <div class="function-bar session-function-bar">
+      <SessionManager />
       <div class="function-group">
-        <div class="func-item" style="cursor:pointer;" @click="settingsOpen = !settingsOpen">
+        <button class="func-item" type="button" title="语音设置" :aria-expanded="settingsOpen" @click="settingsOpen = !settingsOpen">
           <i>
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
             </svg>
           </i>
-          语音设置
-        </div>
-        <div class="func-item" style="cursor:pointer;" @click="onClearChat">
+          <span class="function-label">语音设置</span>
+        </button>
+        <button class="func-item" type="button" title="清空当前对话" @click="confirmClear = !confirmClear">
           <i>
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 6h18" />
@@ -22,10 +23,16 @@
               <line x1="14" x2="14" y1="11" y2="17" />
             </svg>
           </i>
-          清空对话
-        </div>
+          <span class="function-label">清空对话</span>
+        </button>
       </div>
     </div>
+    <div v-if="confirmClear" class="chat-clear-confirm" role="alert" @keydown.esc="confirmClear = false">
+      <span>清空「{{ activeSession?.title }}」？其他会话不会受影响，此操作无法恢复。</span>
+      <button type="button" @click="confirmClear = false">取消</button>
+      <button type="button" class="confirm-danger" @click="onClearChat">确认清空</button>
+    </div>
+    <p v-if="storageWarning" class="chat-storage-warning" role="status">{{ storageWarning }}</p>
 
     <!-- 语音设置 -->
     <div ref="voiceSettingsRef" class="voice-settings-panel" :class="{ open: settingsOpen }">
@@ -141,7 +148,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import SessionManager from './SessionManager.vue'
 import {
   registerChatUI,
   unregisterChatUI,
@@ -149,6 +157,7 @@ import {
   toggleTtsPause,
   stopAll,
   clearChat,
+  chatSessions,
   inputLocked,
   ttsPlaying,
   ttsPaused,
@@ -166,9 +175,16 @@ const avatarStyle = computed(() =>
 const chatHistoryRef = ref(null)
 const inputRef = ref(null)
 const settingsOpen = ref(false)
-const inputText = ref('')
+const confirmClear = ref(false)
+const { activeSession, activeSessionId, storageWarning } = chatSessions
+const inputText = computed({
+  get: () => activeSession.value?.draft || '',
+  set: value => chatSessions.updateDraft(value),
+})
+watch(activeSessionId, () => { confirmClear.value = false })
 
-function onSend() {
+function onSend(event) {
+  if (event?.isComposing || inputLocked.value) return
   const text = inputText.value.trim()
   if (!text) return
   inputText.value = ''
@@ -181,6 +197,7 @@ function enterVoiceMode() {
 
 function onClearChat() {
   clearChat()
+  confirmClear.value = false
 }
 
 // 聊天逻辑由 useCultureChat 单例承载，这里只注册 DOM 引用
@@ -192,3 +209,34 @@ onBeforeUnmount(() => {
   unregisterChatUI()
 })
 </script>
+
+<style scoped>
+.culture-chat-panel .session-function-bar {
+  justify-content: space-between !important;
+  gap: 12px;
+  padding: 6px 12px !important;
+}
+.session-function-bar .function-group { flex-shrink: 0; }
+.chat-clear-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  border: 1px solid #dcc5a1;
+  border-radius: 12px;
+  background: #fff8eb;
+  color: #84623c;
+  font-size: 12px;
+}
+.chat-clear-confirm span { flex: 1 1 180px; }
+.chat-clear-confirm button { padding: 6px 10px; border: 1px solid #dcc5a1; border-radius: 8px; background: transparent; color: inherit; cursor: pointer; }
+.chat-clear-confirm .confirm-danger { color: #a64d3c; border-color: #a64d3c60; }
+.chat-storage-warning { margin: 0 0 8px; color: #a64d3c; font-size: 11px; }
+@media (max-width: 600px) {
+  .session-function-bar .function-label { display: none; }
+  .session-function-bar .func-item { min-width: 34px; min-height: 34px; padding: 8px !important; justify-content: center; }
+  .culture-chat-panel .session-function-bar { gap: 8px; }
+}
+</style>
