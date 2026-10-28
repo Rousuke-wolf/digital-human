@@ -15,6 +15,30 @@ import { goToExhibit } from '../utils/navigation.js'
 import { getTimeGreeting, getFestival, getVoiceGreeting } from '../utils/companion.js'
 import { guideRecentlyScheduled } from '../utils/voiceGuide.js'
 import { useLoginPrompt } from './useLoginPrompt.js'
+import { createChatSessionStore } from './useChatSessions.js'
+
+function readBubbleMessages(container) {
+  return [...container.querySelectorAll('.message')]
+    .filter(el => !el.matches('.greeting-bubble, .companion-bubble, .welcome-bubble, .thinking'))
+    .map(el => {
+      const clone = el.cloneNode(true)
+      clone.querySelectorAll('.ai-image-loading, .ai-image-skeleton').forEach(n => n.remove())
+      clone.querySelectorAll('br').forEach(n => n.replaceWith('\n'))
+      return {
+        role: el.classList.contains('user') ? 'user' : el.classList.contains('system-notice') ? 'notice' : 'assistant',
+        content: clone.textContent || '',
+        imageUrl: el.querySelector('img.ai-generated-image')?.getAttribute('src') || '',
+      }
+    }).filter(m => m.content.trim() || m.imageUrl)
+}
+
+let sessionStorage
+try { sessionStorage = window.localStorage } catch { /* In-memory mode remains available. */ }
+export const chatSessions = createChatSessionStore({
+  storage: sessionStorage,
+  parseLegacy: html => typeof html === 'string'
+    ? readBubbleMessages(new DOMParser().parseFromString(html, 'text/html')) : [],
+})
 
 // 全局登录引导弹窗（与 App.vue 的 LoginPromptModal 共用同一份状态）
 const { promptLogin } = useLoginPrompt()
@@ -42,6 +66,7 @@ let _historyMessages = [
 
 let _replyStopped = false
 let _streamGeneration = 0
+let _replyController = null
 
 let _typingTimer = null
 let _typingPaused = false
@@ -50,10 +75,7 @@ let _typingResolve = null
 
 let _greetVoiceTimer = null   // 语音问好的 1 秒延迟定时器
 
-// ── 对话持久化（localStorage：气泡 HTML + 上下文消息数组）──
-const CHAT_STORAGE_KEY = 'zhichuan-culture-chat'
-// 历史记录上限：最多保留最近 50 条消息（刷新/切换路由后仍保留）
-const MAX_PERSISTED_MESSAGES = 50
+// 会话以结构化消息保存，不再持久化/恢复任意 HTML。
 
 // ── 情感化陪伴：已问候文案记录（localStorage，同一文案只触发一次）──
 const USED_GREETINGS_KEY = 'zhichuan-used-greetings'
@@ -78,83 +100,71 @@ function _markGreetingUsed(text) {
 
 function persistChat() {
   if (!_chatEl) return
-  try {
-    // 问候气泡不入持久化历史：每次进入页面由 maybeGreet 重新生成一组，
-    // 避免多次进入后历史里堆积重复问候
-    const clone = _chatEl.cloneNode(true)
-    // 同时清掉早期版本的问候气泡类名（金边 companion-bubble）
-    clone.querySelectorAll('.greeting-bubble, .companion-bubble').forEach((n) => n.remove())
-    // 历史上限：气泡只保留最近 50 条（欢迎横幅不是 .message，不受影响）
-    const bubbles = clone.querySelectorAll('.message')
-    if (bubbles.length > MAX_PERSISTED_MESSAGES) {
-      bubbles.forEach((n, i) => {
-        if (i < bubbles.length - MAX_PERSISTED_MESSAGES) n.remove()
-      })
-    }
-    // 上下文数组同样裁剪：保留 system 首条 + 最近 50 条对话
-    const sys = _historyMessages.length && _historyMessages[0]?.role === 'system'
-      ? [_historyMessages[0]]
-      : []
-    const recent = _historyMessages
-      .filter((m) => m?.role !== 'system')
-      .slice(-MAX_PERSISTED_MESSAGES)
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
-      html: clone.innerHTML,
-      messages: [...sys, ...recent],
-    }))
-  } catch {
-    // 存储满/隐私模式等场景静默失败，仅影响刷新恢复
-  }
+  chatSessions.updateConversation({ messages: readBubbleMessages(_chatEl), context: _historyMessages })
 }
 
-function loadPersistedChat() {
-  try {
-    const raw = localStorage.getItem(CHAT_STORAGE_KEY)
-    if (!raw) return null
-    const data = JSON.parse(raw)
-    return {
-      html: typeof data.html === 'string' ? data.html : '',
-      messages: Array.isArray(data.messages) ? data.messages : null,
-    }
-  } catch {
-    return null
+function createChatImage(url) {
+  const img = document.createElement('img')
+  img.src = url
+  img.alt = '刺绣配图'
+  img.className = 'ai-generated-image'
+  img.style.cssText = 'display:block;max-width:100%;border-radius:10px;margin-top:10px;cursor:zoom-in;'
+  img.onclick = () => openImagePreview(url)
+  return img
+}
+
+function restoreSession() {
+  const session = chatSessions.activeSession.value
+  _historyMessages = [{ role: 'system', content: systemPrompt.trim() }, ...(session?.context || [])]
+  if (!_chatEl) return
+  // 保留原欢迎卡片，只重建消息；innerText 安全还原文本与换行，不执行存档 HTML。
+  _chatEl.querySelectorAll('.message').forEach(n => n.remove())
+  for (const message of session?.messages || []) {
+    const div = document.createElement('div')
+    div.className = `message ${message.role === 'user' ? 'user' : 'ai'}${message.role === 'notice' ? ' system-notice' : ''}`
+    div.innerText = message.content
+    if (message.imageUrl) div.appendChild(createChatImage(message.imageUrl))
+    _chatEl.appendChild(div)
   }
+  _chatEl.scrollTop = _chatEl.scrollHeight
+}
+
+export function createConversation() {
+  stopAll()
+  const id = chatSessions.createSession()
+  restoreSession()
+  return id
+}
+
+export function switchConversation(id) {
+  if (id === chatSessions.activeSessionId.value || !chatSessions.sessions.value.some(s => s.id === id)) return
+  stopAll()
+  chatSessions.selectSession(id)
+  restoreSession()
+}
+
+export function deleteConversation(id) {
+  const deletingActive = id === chatSessions.activeSessionId.value
+  if (deletingActive) stopAll()
+  chatSessions.deleteSession(id)
+  if (deletingActive) restoreSession()
 }
 
 // ── DOM 注册（ChatPanel onMounted / onBeforeUnmount 调用）──
 export function registerChatUI({ chatEl, inputEl }) {
   _chatEl = chatEl
   _inputEl = inputEl
-
-  // 捕获模板里的欢迎横幅卡片（存档恢复会覆盖整个容器，之后按需补回；
-  // 横幅本身是保留设计，禁止修改，见 CLAUDE.md）
-  const bannerEl = _chatEl.querySelector('.welcome-banner')
-  const bannerHTML = bannerEl?.outerHTML ?? ''
-
-  // 刷新页面后恢复上次对话（气泡 + 多轮上下文）
-  const saved = loadPersistedChat()
-  if (saved?.html) {
-    _chatEl.innerHTML = saved.html
-    // 迁移：清除早期「普通气泡版欢迎语」，并保证顶部横幅卡片存在
-    _chatEl.querySelectorAll('.message.welcome-bubble').forEach((n) => n.remove())
-    if (bannerHTML && !_chatEl.querySelector('.welcome-banner')) {
-      _chatEl.insertAdjacentHTML('afterbegin', bannerHTML)
-    }
-    // 旧版本存档可能残留问候气泡，先清掉，稍后 maybeGreet 生成新的一组
-    _chatEl.querySelectorAll('.greeting-bubble, .companion-bubble').forEach((n) => n.remove())
-    _chatEl.scrollTop = _chatEl.scrollHeight
-    if (saved.messages) _historyMessages = saved.messages
-  }
-
-  // 每次进入：绫韵主动问候（文字气泡 + 1 秒后语音问好）
+  restoreSession()
   maybeGreet()
+  window.addEventListener('pagehide', stopAll)
 }
 
 export function unregisterChatUI() {
+  window.removeEventListener('pagehide', stopAll)
+  // 卸载前先中断并保存，异步回调不能写入下一次挂载的会话。
+  stopAll()
   _chatEl = null
   _inputEl = null
-  if (_greetVoiceTimer) { clearTimeout(_greetVoiceTimer); _greetVoiceTimer = null }
-  stopAll()
 }
 
 // ── 情感化陪伴：追加问候气泡（普通 AI 气泡样式，仅文字不触发 TTS）──
@@ -233,20 +243,9 @@ function maybeGreet() {
 
 // ── 清空对话（ChatPanel「清空对话」按钮）──
 export function clearChat() {
-  _streamGeneration++
-  stop()
-  stopTyping()
-  stopLipsync()
-  ttsPlaying.value = false
-  ttsPaused.value = false
-  _historyMessages = [{ role: 'system', content: systemPrompt.trim() }]
-  unlockInput()
-  if (_chatEl) {
-    // 只移除消息气泡，保留模板里的欢迎横幅卡片
-    _chatEl.querySelectorAll('.message').forEach((n) => n.remove())
-    _chatEl.scrollTop = _chatEl.scrollHeight
-  }
-  try { localStorage.removeItem(CHAT_STORAGE_KEY) } catch {}
+  stopAll()
+  chatSessions.clearSession()
+  restoreSession()
 }
 
 // ── 历史裁剪：system + 最近 6 轮（12 条）──
@@ -325,12 +324,17 @@ export function toggleTtsPause() {
 // ── TTS 停止 + 中断流式输出 ─────────────────────────
 export function stopAll() {
   _streamGeneration++   // 使进行中的 appendAIStream 失效
+  _replyController?.abort()
+  _replyController = null
+  if (_greetVoiceTimer) { clearTimeout(_greetVoiceTimer); _greetVoiceTimer = null }
   stop()
   stopTyping()
   stopLipsync()
   ttsPlaying.value = false
   ttsPaused.value = false
   unlockInput()
+  removeThinking()
+  persistChat()
 }
 
 // ── 气泡 DOM 操作（仅操作注册的聊天容器）──
@@ -369,8 +373,7 @@ function handleModelDisplay(index) {
 // ─────────────────────────────────────────────
 // 流式接收 AI 回复，收完后同步启动打字 + TTS
 // ─────────────────────────────────────────────
-async function appendAIStream(historyMessages, userInput, onDone) {
-  const myGen = ++_streamGeneration
+async function appendAIStream(historyMessages, userInput, onDone, myGen) {
   const isAborted = () => _streamGeneration !== myGen
 
   removeThinking()
@@ -387,7 +390,8 @@ async function appendAIStream(historyMessages, userInput, onDone) {
   let collectedMessage = ''
   let finalData = null
 
-  const stream = chatWithAIStream(historyMessages, userInput)
+  _replyController = new AbortController()
+  const stream = chatWithAIStream(historyMessages, userInput, { signal: _replyController.signal })
   try {
     for await (const chunk of stream) {
       if (isAborted()) break
@@ -431,7 +435,6 @@ async function appendAIStream(historyMessages, userInput, onDone) {
 
   if (isAborted()) {
     div.remove()
-    stop()
     return
   }
 
@@ -478,13 +481,15 @@ async function appendAIStream(historyMessages, userInput, onDone) {
 
   // ── 无论以何种方式退出打字，都确保 id 被清除 ──
   div.id = ''
+  if (isAborted()) return
 
   ttsPlaying.value = false
   stopLipsync()
 
-  if (!isAborted() && finalData) {
-    if (finalData.isShowModel) handleModelDisplay(finalData.modelIndex)
+  if (finalData) {
     if (typeof onDone === 'function') onDone(finalData)
+    persistChat()
+    if (finalData.isShowModel) handleModelDisplay(finalData.modelIndex)
 
     // ── 图片生成：打字完成后异步追加到同一气泡 ──
     // 不阻塞主流程，用户可以继续聊天，图片加载好后自动出现
@@ -499,6 +504,9 @@ async function appendAIStream(historyMessages, userInput, onDone) {
 // 图片生成并追加到指定气泡 div
 // ─────────────────────────────────────────────
 async function appendImageToDiv(div, imagePrompt) {
+  const sessionId = chatSessions.activeSessionId.value
+  const isCurrent = () => chatSessions.activeSessionId.value === sessionId && _chatEl?.contains(div)
+  if (!isCurrent()) return
   // 先在气泡底部插入骨架占位
   const placeholder = document.createElement('div')
   placeholder.className = 'ai-image-loading'
@@ -515,6 +523,7 @@ async function appendImageToDiv(div, imagePrompt) {
 
   try {
     const url = await generateImage(imagePrompt)
+    if (!isCurrent()) return
     placeholder.remove()
 
     if (!url) {
@@ -522,29 +531,13 @@ async function appendImageToDiv(div, imagePrompt) {
       return
     }
 
-    // 插入图片
-    const img = document.createElement('img')
-    img.src = url
-    img.alt = '刺绣配图'
-    img.className = 'ai-generated-image'
-    img.style.cssText = [
-      'display:block',
-      'max-width:100%',
-      'border-radius:10px',
-      'margin-top:10px',
-      'cursor:pointer',
-      'box-shadow:0 2px 12px rgba(0,0,0,0.15)',
-      'transition:transform 0.2s',
-    ].join(';')
-    img.onclick = () => openImagePreview(url)
-    img.onmouseover = () => { img.style.transform = 'scale(1.02)' }
-    img.onmouseout = () => { img.style.transform = '' }
-
-    div.appendChild(img)
+    // 与历史恢复共用图片节点创建逻辑，恢复后依旧支持放大。
+    div.appendChild(createChatImage(url))
     if (_chatEl) _chatEl.scrollTop = _chatEl.scrollHeight
     persistChat()
 
   } catch (err) {
+    if (!isCurrent()) return
     placeholder.remove()
     // 额度/登录类错误：游客引导登录，登录用户提示额度（必做项 4）
     if (err?.code === 'LOGIN_REQUIRED') {
@@ -570,27 +563,24 @@ function _onAIDone(userText, resMsg) {
 async function _send(text, { clearInput = true } = {}) {
   if (!text?.trim() || !_chatEl) return
 
-  // 先打断当前一切输出，再开新对话
-  _streamGeneration++
-  stop()
-  stopTyping()
-  stopLipsync()
-  ttsPlaying.value = false
-
+  // 先打断当前输出，generation 同时隔离请求、打字、错误提示与解锁回调。
+  stopAll()
+  const myGen = ++_streamGeneration
   lockInput()
   appendUser(text)
-  // clearInput=true（键盘发送）：清空输入框；false（快捷提问/语音）：把文字回填输入框
-  if (_inputEl) _inputEl.value = clearInput ? '' : text
+  chatSessions.updateDraft(clearInput ? '' : text)
   appendThinking()
   try {
     await appendAIStream(getContextForAPI(), text, (res) => {
       _onAIDone(text, res.message)
-    })
+    }, myGen)
   } catch (err) {
-    // 额度/登录类错误：清掉 thinking 气泡，按错误码提示
+    if (myGen !== _streamGeneration) return
     removeThinking()
     handleAIError(err)
   }
+  if (myGen !== _streamGeneration) return
+  _replyController = null
   if (!_replyStopped) {
     unlockInput()
     _inputEl?.focus()

@@ -60,7 +60,7 @@ export async function generateImage(prompt) {
 // 每次 yield { __done: false, __message } 传递增量文字
 // 结束时 yield { __done: true, message, isGenerateImage, imagePrompt }
 // ─────────────────────────────────────────────
-export async function* chatWithAIStream(historyMessages = [], userInput) {
+export async function* chatWithAIStream(historyMessages = [], userInput, { signal } = {}) {
   // ── 单次非流式调用 ───────────────────────────────────────────────────────
   // appendAIStream 内部本来就是"收完全部 token 再打字"，流式对用户体验无实际提升
   // 改为非流式可以直接用 response_format:json_object，彻底解决 JSON 解析问题
@@ -73,6 +73,7 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
   try {
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
+      signal,
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         model: 'qwen3.8-flash',
@@ -113,6 +114,7 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
     yield { __done: true, message, isGenerateImage, imagePrompt, modelIndex, isShowModel };
 
   } catch (error) {
+    if (signal?.aborted || error.name === 'AbortError') throw error;
     // 额度/登录类错误：上抛给调用方处理（登录引导 / 额度提示气泡）
     if (error.code) throw error;
     console.error("[qwen] API调用失败:", error.message);

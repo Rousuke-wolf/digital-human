@@ -11,6 +11,7 @@
     "start": "node server/index.js",
     "preview": "vite preview",
     "lint": "eslint .",
+    "test:sessions": "node --test test/chat-sessions.test.js",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
