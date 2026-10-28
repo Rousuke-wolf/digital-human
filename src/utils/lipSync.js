@@ -8,7 +8,7 @@ const smoothstep = (value) => {
   return t * t * (3 - 2 * t)
 }
 
-export function createLipSyncEnvelope(buffer) {
+export function createLipSyncEnvelope(buffer, { final = true } = {}) {
   const frameSize = Math.max(1, Math.round(buffer.sampleRate * FRAME_SECONDS))
   const levels = new Float32Array(Math.ceil(buffer.length / frameSize))
   for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
@@ -80,8 +80,8 @@ export function createLipSyncEnvelope(buffer) {
       if (silenceStart < 0) { silenceStart = i; releaseFrom = smoothed }
       smoothed = releaseFrom * (1 - smoothstep((i - silenceStart + 1) * frameSeconds / CLOSE_SECONDS))
     }
-    // 没有尾部静音的音频也柔和收口，避免 ended 时从大张嘴突然闪成闭嘴。
-    const tail = smoothstep((buffer.duration - (i + 1) * frameSeconds) / 0.06)
+    // 流式中间块不能强制收口；只有整段的最后一块需要尾部缓动。
+    const tail = final ? smoothstep((buffer.duration - (i + 1) * frameSeconds) / 0.06) : 1
     levels[i] = smoothed * tail
   }
   return { levels, frameSeconds, duration: buffer.duration }

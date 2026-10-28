@@ -593,8 +593,8 @@ export function sendMessage(text) {
 }
 
 // 知识卡片快捷提问（KnowledgeCards）
+// 不再因 inputLocked 静默丢弃：绫韵正在回复时点击卡片会打断当前回复、直接发送新问题
 export function quickQuestion(question) {
-  if (inputLocked.value) return
   return _send(question, { clearInput: false })
 }
 

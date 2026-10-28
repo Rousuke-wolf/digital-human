@@ -165,12 +165,16 @@ import {
   voiceModeActive,
 } from '../../composables/useCultureChat.js'
 import { useAuth } from '../../composables/useAuth.js'
+import { LIVE2D_MODELS, live2dState } from '../../composables/useLive2D.js'
 
 const { user } = useAuth()
 
 // 用户头像：设置过则通过 CSS 变量替换聊天气泡旁的小头像（未设置走默认线稿）
-const avatarStyle = computed(() =>
-  (user.value?.avatar ? { '--user-avatar': `url(${user.value.avatar})` } : {}))
+// 绫韵头像：跟随当前 Live2D 形象（res1→avatar_1、res2→avatar_2），欢迎横幅与 AI 气泡共用
+const avatarStyle = computed(() => ({
+  ...(user.value?.avatar ? { '--user-avatar': `url(${user.value.avatar})` } : {}),
+  '--lingyun-avatar': `url(${LIVE2D_MODELS.find((m) => m.id === live2dState.modelId)?.avatar ?? LIVE2D_MODELS[0].avatar})`,
+}))
 
 const chatHistoryRef = ref(null)
 const inputRef = ref(null)

@@ -1,14 +1,14 @@
 // 各页面共用的 Live2D 单例；模型资源从 public/model 提供。
 import { reactive } from 'vue'
-import { readSpeechAmplitude } from '../utils/speechState.js'
+import { speechState, readSpeechAmplitude } from '../utils/speechState.js'
 import { createFocusMotion } from '../utils/motionSmoothing.js'
 import {
   getModelLayout, getPointerFocus, ZOOM_MIN, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_STEP,
 } from '../utils/live2dGeometry.js'
 
 export const LIVE2D_MODELS = [
-  { id: 'res1', label: '绫韵 · 形象一', url: `${import.meta.env.BASE_URL}model/res1/layout.model3.json` },
-  { id: 'res2', label: '绫韵 · 形象二', url: `${import.meta.env.BASE_URL}model/res2/layout.model3.json` },
+  { id: 'res1', label: '绫韵 · 绣娘', avatar: `${import.meta.env.BASE_URL}avatar_1.png`, url: `${import.meta.env.BASE_URL}model/res1/layout.model3.json` },
+  { id: 'res2', label: '绫韵 · 正装', avatar: `${import.meta.env.BASE_URL}avatar_2.png`, url: `${import.meta.env.BASE_URL}model/res2/layout.model3.json` },
 ]
 export const live2dState = reactive({
   modelId: 'res1', loading: false, ready: false, error: '',
@@ -24,6 +24,29 @@ let cleanup = []
 let generation = 0
 let pointer = null
 let currentEmotion = 'happy'
+let loggedParams = false
+
+// ── 动作播放：点击数字人随机动作、播报结束点头 ──
+// 动作会驱动头部角度参数，与焦点跟随冲突：动作期间暂停焦点写入，结束后恢复
+const TAP_MOTIONS = ['Nod', 'Shake', 'GentleBow']
+let motionOwner = null
+
+function playMotionSafely(instance, group) {
+  if (motionOwner || !instance || instance !== model) return
+  const manager = instance.internalModel.motionManager
+  motionOwner = instance
+  const clear = () => {
+    if (motionOwner === instance) motionOwner = null
+    manager.off('motionFinish', clear)
+    manager.off('destroy', clear)
+  }
+  // motion() 的 Promise 在“开始播放”时完成，不代表动作播完。
+  manager.once('motionFinish', clear)
+  manager.once('destroy', clear)
+  Promise.resolve().then(() => instance.motion(group))
+    .then((started) => { if (!started) clear() })
+    .catch(clear)
+}
 
 function showModelError(message) {
   live2dState.error = message
@@ -88,7 +111,17 @@ function setupParameters(instance) {
     if (param.parameterId !== 'ParamBreath') param.peak *= 0.12
   }
   const set = (id, value) => { if (ids.has(id)) core.setParameterValueById(id, value) }
+  // 一次性打印模型完整参数表（含取值范围），用于诊断头部跟踪/表情映射
+  if (!loggedParams) {
+    loggedParams = true
+    try {
+      const p = core.getModel().parameters
+      const list = p.ids.map((id, i) => `${id}[${p.minimumValues[i]},${p.maximumValues[i]}]`)
+      console.log(`[Live2D] 模型参数表（${list.length} 个）:`, list.join(' '))
+    } catch { /* 忽略 */ }
+  }
   // 关键：在动作、表情、物理之后、coreModel.update() 之前写口型，避免被动画覆盖。
+  let prevSpeaking = false, followWeight = 1, lastFrame = null
   internal.on('beforeModelUpdate', () => {
     if (model !== instance || !container) return
     const rect = container.getBoundingClientRect()
@@ -100,23 +133,42 @@ function setupParameters(instance) {
       y: rect.top + (visibleTop + visibleBottom) / 2,
     }
     const target = getPointerFocus(pointer, center, rect.width, rect.height)
-    const focus = follow(target)
-    set('ParamAngleX', focus.x * 8)
-    set('ParamAngleY', focus.y * 6)
-    set('ParamAngleZ', -focus.x * focus.y * 1.5)
-    set('ParamEyeBallX', focus.x * 0.55)
-    set('ParamEyeBallY', focus.y * 0.45)
-    set('ParamBodyAngleX', focus.x * 1.5)
-    set('ParamBodyAngleY', focus.y * 0.8)
-    set('ParamBodyAngleZ', 0)
-    set('ParamBodyLean', 0)
-    // 本渲染帧直接取音频曲线，不复用 TTS RAF 留下的上一帧结果，也不重复缓动。
-    const amplitude = readSpeechAmplitude()
-    for (const id of mouthIds) {
-      const index = core.getParameterIndex(id)
-      const max = core.getParameterMaximumValue(index)
-      core.setParameterValueById(id, Math.min(0.9, amplitude) * max)
+    const now = performance.now()
+    const dt = lastFrame === null ? 0 : Math.min(0.05, Math.max(0, (now - lastFrame) / 1000))
+    lastFrame = now
+    const focus = follow(target, now)
+    const motionActive = motionOwner === instance
+    followWeight = motionActive ? 0 : Math.min(1, followWeight + dt / 0.16)
+    const followSet = (id, value) => {
+      if (!ids.has(id)) return
+      const original = core.getParameterValueById(id)
+      set(id, original + (value - original) * followWeight)
     }
+    // 保留 master 的增强跟踪和点击动作；动作结束后淡入跟随，避免抢写和突然跳头。
+    if (!motionActive) {
+      followSet('ParamAngleX', focus.x * 16)
+      followSet('ParamAngleY', focus.y * 12)
+      followSet('ParamAngleZ', -focus.x * focus.y * 6)
+      followSet('ParamEyeBallX', focus.x * 0.6)
+      followSet('ParamEyeBallY', focus.y * 0.5)
+      followSet('ParamBodyAngleX', focus.x * 4)
+      followSet('ParamBodyAngleY', focus.y * 3)
+      followSet('ParamBodyAngleZ', 0)
+      followSet('ParamBodyLean', 0)
+    }
+    const speaking = speechState.active
+    const amplitude = readSpeechAmplitude()
+    // 暂停/网络短空档仍由语音闭嘴；完全静默后允许表情自主控制嘴部。
+    if (speaking || prevSpeaking) {
+      for (const id of mouthIds) {
+        const index = core.getParameterIndex(id)
+        const max = core.getParameterMaximumValue(index)
+        core.setParameterValueById(id, Math.min(0.9, amplitude) * max)
+      }
+    }
+    // 播报结束（下降沿）→ 点头致意
+    if (prevSpeaking && !speaking) playMotionSafely(instance, 'Nod')
+    prevSpeaking = speaking
   })
 }
 
@@ -152,6 +204,11 @@ async function loadModel(id) {
     live2dState.expressionSupported = !!next.internalModel.motionManager.expressionManager?.expressions?.length
     fitModel()
     setEmotion(currentEmotion)
+    // 点击数字人 → 随机互动动作（点头/摇头/鞠躬）
+    next.interactive = true
+    next.on('pointerdown', () => {
+      playMotionSafely(next, TAP_MOTIONS[Math.floor(Math.random() * TAP_MOTIONS.length)])
+    })
     return true
   } catch (error) {
     if (myGeneration === generation) {

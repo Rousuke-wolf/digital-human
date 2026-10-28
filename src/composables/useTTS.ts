@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // useTTS.ts — 多语言语音合成封装（答辩技术亮点 ①）
-// 链路：useTTS → src/tts.js（完整解码 + 音频时钟口型）→ POST /tts
+// 链路：useTTS → src/tts.js（流式分块起播 + 音频时钟口型）→ POST /tts
 //       → server/routes/tts.js → DashScope（模型/音色由 server/.env 配置）
 // 默认试用 guxiaoran_v3.1；前端不再用 longling_v2 覆盖后端设置。
 // 切换语言仅设置浏览器兜底语言；云端音色支持的语言以服务商/账号为准。

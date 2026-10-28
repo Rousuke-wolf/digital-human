@@ -5,14 +5,12 @@ import { randomUUID } from 'crypto'
 
 const WS_URL = 'wss://dashscope.aliyuncs.com/api-ws/v1/inference'
 
-// 默认音色集中在后端，普通播报、多语言和教学页都遵循同一配置。
-// model/voice 必须是账号支持的配对；可在 server/.env 中调整，不再锁死 v2。
 export function createTtsRouter({
   apiKey = process.env.DASHSCOPE_TTS_KEY,
   model = process.env.DASHSCOPE_TTS_MODEL || 'cosyvoice-v3-flash',
   defaultVoice = process.env.DASHSCOPE_TTS_VOICE || 'guxiaoran_v3.1',
   createSocket = (url, options) => new WebSocket(url, options),
-  timeoutMs = 30000,
+  timeoutMs = 20000,
 } = {}) {
   const router = Router()
   router.post('/', (req, res) => {
@@ -20,8 +18,7 @@ export function createTtsRouter({
     if (typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({ message: '文本不能为空' })
     }
-    const useVolume = Number(volume)
-    const useRate = Number(rate)
+    const useVolume = Number(volume), useRate = Number(rate)
     if (!Number.isFinite(useVolume) || useVolume < 0 || useVolume > 100
       || !Number.isFinite(useRate) || useRate < 0.5 || useRate > 2
       || (voice !== undefined && (typeof voice !== 'string' || !voice.trim()))) {
@@ -31,11 +28,9 @@ export function createTtsRouter({
       return res.status(503).json({ message: 'TTS 服务未配置，请在 server/.env 中设置 DASHSCOPE_TTS_KEY' })
     }
 
-    const taskId = randomUUID()
-    const useVoice = voice || defaultVoice
+    const taskId = randomUUID(), useVoice = voice || defaultVoice
     const ws = createSocket(WS_URL, { headers: { Authorization: `bearer ${apiKey}` } })
-    const chunks = []
-    let size = 0, done = false, started = false
+    let size = 0, done = false, started = false, timer
     const cleanup = () => {
       clearTimeout(timer)
       if (ws.readyState !== WebSocket.CLOSED) ws.terminate()
@@ -44,11 +39,18 @@ export function createTtsRouter({
       if (done) return
       done = true
       console.warn('[TTS]', message)
-      res.status(status).json({ message })
+      // 起播前保留可读错误；流式头已发出后中断连接，不能往 MP3 中混入 JSON。
+      if (res.headersSent) res.destroy()
+      else res.status(status).json({ message })
       cleanup()
     }
-    const timer = setTimeout(() => fail('TTS 合成超时，请稍后重试', 504), timeoutMs)
+    const armTimeout = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => fail('TTS 合成超时，请稍后重试', 504), timeoutMs)
+    }
+    armTimeout()
     res.on('close', () => { done = true; cleanup() })
+    res.on('drain', () => { if (!done) ws.resume?.() })
     const send = (action, payload) => ws.send(JSON.stringify({
       header: { action, task_id: taskId, streaming: 'duplex' }, payload,
     }))
@@ -66,10 +68,19 @@ export function createTtsRouter({
     })
     ws.on('message', (data, isBinary) => {
       if (done) return
+      armTimeout()
       if (isBinary) {
         size += data.length
         if (size > 20 * 1024 * 1024) { fail('TTS 音频过大，请缩短文本'); return }
-        chunks.push(Buffer.from(data))
+        if (!data.length) return
+        if (!res.headersSent) {
+          res.set({
+            'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store',
+            'X-Accel-Buffering': 'no',
+          })
+        }
+        // 保留 master 的低延迟链路：收到即写，不等待 task-finished/Buffer.concat。
+        if (!res.write(data)) ws.pause?.()
         return
       }
       let msg
@@ -78,15 +89,14 @@ export function createTtsRouter({
         case 'task-started':
           if (started) return
           started = true
-          // 必须等待 task-started，不能在 WebSocket open 时抢先发送文本。
           send('continue-task', { input: { text } })
           send('finish-task', { input: {} })
           break
         case 'task-finished':
           if (!size) { fail('TTS 未返回音频，请检查模型与音色配置'); return }
           done = true
-          // 前端需要完整 MP3 才能解码。确认任务成功后再返回，避免把失败/残缺音频报成 200。
-          res.set({ 'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' }).send(Buffer.concat(chunks))
+          // 主动收尾，不等上游自行断开；超时仍保留为兜底。
+          res.end()
           cleanup()
           break
         case 'task-failed':

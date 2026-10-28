@@ -48,7 +48,7 @@ async function setup(t, options = {}) {
   return { socketReady, post, url }
 }
 
-test('默认试用 guxiaoran_v3.1，等待 task-started 后发送文本，完整成功才返回 MP3', async (t) => {
+test('等待 task-started 后发送文本，task-finished 之前已能读取首块 MP3', { timeout: 2000 }, async (t) => {
   const { post, socketReady } = await setup(t)
   const response = post()
   const socket = await socketReady
@@ -63,12 +63,22 @@ test('默认试用 guxiaoran_v3.1，等待 task-started 后发送文本，完整
   assert.ok(socket.sent.every((m) => m.header.task_id === run.header.task_id))
   assert.equal(socket.sent[1].payload.input.text, '你好')
   socket.audio('part1')
-  socket.audio('part2')
-  socket.event('task-finished')
   const res = await response
   assert.equal(res.status, 200)
   assert.match(res.headers.get('content-type'), /audio\/mpeg/)
-  assert.equal(await res.text(), 'part1part2')
+  assert.equal(res.headers.get('x-accel-buffering'), 'no')
+  const reader = res.body.getReader()
+  const first = await reader.read()
+  assert.equal(Buffer.from(first.value).toString(), 'part1', '首包不能等合成全部结束')
+  socket.audio('part2')
+  socket.event('task-finished')
+  const remaining = []
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    remaining.push(Buffer.from(value))
+  }
+  assert.equal(Buffer.concat(remaining).toString(), 'part2')
   assert.equal(socket.readyState, 3)
 })
 
@@ -85,15 +95,28 @@ test('引擎与音色可配置，调用方仍可覆盖音色/音量/语速', asy
   assert.equal((await response).status, 200)
 })
 
-test('音色不支持时返回明确错误，不把部分音频伪装成成功', async (t) => {
+test('起播前音色不支持时返回明确 JSON 错误', async (t) => {
   const { post, socketReady } = await setup(t)
   const response = post()
   const socket = await socketReady
-  socket.audio('incomplete')
   socket.event('task-failed', { error_code: 'InvalidParameter', error_message: 'voice not supported' })
   const res = await response
   assert.equal(res.status, 502)
   assert.match((await res.json()).message, /voice not supported/)
+  assert.equal(socket.readyState, 3)
+})
+
+test('首块已发送后上游失败会中断流，不把 JSON 混入 MP3 或伪装为正常 EOF', { timeout: 2000 }, async (t) => {
+  const { post, socketReady } = await setup(t)
+  const response = post()
+  const socket = await socketReady
+  socket.audio('first-audio')
+  const res = await response
+  const reader = res.body.getReader()
+  assert.equal(Buffer.from((await reader.read()).value).toString(), 'first-audio')
+  const reading = reader.read()
+  socket.event('task-failed', { error_message: 'stream failed' })
+  await assert.rejects(reading)
   assert.equal(socket.readyState, 3)
 })
 
@@ -113,7 +136,7 @@ for (const scenario of ['empty', 'early-close', 'timeout']) {
     const response = post()
     const socket = await socketReady
     if (scenario === 'empty') socket.event('task-finished')
-    if (scenario === 'early-close') { socket.audio(); socket.terminate() }
+    if (scenario === 'early-close') socket.terminate()
     const res = await response
     assert.equal(res.status, scenario === 'timeout' ? 504 : 502)
     assert.match(res.headers.get('content-type'), /json/)

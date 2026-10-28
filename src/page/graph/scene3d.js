@@ -1,5 +1,5 @@
 // scene3d.js — 知识图谱 3D 渲染引擎（必做项 3 扩展：2D/3D 双模式）
-// 基于 three.js：宣纸透明背景 + 玉石/琉璃节点 + 淡金细线 + CSS2D 中文标签。
+// 基于 three.js：深空星空背景 + 星体节点 + 星座连线 + CSS2D 中文标签。
 // 职责边界：只负责 3D 渲染与拾取；选中/探索/滤镜等状态由 GraphPage 下发
 // （setSelected/setVisited/setFilter），用户操作通过回调上报
 // （onSelect/onHover/onLeave/onClear），由 GraphPage 走统一的探索管线。
@@ -212,17 +212,16 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
   const disposeList = []   // 几何体/材质/纹理，dispose 时统一释放
 
   // ── 场景 / 相机 / 渲染器 ──
-  // 画布背景透明：页面底部的米黄宣纸色直接透出（与 2D 星图同底）
   const scene = new THREE.Scene()
-  // 轻微雾效：远处节点向宣纸色淡出，增强纵深感
-  scene.fog = new THREE.FogExp2('#efe6d2', 0.00042)
+  scene.background = new THREE.Color('#0d1228')
+  // 轻微雾效：远处星点淡出，增强纵深感
+  scene.fog = new THREE.FogExp2('#0d1228', 0.00045)
 
   const camera = new THREE.PerspectiveCamera(45, 1, 1, 4000)
   // 初始视角见文件顶部 CAM_INIT / CAM_TARGET（默认平视、撑满屏宽）
   camera.position.set(CAM_INIT.x, CAM_INIT.y, CAM_INIT.z)
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-  renderer.setClearColor(0x000000, 0)
+  const renderer = new THREE.WebGLRenderer({ antialias: true })
   // 上下文丢失（GPU 进程崩溃/驱动重置）：提示并停止渲染，避免黑屏循环
   renderer.domElement.addEventListener('webglcontextlost', (e) => {
     e.preventDefault()
@@ -252,13 +251,13 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
   controls.autoRotateSpeed = AUTO_ROTATE_SPEED
   controls.update()
 
-  // ── 金粉粒子背景（确定性散布在远处球壳上：宣纸上的碎金，不发光）──
-  const starCount = 900
+  // ── 星空粒子背景（确定性散布在远处球壳上）──
+  const starCount = 1500
   const starPos = new Float32Array(starCount * 3)
   const starCol = new Float32Array(starCount * 3)
   const rnd = mulberry32(20261022)
-  const starColorA = new THREE.Color('#c9984a')
-  const starColorB = new THREE.Color('#9c7c48')
+  const starColorA = new THREE.Color('#cfe0ff')
+  const starColorB = new THREE.Color('#ffd9a0')
   for (let i = 0; i < starCount; i++) {
     const r = 950 + rnd() * 650
     const theta = rnd() * Math.PI * 2
@@ -266,7 +265,7 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
     starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta)
     starPos[i * 3 + 1] = r * Math.cos(phi) * 0.7
     starPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta)
-    const tint = Math.random() < 0.3 ? starColorB : starColorA
+    const tint = Math.random() < 0.22 ? starColorB : starColorA
     starCol[i * 3] = tint.r
     starCol[i * 3 + 1] = tint.g
     starCol[i * 3 + 2] = tint.b
@@ -275,11 +274,11 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
   starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3))
   starGeo.setAttribute('color', new THREE.BufferAttribute(starCol, 3))
   const starMat = new THREE.PointsMaterial({
-    size: 1.5,
+    size: 1.9,
     vertexColors: true,
     transparent: true,
-    opacity: 0.55,
-    blending: THREE.NormalBlending,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending,
     depthWrite: false,
     sizeAttenuation: true,
   })
@@ -287,10 +286,10 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
   scene.add(starfield)
   disposeList.push(() => { starGeo.dispose(); starMat.dispose() })
 
-  // ── 玉石光照：柔和暖色环境光（去冷色强光）+ 暖色主光（左上），
-  //    半透明琉璃质感靠 clearcoat 高光呈现 ──
-  scene.add(new THREE.AmbientLight('#f6ecd8', 1.15))
-  const sunLight = new THREE.DirectionalLight('#ffe9c9', 1.25)
+  // ── 星球光照：冷色环境光 + 暖色主光（左上），球体有明暗面才像星球 ──
+  // 环境光调高让背光面不至于全黑，保持「星球在星空中仍清晰可见」
+  scene.add(new THREE.AmbientLight('#9fb4e8', 0.9))
+  const sunLight = new THREE.DirectionalLight('#ffe9c9', 1.3)
   sunLight.position.set(320, 460, 260)
   scene.add(sunLight)
 
@@ -304,14 +303,13 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
   // ── 连线（星座连线，与 2D 同色系）──
   const glowTex = makeGlowTexture()
 
-  // 连线：极细淡金（跨星座）/ 浅灰（同星座），普通混合不发白光
   const edgeLines = EDGES.map((e) => {
     const geo = new THREE.BufferGeometry().setFromPoints([pos3Of(e.a), pos3Of(e.b)])
     const mat = new THREE.LineBasicMaterial({
       color: edgeColorOf(e),
       transparent: true,
-      opacity: edgeIsCross(e) ? 0.8 : 0.5,
-      blending: THREE.NormalBlending,
+      opacity: edgeIsCross(e) ? 0.5 : 0.3,
+      blending: THREE.AdditiveBlending,
       depthWrite: false,
     })
     const line = new THREE.Line(geo, mat)
@@ -328,20 +326,16 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
     const r = nodeRadiusOf(n) * SCALE
     const color = nodeColorOf(n)
 
-    // 玉石/琉璃质感：半透明 + 光泽（clearcoat 高光）+ 轻微自发光保留色相
-    // 程序化表面纹理（灰度）被分类色着色后呈现玉质纹理
+    // 星体：光照材质 + 程序化星球表面（纹理灰度、材质着色为分类色）
+    // emissive 轻微自发光：背光面也保留分类色相，不会暗成一团
     const geo = new THREE.SphereGeometry(r, 24, 16)
-    const mat = new THREE.MeshPhysicalMaterial({
+    const mat = new THREE.MeshStandardMaterial({
       map: planetTextureFor(n.id),
       color,
       emissive: color,
-      emissiveIntensity: 0.1,
-      roughness: 0.35,
-      metalness: 0.05,
-      clearcoat: 0.55,
-      clearcoatRoughness: 0.35,
-      transparent: true,
-      opacity: 0.96,
+      emissiveIntensity: 0.22,
+      roughness: 0.82,
+      metalness: 0.06,
     })
     const mesh = new THREE.Mesh(geo, mat)
     mesh.position.copy(pos3Of(n.id))
@@ -350,12 +344,12 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
     pickMeshes.push(mesh)
     disposeList.push(() => { geo.dispose(); mat.dispose(); mat.map?.dispose() })
 
-    // 行星环：中心主星与三颗锚星带平面光环（土星式扁环，非管状；浅色底用深金）
+    // 行星环：中心主星与三颗锚星带平面光环（土星式扁环，非管状）
     let planetRing = null
     if (n.cat === 'core' || n.isHub) {
       const ringGeo = new THREE.RingGeometry(r * 1.7, r * 2.6, 48)
       const ringMat = new THREE.MeshBasicMaterial({
-        color: n.cat === 'core' ? '#c9984a' : '#b8864a',
+        color: n.cat === 'core' ? '#e8c188' : '#c9984a',
         transparent: true,
         opacity: RING_OPACITY,
         depthWrite: false,
@@ -368,13 +362,13 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
       disposeList.push(() => { ringGeo.dispose(); ringMat.dispose() })
     }
 
-    // 光晕精灵（普通混合的柔和玉光，呼吸动画在渲染循环里做）
+    // 光晕精灵（加色混合，呼吸动画在渲染循环里做）
     const haloMat = new THREE.SpriteMaterial({
       map: glowTex,
       color,
       transparent: true,
-      opacity: n.cat === 'core' ? 0.5 : 0.3,
-      blending: THREE.NormalBlending,
+      opacity: n.cat === 'core' ? 0.9 : 0.55,
+      blending: THREE.AdditiveBlending,
       depthWrite: false,
     })
     const halo = new THREE.Sprite(haloMat)
@@ -411,17 +405,13 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
     })
   }
 
-  // 中心主星贴「绣」字（覆盖为琉璃光照材质，与 2D 印章呼应）
+  // 中心主星贴「绣」字（覆盖为光照材质，与 2D 印章呼应）
   const coreEntry = nodeMap.get(CENTER_NODE.id)
   const coreTex = makeCoreTexture()
-  coreEntry.mesh.material = new THREE.MeshPhysicalMaterial({
+  coreEntry.mesh.material = new THREE.MeshStandardMaterial({
     map: coreTex,
-    roughness: 0.35,
+    roughness: 0.6,
     metalness: 0.05,
-    clearcoat: 0.5,
-    clearcoatRoughness: 0.4,
-    transparent: true,
-    opacity: 0.96,
   })
   coreEntry.mesh.rotation.z = Math.PI / 2
   disposeList.push(() => { coreEntry.mesh.material.map.dispose() })
@@ -451,13 +441,13 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
       entry.mesh.material.transparent = true
       // 光晕强度：暗化最弱；选中节点最亮；选中时邻居被「星灯」照亮的次亮
       let haloOp
-      if (dim) haloOp = 0.05
-      else if (id === selectedId) haloOp = 0.55
-      else if (selectedId) haloOp = 0.4
-      else haloOp = entry.n.cat === 'core' ? 0.5 : 0.3
+      if (dim) haloOp = 0.08
+      else if (id === selectedId) haloOp = 0.85
+      else if (selectedId) haloOp = 0.62
+      else haloOp = entry.n.cat === 'core' ? 0.9 : 0.55
       entry.halo.material.opacity = haloOp
-      // 选中节点：光晕转为深金色（浅色底上仍清晰，不夸张）
-      entry.halo.material.color.set(id === selectedId ? '#c9984a' : entry.haloColor)
+      // 选中节点：光晕转为暖金色（柔和的暖光发散，不夸张）
+      entry.halo.material.color.set(id === selectedId ? '#ffd9a0' : entry.haloColor)
       // 行星环随暗化联动
       if (entry.planetRing) {
         entry.planetRing.material.opacity = dim ? 0.06 : RING_OPACITY

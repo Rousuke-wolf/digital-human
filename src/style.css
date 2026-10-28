@@ -849,7 +849,7 @@ body {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: url("/avatar.png") center center / cover no-repeat;
+  background: var(--lingyun-avatar, url("/avatar_1.png")) center center / cover no-repeat;
   color: transparent;
   font-size: 0;
   display: flex;
