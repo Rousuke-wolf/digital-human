@@ -1,6 +1,7 @@
 // 各页面共用的 Live2D 单例；模型资源从 public/model 提供。
 import { reactive } from 'vue'
-import { speechState } from '../utils/speechState.js'
+import { speechState, readSpeechAmplitude } from '../utils/speechState.js'
+import { createFocusMotion } from '../utils/motionSmoothing.js'
 import {
   getModelLayout, getPointerFocus, ZOOM_MIN, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_STEP, MOBILE_ZOOM_DEFAULT,
 } from '../utils/live2dGeometry.js'
@@ -22,22 +23,29 @@ let resizeObserver = null
 let cleanup = []
 let generation = 0
 let pointer = null
-let focus = { x: 0, y: 0 }
-let mouthSmoothed = 0
 let currentEmotion = 'happy'
 let loggedParams = false
 
 // ── 动作播放：点击数字人随机动作、播报结束点头 ──
 // 动作会驱动头部角度参数，与焦点跟随冲突：动作期间暂停焦点写入，结束后恢复
 const TAP_MOTIONS = ['Nod', 'Shake', 'GentleBow']
-let motionActive = false
+let motionOwner = null
 
 function playMotionSafely(instance, group) {
-  if (motionActive || !instance) return
-  motionActive = true
-  Promise.resolve(instance.motion(group))
-    .catch(() => {})
-    .finally(() => { motionActive = false })
+  if (motionOwner || !instance || instance !== model) return
+  const manager = instance.internalModel.motionManager
+  motionOwner = instance
+  const clear = () => {
+    if (motionOwner === instance) motionOwner = null
+    manager.off('motionFinish', clear)
+    manager.off('destroy', clear)
+  }
+  // motion() 的 Promise 在“开始播放”时完成，不代表动作播完。
+  manager.once('motionFinish', clear)
+  manager.once('destroy', clear)
+  Promise.resolve().then(() => instance.motion(group))
+    .then((started) => { if (!started) clear() })
+    .catch(clear)
 }
 
 function showModelError(message) {
@@ -92,6 +100,7 @@ export function zoomLive2D(direction) {
 function setupParameters(instance) {
   const internal = instance.internalModel
   const core = internal.coreModel
+  const follow = createFocusMotion()
   // 不能用 setParameterValueById 是否抛异常来探测：Cubism 会为不存在的 ID 创建虚拟参数。
   const ids = new Set(core.getModel().parameters.ids)
   const lipIds = internal.settings.getLipSyncParameters?.() || []
@@ -112,7 +121,7 @@ function setupParameters(instance) {
     } catch { /* 忽略 */ }
   }
   // 关键：在动作、表情、物理之后、coreModel.update() 之前写口型，避免被动画覆盖。
-  let prevSpeaking = false
+  let prevSpeaking = false, followWeight = 1, lastFrame = null
   internal.on('beforeModelUpdate', () => {
     if (model !== instance || !container) return
     const rect = container.getBoundingClientRect()
@@ -124,39 +133,37 @@ function setupParameters(instance) {
       y: rect.top + (visibleTop + visibleBottom) / 2,
     }
     const target = getPointerFocus(pointer, center, rect.width, rect.height)
-    focus.x += (target.x - focus.x) * 0.2
-    focus.y += (target.y - focus.y) * 0.2
-    // 动作播放期间暂停焦点写入（焦点值持续平滑，动作结束后无缝恢复）
-    // 幅度参照模型参数范围（AngleX ±45 / AngleY ±30 / Body ±10）放大，头部跟随明显可见
-    if (!motionActive) {
-      set('ParamAngleX', focus.x * 16)
-      set('ParamAngleY', focus.y * 12)
-      set('ParamAngleZ', -focus.x * focus.y * 6)
-      set('ParamEyeBallX', focus.x * 0.6)
-      set('ParamEyeBallY', focus.y * 0.5)
-      set('ParamBodyAngleX', focus.x * 4)
-      set('ParamBodyAngleY', focus.y * 3)
-      set('ParamBodyAngleZ', 0)
-      set('ParamBodyLean', 0)
+    const now = performance.now()
+    const dt = lastFrame === null ? 0 : Math.min(0.05, Math.max(0, (now - lastFrame) / 1000))
+    lastFrame = now
+    const focus = follow(target, now)
+    const motionActive = motionOwner === instance
+    followWeight = motionActive ? 0 : Math.min(1, followWeight + dt / 0.16)
+    const followSet = (id, value) => {
+      if (!ids.has(id)) return
+      const original = core.getParameterValueById(id)
+      set(id, original + (value - original) * followWeight)
     }
-    // ── 口型平滑可调参数：值越小嘴巴动得越慢/越平滑 ──
-    // 与语速联动：语速越快（rate 大）口型响应越快；
-    // 在「语音设置」里调语速会自动影响口型速度
-    const MOUTH_ATTACK = 0.35    // 张嘴响应（调小=张嘴更慢）
-    const MOUTH_RELEASE = 0.22   // 闭嘴回落（调小=闭嘴更慢）
-    const rateFactor = Math.max(0.6, Math.min(1.6, (window._ttsSettings?.rate ?? 1.2) / 1.2))
-    const mouthAttack = MOUTH_ATTACK * rateFactor
-    const mouthRelease = MOUTH_RELEASE * rateFactor
-    const speaking = speechState.active && !speechState.paused
-    const amplitude = speaking ? speechState.amplitude : 0
-    mouthSmoothed += (amplitude - mouthSmoothed) * (amplitude > mouthSmoothed ? mouthAttack : mouthRelease)
-    // 仅在播报中或闭嘴回落过程中强制写口型；完全静默后放手，
-    // 让表情（惊讶张嘴等）和动作能自由驱动嘴部参数
-    if (speaking || mouthSmoothed > 0.02) {
+    // 保留 master 的增强跟踪和点击动作；动作结束后淡入跟随，避免抢写和突然跳头。
+    if (!motionActive) {
+      followSet('ParamAngleX', focus.x * 16)
+      followSet('ParamAngleY', focus.y * 12)
+      followSet('ParamAngleZ', -focus.x * focus.y * 6)
+      followSet('ParamEyeBallX', focus.x * 0.6)
+      followSet('ParamEyeBallY', focus.y * 0.5)
+      followSet('ParamBodyAngleX', focus.x * 4)
+      followSet('ParamBodyAngleY', focus.y * 3)
+      followSet('ParamBodyAngleZ', 0)
+      followSet('ParamBodyLean', 0)
+    }
+    const speaking = speechState.active
+    const amplitude = readSpeechAmplitude()
+    // 暂停/网络短空档仍由语音闭嘴；完全静默后允许表情自主控制嘴部。
+    if (speaking || prevSpeaking) {
       for (const id of mouthIds) {
         const index = core.getParameterIndex(id)
         const max = core.getParameterMaximumValue(index)
-        core.setParameterValueById(id, speaking ? Math.min(0.85, mouthSmoothed) * max : 0)
+        core.setParameterValueById(id, Math.min(0.9, amplitude) * max)
       }
     }
     // 播报结束（下降沿）→ 点头致意
@@ -186,8 +193,6 @@ async function loadModel(id) {
     const previous = model
     model = next
     bounds = nextBounds
-    focus = { x: 0, y: 0 }
-    mouthSmoothed = 0
     setupParameters(next)
     owner.stage.addChild(next)
     if (previous) {
@@ -294,8 +299,8 @@ export function setEmotion(emotion) {
 }
 
 // 兼容现有调用点；口型开关以实际播放器状态为准，不再受估算时长影响。
-export function startLipsync() { mouthSmoothed = 0 }
-export function stopLipsync() { mouthSmoothed = 0 }
+export function startLipsync() { /* 由播放器驱动，无需手动开启。 */ }
+export function stopLipsync() { /* 由播放器驱动，无需按估算时长关闭。 */ }
 
 export function destroyLive2D() {
   generation++
@@ -308,7 +313,6 @@ export function destroyLive2D() {
   container?.querySelector('.live2d-error-message')?.remove()
   app = model = container = bounds = null
   pointer = null
-  mouthSmoothed = 0
   live2dState.loading = live2dState.ready = live2dState.expressionSupported = false
   live2dState.error = ''
 }
