@@ -8,6 +8,7 @@
     "dev:api": "node server/index.js",
     "dev:web": "vite",
     "build": "vite build",
+    "test": "node --test test/*-test.js",
     "start": "node server/index.js",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -44,5 +45,8 @@
     "vue-easy-lightbox": "^1.19.0",
     "vue-router": "^5.2.0",
     "ws": "^8.20.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
   }
 }

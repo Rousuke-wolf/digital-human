@@ -1,11 +1,9 @@
 // ═══════════════════════════════════════════════════════
 // useTTS.ts — 多语言语音合成封装（答辩技术亮点 ①）
-// 链路：useTTS → src/tts.js（流式解码播放 + 口型振幅）→ POST /tts
-//       → server/routes/tts.js → DashScope（CosyVoice v2 多语种引擎）
-// 音色：默认「知性女声 longling_v2」，温柔、亲和，中英日粤均可用；
-//       如需少女音可换 longwan_v2 / longxiaochun_v2（后端同名 voice 参数直通）
-// 升级 Qwen3-TTS：后端把 MODEL 改为 qwen3-tts-flash、voice 映射为
-//       Cherry / Serena 等即可，前端接口零改动（本文件按 provider 无关设计）
+// 链路：useTTS → src/tts.js（流式分块起播 + 音频时钟口型）→ POST /tts
+//       → server/routes/tts.js → DashScope（模型/音色由 server/.env 配置）
+// 默认试用 guxiaoran_v3.1；前端不再用 longling_v2 覆盖后端设置。
+// 切换语言仅设置浏览器兜底语言；云端音色支持的语言以服务商/账号为准。
 // 藏语扩展技术路线（答辩说明）：
 //   前端已就绪 —— TtsLanguage 类型含 'bo'，语言切换器含「藏语」，
 //   接口已预留 language 路由参数；接入时二选一：
@@ -28,18 +26,15 @@ const DEFAULT_LANGUAGE: Record<LocaleKey, TtsLanguage> = {
   bo: 'bo',
 }
 
-// 音色档案：voice 透传后端（CosyVoice 音色 ID），lang 用于浏览器 TTS 兜底
-// bo 音色预留：接入讯飞藏语 TTS 后替换 voice / lang（如讯飞藏语女声 ID），
-// 当前未接入时回退 CosyVoice 默认音色（答辩如实说明「接口就绪、引擎待接入」）
-export const VOICE_PROFILE: Record<LocaleKey, { voice: string; lang: string }> = {
-  zh: { voice: 'longling_v2', lang: 'zh-CN' },
-  en: { voice: 'longling_v2', lang: 'en-US' },
-  ja: { voice: 'longling_v2', lang: 'ja-JP' },
-  yue: { voice: 'longling_v2', lang: 'zh-HK' },
-  bo: { voice: 'longling_v2', lang: 'bo-CN' },
+// 如需为某语言配置专属音色，可增加 voice；未指定时使用后端默认音色。
+// 藏语引擎尚未接入；不能因为有语言档案就假定云端音色支持该语言。
+export const VOICE_PROFILE: Record<LocaleKey, { voice?: string; lang: string }> = {
+  zh: { lang: 'zh-CN' },
+  en: { lang: 'en-US' },
+  ja: { lang: 'ja-JP' },
+  yue: { lang: 'zh-HK' },
+  bo: { lang: 'bo-CN' },
 }
-
-export const DEFAULT_VOICE = 'longling_v2'
 
 export interface SpeakHooks {
   onStart?: () => void   // 首段音频起播（用于开启 Live2D 口型）
@@ -61,7 +56,7 @@ export function speakWithLocale(
   const profile = VOICE_PROFILE[localeKey] ?? VOICE_PROFILE.zh
   const route = language ?? DEFAULT_LANGUAGE[localeKey] ?? 'zh-TW'
   // language 随音色档案写入 _ttsSettings，供 tts.js 按语言路由引擎（bo 预留）
-  setVoiceProfile({ ...profile, language: route })
+  setVoiceProfile({ ...profile, voice: profile.voice, language: route })
   speak(text, hooks.onDuration, hooks.onStart, hooks.onEnd)
 }
 

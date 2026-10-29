@@ -2,7 +2,7 @@
 import { speak, stop } from './tts.js'
 
 export function teachSpeak(text, onEnd) {
-  speak(text, null, null, onEnd, { voice: 'longling_v2' })
+  speak(text, null, null, onEnd)
 }
 
 export function teachStop() {
