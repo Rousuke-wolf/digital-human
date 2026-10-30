@@ -144,6 +144,8 @@ export function speak(text, onDuration, onStart, onEnd, opts = {}) {
         body: JSON.stringify({
           text, volume: settings.volume ?? 50, rate: settings.rate ?? 1.2,
           voice: settings.voice, language: settings.language,
+          // 空方言指令（普通话）不发送，避免被后端校验拒绝后降级浏览器系统音
+          instruction: settings.instruction?.trim() || undefined,
         }),
         signal: controller.signal,
       })

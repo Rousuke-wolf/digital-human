@@ -49,9 +49,43 @@ export const voiceModeActive = ref(false)  // 语音聊天模式（Live2D 缩放
 export const ttsPlaying = ref(false)    // TTS 播放中（暂停/停止按钮高亮）
 export const ttsPaused = ref(false)     // TTS 已暂停（暂停按钮 ▶/⏸ 文字）
 
+// ── 方言设置（语音合成指令，2026-10-30）──
+// 下拉框选择方言 → 合成时携带 instruction，后端切换为复刻的绫韵声线（声线一致）。
+// 复刻音色走自然语言指令，措辞不要求完全固定，此处统一用官方示例格式。
+export const DIALECT_OPTIONS = [
+  { name: '普通话', instruction: '' },
+  { name: '重庆话', instruction: '请用重庆话表达。' },
+  { name: '广东话', instruction: '请用广东话表达。' },
+  { name: '上海话', instruction: '请讲上海话。' },
+  { name: '东北话', instruction: '请用东北话表达。' },
+  { name: '陕西话', instruction: '请用陕西话表达。' },
+  { name: '云南话', instruction: '请用云南话表达。' },
+  { name: '宁波话', instruction: '请用宁波话表达。' },
+  { name: '甘肃话', instruction: '请用甘肃话表达。' },
+]
+const DIALECT_KEY = 'zhichuan-tts-dialect'
+
+function loadDialect() {
+  try {
+    const name = localStorage.getItem(DIALECT_KEY)
+    if (DIALECT_OPTIONS.some((d) => d.name === name)) return name
+  } catch {}
+  return '普通话'
+}
+
+export function setTtsDialect(name) {
+  const option = DIALECT_OPTIONS.find((d) => d.name === name)
+  if (!option) return
+  ttsSettings.dialect = option.name
+  ttsSettings.instruction = option.instruction
+  try { localStorage.setItem(DIALECT_KEY, option.name) } catch {}
+}
+
 // 语音设置：必须是响应式对象（v-model 绑定的数值显示依赖它触发重渲染）
 // tts.js 在 speak 时仍读取 window._ttsSettings，后续批次改为模块直读
-export const ttsSettings = reactive({ volume: 50, rate: 1.2 })
+const initialDialect = loadDialect()
+const initialInstruction = DIALECT_OPTIONS.find((d) => d.name === initialDialect)?.instruction || ''
+export const ttsSettings = reactive({ volume: 50, rate: 1.2, dialect: initialDialect, instruction: initialInstruction })
 window._ttsSettings = ttsSettings
 
 // ── 模块内部状态 ────────────────────────────────────

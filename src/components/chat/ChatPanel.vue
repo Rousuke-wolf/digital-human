@@ -70,6 +70,19 @@
         />
         <span class="vs-val">{{ ttsSettings.rate.toFixed(1) }}x</span>
       </div>
+      <div class="vs-row">
+        <span class="vs-label">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h20" />
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
+          方言
+        </span>
+        <select v-model="ttsSettings.dialect" class="vs-select" title="选择绫韵的方言口音" @change="setTtsDialect($event.target.value)">
+          <option v-for="d in DIALECT_OPTIONS" :key="d.name" :value="d.name">{{ d.name }}</option>
+        </select>
+      </div>
     </div>
 
     <!-- 聊天历史 -->
@@ -162,6 +175,8 @@ import {
   ttsPlaying,
   ttsPaused,
   ttsSettings,
+  DIALECT_OPTIONS,
+  setTtsDialect,
   voiceModeActive,
 } from '../../composables/useCultureChat.js'
 import { useAuth } from '../../composables/useAuth.js'
