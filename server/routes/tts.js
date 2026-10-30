@@ -7,28 +7,33 @@ const WS_URL = 'wss://dashscope.aliyuncs.com/api-ws/v1/inference'
 
 export function createTtsRouter({
   apiKey = process.env.DASHSCOPE_TTS_KEY,
-  model = process.env.DASHSCOPE_TTS_MODEL || 'cosyvoice-v3-flash',
-  defaultVoice = process.env.DASHSCOPE_TTS_VOICE || 'guxiaoran_v3.1',
+  model = process.env.DASHSCOPE_TTS_MODEL || 'qwen-audio-3.1-tts-flash',
+  defaultVoice = process.env.DASHSCOPE_TTS_VOICE || 'anruorou_v3.1',
+  cloneVoice = process.env.DASHSCOPE_TTS_CLONE_VOICE || '',
   createSocket = (url, options) => new WebSocket(url, options),
   timeoutMs = 20000,
 } = {}) {
   const router = Router()
   router.post('/', (req, res) => {
-    const { text, volume = 50, rate = 1.2, voice } = req.body || {}
+    const { text, volume = 50, rate = 1.2, voice, instruction } = req.body || {}
     if (typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({ message: '文本不能为空' })
     }
     const useVolume = Number(volume), useRate = Number(rate)
     if (!Number.isFinite(useVolume) || useVolume < 0 || useVolume > 100
       || !Number.isFinite(useRate) || useRate < 0.5 || useRate > 2
-      || (voice !== undefined && (typeof voice !== 'string' || !voice.trim()))) {
-      return res.status(400).json({ message: '无效的音量、语速或音色参数' })
+      || (voice !== undefined && (typeof voice !== 'string' || !voice.trim()))
+      || (instruction !== undefined && (typeof instruction !== 'string' || instruction.length > 100))) {
+      return res.status(400).json({ message: '无效的音量、语速、音色或方言指令参数' })
     }
     if (!apiKey) {
       return res.status(503).json({ message: 'TTS 服务未配置，请在 server/.env 中设置 DASHSCOPE_TTS_KEY' })
     }
 
-    const taskId = randomUUID(), useVoice = voice || defaultVoice
+    // 方言模式（带 instruction）：优先使用复刻的绫韵声线（声线一致 + 方言指令），
+    // 未配置复刻音色时退回显式 voice / 默认音色。无 instruction 时维持常规音色。
+    const useVoice = instruction ? (cloneVoice || voice || defaultVoice) : (voice || defaultVoice)
+    const taskId = randomUUID()
     const ws = createSocket(WS_URL, { headers: { Authorization: `bearer ${apiKey}` } })
     let size = 0, done = false, started = false, timer
     const cleanup = () => {
@@ -62,6 +67,7 @@ export function createTtsRouter({
         parameters: {
           voice: useVoice, format: 'mp3', sample_rate: 22050,
           volume: useVolume, rate: useRate, pitch: 1.0,
+          ...(instruction ? { instruction } : {}),
         },
         input: {},
       })

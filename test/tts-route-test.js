@@ -55,8 +55,8 @@ test('等待 task-started 后发送文本，task-finished 之前已能读取首�
   assert.equal(socket.sent.length, 1)
   const run = socket.sent[0]
   assert.equal(run.header.action, 'run-task')
-  assert.equal(run.payload.model, process.env.DASHSCOPE_TTS_MODEL || 'cosyvoice-v3-flash')
-  assert.equal(run.payload.parameters.voice, process.env.DASHSCOPE_TTS_VOICE || 'guxiaoran_v3.1')
+  assert.equal(run.payload.model, process.env.DASHSCOPE_TTS_MODEL || 'qwen-audio-3.1-tts-flash')
+  assert.equal(run.payload.parameters.voice, process.env.DASHSCOPE_TTS_VOICE || 'anruorou_v3.1')
   socket.event('task-started')
   socket.event('task-started')
   assert.deepEqual(socket.sent.map((m) => m.header.action), ['run-task', 'continue-task', 'finish-task'])
