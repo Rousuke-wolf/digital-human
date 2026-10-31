@@ -50,8 +50,8 @@ cd digital-human
 npm install        # 或 npm ci（按 lock 文件精确安装）
 
 # 3. 配置环境变量
-#    将根目录 .env.example 复制为 server/.env，并填入真实密钥：
-#    cp .env.example server/.env        （Windows: copy .env.example server\.env）
+#    将 server/.env.example 复制为 server/.env，并填入真实密钥：
+#    cp server/.env.example server/.env （Windows: copy server\.env.example server\.env）
 
 # 4. 启动开发服务（后端 :3001 + 前端 :5173 同时启动）
 npm run dev
@@ -117,7 +117,7 @@ digital-human/
 ├── public/model/            # Live2D 模型与 GLB 展品（大体积资源，只放 public/）
 ├── test/api-test.sh         # 后端 API 自动化测试
 ├── TEST_CHECKLIST.md        # 手动验证清单（含已知取舍）
-└── .env.example             # 环境变量模板
+└── server/.env.example      # 环境变量模板（真实密钥在 server/.env，不入库）
 ```
 
 ## 账号与运营
@@ -143,5 +143,5 @@ powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='no
 - **验证码邮件收不到**：先 `GET /api/debug/smtp-test` 确认 SMTP 连接；再看垃圾箱；本地调试可开 `DEV_MODE=true` 让验证码直接显示
 - **3D 生成报 502**：本机到 `api.meshy.ai` 网络不通属常见情况（海外服务），链路本身正常；预设展品不受影响
 - **纹样生成需登录**：这是额度体系设计（游客只能调参体验），登录后每日 10 张
-- **开发约束**：`src/pages/PatternPage.vue` 不得 import `src/api/qwen.js`（vite8/Rolldown 已知 bug 会构建 panic）；新增环境变量需同步维护 `.env.example`
+- **开发约束**：`src/pages/PatternPage.vue` 不得 import `src/api/qwen.js`（vite8/Rolldown 已知 bug 会构建 panic）；新增环境变量需同步维护 `server/.env.example`
 - **图片 URL 过期**：万相返回的图片为临时签名地址（演示期内有效），旧作品图长期后可能失效，属上游特性

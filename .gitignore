@@ -46,3 +46,6 @@ require2
 server/public/uploads/
 server/data/gallery.json
 server/data/news.json
+
+# 配置模板例外：模板不含密钥，需入库供协作者参考
+!server/.env.example
