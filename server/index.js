@@ -13,6 +13,7 @@ import userRoutes from './routes/user.js'
 import adminRoutes from './routes/admin.js'
 import galleryRoutes from './routes/gallery.js'
 import newsRoutes from './routes/news.js'
+import asrRoutes from './routes/asr.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -20,6 +21,8 @@ const PORT = process.env.PORT || 3001
 
 // ── 中间件 ──────────────────────────────────────────
 app.use(cors())
+// ASR 录音 base64 体积大：先于全局 1mb JSON 限制挂载，路由内单独放大上限
+app.use('/api/asr', asrRoutes)
 app.use(express.json({ limit: '1mb' }))
 
 // ── API 路由 ────────────────────────────────────────
