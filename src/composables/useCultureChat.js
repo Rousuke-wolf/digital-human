@@ -456,6 +456,13 @@ async function appendAIStream(historyMessages, userInput, onDone, myGen) {
     return
   }
 
+  // ── 方言指令（"请用xx话介绍xx"）：先切换方言设置，再以新方言播报回复 ──
+  const requestedDialect = finalData?.dialect
+  if (requestedDialect && requestedDialect !== ttsSettings.dialect
+    && DIALECT_OPTIONS.some((d) => d.name === requestedDialect)) {
+    setTtsDialect(requestedDialect)
+  }
+
   // ── 阶段二：TTS 先启动，打字延迟等待 ─────────
   speak(collectedMessage)
   startLipsync()
@@ -627,12 +634,12 @@ export function sendMessage(text) {
 }
 
 // 知识卡片快捷提问（KnowledgeCards）
-// 不再因 inputLocked 静默丢弃：绫韵正在回复时点击卡片会打断当前回复、直接发送新问题
+// 回复期间锁定（胶囊在组件侧拦截）：结束后解锁，避免打断当前回复
 export function quickQuestion(question) {
-  return _send(question, { clearInput: false })
+  return _send(question, { clearInput: true })
 }
 
 // 语音识别结果（VoiceOverlay）
 export function handleVoiceResult(text) {
-  return _send(text, { clearInput: false })
+  return _send(text, { clearInput: true })
 }

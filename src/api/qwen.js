@@ -10,7 +10,8 @@ const systemPrompt = `
 {
   "message": "对话内容",
   "isGenerateImage": false,
-  "imagePrompt": ""
+  "imagePrompt": "",
+  "dialect": ""
 }
 
 isGenerateImage 规则（只有以下情况才设为 true）：
@@ -22,6 +23,13 @@ imagePrompt 规则（isGenerateImage=true 时填写）：
 - 用中文写，15~30字，描述刺绣主题画面
 - 格式示例："中国传统苏绣，精细丝线刺绣，牡丹花卉图案，金丝底布，工笔风格"
 - 只输出 JSON，不要有任何前缀、后缀或 markdown 代码块
+
+dialect 规则：
+- 当用户要求用某种方言说话时（如"用四川话说""请讲粤语""用重庆话介绍苗绣"），
+  dialect 字段输出对应方言名称，可选值只有：普通话、重庆话、广东话、上海话、东北话、陕西话、云南话、宁波话、甘肃话
+- 四川话、川话等说法请映射为"重庆话"；粤语、白话、广州话等说法请映射为"广东话"
+- 用户要求"用普通话说""恢复正常说话"时输出"普通话"
+- 用户没有方言要求时，dialect 输出空字符串
 `;
 
 // ─────────────────────────────────────────────
@@ -105,13 +113,14 @@ export async function* chatWithAIStream(historyMessages = [], userInput, { signa
     const imagePrompt = typeof data.imagePrompt === "string" ? data.imagePrompt : "";
     const modelIndex = typeof data.modelIndex === "number" ? data.modelIndex : 0;
     const isShowModel = data.isShowModel === true;
+    const dialect = typeof data.dialect === "string" ? data.dialect.trim() : "";
 
     // 逐字 yield，供 appendAIStream 收集（与原流式接口兼容）
     for (const ch of message) {
       yield { __done: false, __message: ch };
     }
 
-    yield { __done: true, message, isGenerateImage, imagePrompt, modelIndex, isShowModel };
+    yield { __done: true, message, isGenerateImage, imagePrompt, modelIndex, isShowModel, dialect };
 
   } catch (error) {
     if (signal?.aborted || error.name === 'AbortError') throw error;
@@ -122,7 +131,7 @@ export async function* chatWithAIStream(historyMessages = [], userInput, { signa
     for (const ch of fallbackMsg) {
       yield { __done: false, __message: ch };
     }
-    yield { __done: true, message: fallbackMsg, isGenerateImage: false, imagePrompt: "", modelIndex: 0, isShowModel: false };
+    yield { __done: true, message: fallbackMsg, isGenerateImage: false, imagePrompt: "", modelIndex: 0, isShowModel: false, dialect: "" };
   }
 }
 
