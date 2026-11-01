@@ -87,6 +87,23 @@ curl -fsSL https://gitee.com/rosk/digital-human/raw/master/deploy.sh | bash
 
 访问 `http://<公网IP>:3001`。**务必在阿里云控制台 → ECS → 安全组 → 入方向放行对应端口**。
 
+### 日常更新（仓库已公开，git 模式）
+
+本地推送 Gitee 后，二选一：
+
+```bash
+# 方式一：本地一条命令（Windows，项目根目录）
+update-server.bat <公网IP> git
+
+# 方式二：服务器上执行（自动 git pull + 重建 + 重启，约 1~2 分钟）
+cd /opt/digital-human && bash deploy.sh
+```
+
+> 若服务器当初是压缩包模式部署的（无 .git 目录），先一次性切换：
+> `cd /opt && rm -rf digital-human && git clone https://gitee.com/rosk/digital-human.git digital-human`，
+> 重新 `scp server/.env` 到服务器后再跑 `bash deploy.sh`。
+> 压缩包模式（`update-server.bat <公网IP>`）保留为私有仓库/无 git 环境的备用方案。
+
 注意事项：
 
 - **备案**：直接用 IP:端口访问无需备案；绑定域名需 ICP 备案（周期较长，演示建议先走 IP）
