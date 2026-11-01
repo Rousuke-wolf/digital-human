@@ -12,6 +12,7 @@ export default [
       'dist/**',
       'node_modules/**',
       'public/model/**', // Live2D/GLB 模型资源
+      'public/vendor/**', // 本地化的第三方库（PIXI/Live2D/model-viewer/字体）
       'src/assets/3d-model/**',
       'server/data/**',
     ],

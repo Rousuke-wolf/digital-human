@@ -6,14 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>智绣 · 非遗刺绣数字人</title>
   <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
-  <!-- 书法字体 Ma Shan Zheng（网络不可用时自动回退本地 STXingkai/楷体） -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet" />
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-  <script src="https://unpkg.com/pixi.js@6.x/dist/browser/pixi.min.js"></script>
-  <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
-  <script src="https://unpkg.com/pixi-live2d-display/dist/cubism4.min.js"></script>
+  <!-- 书法字体 Ma Shan Zheng（已本地化：92 个子集存于 public/vendor/fonts-msz/，国内可直连） -->
+  <link href="/vendor/ma-shan-zheng.css" rel="stylesheet" />
+  <!-- 依赖库已本地化（原 CDN unpkg/live2d 国内访问不稳，部署与离线演示不受影响） -->
+  <script type="module" src="/vendor/model-viewer.min.js"></script>
+  <script src="/vendor/pixi.min.js"></script>
+  <script src="/vendor/live2dcubismcore.min.js"></script>
+  <script src="/vendor/cubism4.min.js"></script>
 </head>
 
 <body>
