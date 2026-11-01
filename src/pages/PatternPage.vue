@@ -193,7 +193,7 @@
               :src="imageUrl"
               alt="AI 生成纹样"
               :style="{ filter: filterStyle }"
-              @click="openImagePreview(imageUrl)"
+              @click="openImagePreview(imageUrl, filterStyle)"
             />
             <span class="preview-tip">点击图片可放大查看</span>
           </div>
@@ -536,7 +536,20 @@ async function analyzePattern() {
       }),
     })
     const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      // 业务码错误（额度/登录，429/401）上抛给 onGenerate 统一提示；
+      // 其余失败降级为「无解读」，不打断图片主流程
+      if (json.code) {
+        const err = new Error(json.message || '纹样解读生成失败')
+        err.code = json.code
+        err.status = res.status
+        throw err
+      }
+      console.warn('[pattern] 纹样解读失败:', json.message || res.status)
+      return null
+    }
     const raw = json.choices?.[0]?.message?.content ?? ''
+    if (!raw) return null
     const data = JSON.parse(raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim())
     return {
       colorScheme: typeof data.colorScheme === 'string' ? data.colorScheme : '—',
@@ -544,6 +557,7 @@ async function analyzePattern() {
       stitches: typeof data.stitches === 'string' ? data.stitches : '—',
     }
   } catch (e) {
+    if (e.code) throw e   // 业务码错误继续上抛（与 generatePatternImage 一致）
     console.warn('[pattern] 纹样解读生成失败:', e.message)
     return null
   }
@@ -588,6 +602,7 @@ async function onGenerate() {
     status.value = 'error'
     // 额度/登录类错误：提示文案或登录引导（如 token 中途失效）
     if (e.code === 'LOGIN_REQUIRED') promptLogin('pattern')
+    else if (e.code === 'GUEST_QUOTA_EXCEEDED') promptLogin('pattern')
     else if (e.code === 'QUOTA_EXCEEDED') toast(e.message)
   } finally {
     clearInterval(elapsedTimer)
