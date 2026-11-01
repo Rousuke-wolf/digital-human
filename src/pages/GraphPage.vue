@@ -580,7 +580,8 @@ const SECTOR_LINES = [15, 165, 255].map((deg) => {
 const DEFAULT_K = 1.0
 const cam = reactive({ x: 0, y: 0, k: DEFAULT_K })
 const MIN_K = DEFAULT_K * 0.8
-const MAX_K = DEFAULT_K * 1.2
+const MAX_K = DEFAULT_K * 2.6   // 手动放大上限
+const FOCUS_K = DEFAULT_K * 1.2 // 节点聚焦缩放：保持原观感，不随 MAX_K 变深
 const dragging = ref(false)
 
 // 平移绝对值上限（星图在极端位置仍保持 2/3 以上可见）
@@ -679,7 +680,7 @@ function backToFull() {
 function focusCamera(id) {
   const p = POSITIONS[id]
   if (!p) return
-  const targetK = MAX_K
+  const targetK = FOCUS_K
   const cx = VIEWBOX.w / 2
   const cy = VIEWBOX.h / 2
   applyCam(
