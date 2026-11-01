@@ -14,7 +14,7 @@
           :src="src"
           alt="预览大图"
           :class="{ 'zoom-fit': zoom <= 1 }"
-          :style="{ transform: `scale(${zoom}) translate(${panX}px, ${panY}px)`, cursor: zoom > 1 ? (dragging ? 'grabbing' : 'grab') : '' }"
+          :style="{ transform: `scale(${zoom}) translate(${panX}px, ${panY}px)`, filter: lightboxState.filter.value || 'none', cursor: zoom > 1 ? (dragging ? 'grabbing' : 'grab') : '' }"
           @load="onImgLoad"
         />
       </div>

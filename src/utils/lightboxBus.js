@@ -5,13 +5,16 @@ import { ref } from 'vue'
 export const lightboxState = {
   visible: ref(false),
   src: ref(''),
+  filter: ref(''),   // 可选 CSS filter：放大查看时保留预览页的配色调整
 }
 
-export function openImagePreview(url) {
+export function openImagePreview(url, filter = '') {
   lightboxState.src.value = url
+  lightboxState.filter.value = filter || ''
   lightboxState.visible.value = true
 }
 
 export function closeImagePreview() {
   lightboxState.visible.value = false
+  lightboxState.filter.value = ''
 }
