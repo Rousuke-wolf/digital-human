@@ -2,17 +2,25 @@
 # ════════════════════════════════════════════════════════════
 # 智传非遗 · 服务器一键部署脚本（Ubuntu 22/24/26，2 核 4G 即可）
 # 用法（在阿里云 ECS 上以 root 执行）：
-#   bash deploy.sh [Gitee 仓库地址] [服务端口]
+#   bash deploy.sh [Gitee 仓库地址] [服务端口] [--no-git]
 # 首次部署前准备：
 #   ① 本地把最新代码推送到 Gitee（服务器从 Gitee 拉取，国内更快）
 #   ② 本地把密钥传上服务器（scp 前目录若不存在，先跑一次本脚本即可创建）：
 #      scp server/.env root@<公网IP>:/opt/digital-human/server/.env
+# 私有仓库（无法 curl/git 匿名拉取）用压缩包模式：
+#   本地：tar -czf deploy-package.tar.gz --exclude=node_modules --exclude=dist --exclude=.git .
+#         scp deploy-package.tar.gz root@<公网IP>:/root/
+#   服务器：mkdir -p /opt/digital-human
+#           tar -xzf /root/deploy-package.tar.gz -C /opt/digital-human
+#           cd /opt/digital-human && bash deploy.sh --no-git
 # 重复执行 = 更新部署（git pull + 重新构建 + 重启服务），可放心重跑
 # ════════════════════════════════════════════════════════════
 set -e
 
 REPO="${1:-https://gitee.com/rosk/digital-human.git}"
 PORT="${2:-3001}"
+# 第三参 --no-git：压缩包上传模式（代码已解压到 APP_DIR，跳过 git 拉取）
+SKIP_GIT="${3:-}"
 APP_DIR=/opt/digital-human
 
 echo '==> [1/7] 安装 Node 24 / git / 构建工具'
@@ -40,10 +48,15 @@ fi
 
 echo '==> [3/7] 拉取代码'
 mkdir -p "$APP_DIR"
-if [ -d "$APP_DIR/.git" ]; then
-  cd "$APP_DIR" && git pull --ff-only
+if [ "$SKIP_GIT" = '--no-git' ]; then
+  # 压缩包上传模式：代码已在 APP_DIR（由 tar 解压），跳过 git 拉取
+  :
 else
-  git clone "$REPO" "$APP_DIR"
+  if [ -d "$APP_DIR/.git" ]; then
+    cd "$APP_DIR" && git pull --ff-only
+  else
+    git clone "$REPO" "$APP_DIR"
+  fi
 fi
 cd "$APP_DIR"
 
