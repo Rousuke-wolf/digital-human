@@ -288,7 +288,7 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
 
   // ── 星球光照：冷色环境光 + 暖色主光（左上），球体有明暗面才像星球 ──
   // 环境光调高让背光面不至于全黑，保持「星球在星空中仍清晰可见」
-  scene.add(new THREE.AmbientLight('#9fb4e8', 0.9))
+  scene.add(new THREE.AmbientLight('#9fb4e8', 1.15))
   const sunLight = new THREE.DirectionalLight('#ffe9c9', 1.3)
   sunLight.position.set(320, 460, 260)
   scene.add(sunLight)
@@ -333,7 +333,7 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
       map: planetTextureFor(n.id),
       color,
       emissive: color,
-      emissiveIntensity: 0.22,
+      emissiveIntensity: 0.42,
       roughness: 0.82,
       metalness: 0.06,
     })
@@ -367,7 +367,7 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
       map: glowTex,
       color,
       transparent: true,
-      opacity: n.cat === 'core' ? 0.9 : 0.55,
+      opacity: n.cat === 'core' ? 1.0 : 0.8,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     })
@@ -442,9 +442,9 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
       // 光晕强度：暗化最弱；选中节点最亮；选中时邻居被「星灯」照亮的次亮
       let haloOp
       if (dim) haloOp = 0.08
-      else if (id === selectedId) haloOp = 0.85
-      else if (selectedId) haloOp = 0.62
-      else haloOp = entry.n.cat === 'core' ? 0.9 : 0.55
+      else if (id === selectedId) haloOp = 1.0
+      else if (selectedId) haloOp = 0.8
+      else haloOp = entry.n.cat === 'core' ? 1.0 : 0.8
       entry.halo.material.opacity = haloOp
       // 选中节点：光晕转为暖金色（柔和的暖光发散，不夸张）
       entry.halo.material.color.set(id === selectedId ? '#ffd9a0' : entry.haloColor)
