@@ -2511,3 +2511,151 @@ body {
 .lightbox-zoom-indicator.visible {
   opacity: 1;
 }
+
+/* ═══════════════════════════════════════════════════════
+   移动端导航（≤900px）：收起全部标签为汉堡菜单 + 下拉抽屉
+   ═══════════════════════════════════════════════════════ */
+.nav-burger {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .navbar {
+    position: relative !important;
+    padding: 0 16px !important;
+  }
+
+  /* 桌面标签列与右侧用户区全部收起，汉堡按钮占第三格 */
+  .navbar .nav-center,
+  .navbar .nav-right {
+    display: none !important;
+  }
+
+  .nav-burger {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 40px;
+    height: 40px;
+    border: 1.5px solid #8b6240;
+    border-radius: 12px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .nav-burger span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    border-radius: 1px;
+    background: #6b4226;
+    transition: transform 0.2s, opacity 0.2s;
+  }
+
+  /* 下拉抽屉菜单：全宽列表 + 底部登录/注册 */
+  .nav-mobile-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 998;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 16px 14px;
+    background: #faf7f2;
+    border-bottom: 1px solid #e8ddd0;
+    box-shadow: 0 14px 28px rgba(139, 98, 64, 0.14);
+    animation: nav-menu-in 0.18s ease-out;
+  }
+
+  @keyframes nav-menu-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .nav-mobile-menu .nav-tab {
+    display: block;
+    padding: 12px 12px;
+    font-size: 16px;
+    border-bottom: 1px dashed rgba(139, 98, 64, 0.2);
+    border-radius: 10px;
+    transition: background 0.2s, box-shadow 0.2s, color 0.2s, transform 0.08s;
+  }
+
+  /* 指针放上（仅鼠标/触控板）：压暗 + 阴影，明确提示可点击 */
+  .nav-mobile-menu .nav-tab:hover {
+    background: rgba(139, 98, 64, 0.1);
+    box-shadow: 0 4px 14px rgba(61, 31, 10, 0.14);
+    color: #3d1f0a !important;
+  }
+
+  /* 手指/鼠标按下：明显的按压反馈（内阴影 + 微缩 + 压暗） */
+  .nav-mobile-menu .nav-tab:active {
+    background: rgba(139, 98, 64, 0.22);
+    box-shadow: inset 0 2px 8px rgba(61, 31, 10, 0.22);
+    transform: scale(0.97);
+  }
+
+  .nav-mobile-menu .nav-tab.active::after {
+    display: none;
+  }
+
+  .nav-mobile-menu .nav-tab.active {
+    color: #c0392b !important;
+  }
+
+  .nav-mobile-auth {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 12px;
+  }
+
+  .nav-mobile-auth .nav-user-logout {
+    margin-left: auto;
+    border: 1.5px solid #8b6240;
+    border-radius: 20px;
+    padding: 7px 16px;
+    background: transparent;
+    color: #8b6240;
+    font-size: 14px;
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 640px) {
+  /* 手机更窄：logo 副标题隐藏，只留「智绣」 */
+  .navbar .nav-logo-sub {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   导航项悬停反馈（桌面导航标签 + 移动菜单条目统一）：
+   指针放上去 → 压暗 + 投影；按下 → 内阴影按压感
+   ═══════════════════════════════════════════════════════ */
+.navbar .nav-tab {
+  border-radius: 10px !important;
+  transition: color 0.2s, background 0.2s, box-shadow 0.2s !important;
+}
+
+.navbar .nav-tab:hover {
+  color: #3d1f0a !important;
+  background: rgba(139, 98, 64, 0.1) !important;
+  box-shadow: 0 4px 14px rgba(61, 31, 10, 0.14);
+}
+
+.navbar .nav-tab:active {
+  background: rgba(139, 98, 64, 0.16) !important;
+  box-shadow: inset 0 2px 6px rgba(61, 31, 10, 0.16);
+}
+
+/* 登录/注册按钮同款悬停投影（注册钮原只有描边变化） */
+.navbar .nav-register-btn:hover {
+  box-shadow: 0 4px 14px rgba(139, 98, 64, 0.18);
+}

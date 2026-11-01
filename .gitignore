@@ -49,3 +49,6 @@ server/data/news.json
 
 # 配置模板例外：模板不含密钥，需入库供协作者参考
 !server/.env.example
+
+# 部署打包产物（本地生成，勿入库）
+deploy-package.tar.gz
