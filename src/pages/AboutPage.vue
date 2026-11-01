@@ -97,10 +97,10 @@
             <a href="mailto:contact@zhichuanfeiyi.com">contact@zhichuanfeiyi.com</a>
             <span class="ab-contact-sep" aria-hidden="true"></span>
             项目主页
-            <a href="#" rel="noopener">GitHub 仓库</a>
+            <a href="https://github.com/Rousuke-wolf/digital-human.git" target="_blank" rel="noopener noreferrer">GitHub 仓库</a>
             <span class="ab-contact-sep" aria-hidden="true"></span>
             微信公众号
-            <a href="#">智传非遗</a>
+            <a href="#" target="_blank" rel="noopener noreferrer">智传非遗</a>
           </p>
         </div>
 
