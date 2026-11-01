@@ -658,8 +658,15 @@ onMounted(() => {
 /* ── 响应式：仅在真正窄屏（<900px）才降级单栏，1024~1366 窗口保持双栏 ── */
 @media (max-width: 900px) {
   .content-grid {
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr) 而非 1fr：Swiper 的内在宽度会撑爆 auto 最小值的
+       单列轨道，导致两个卡片比视口宽、右缘被 overflow-x 裁掉 */
+    grid-template-columns: minmax(0, 1fr);
     --card-h: auto;
+    width: 100%;
+  }
+
+  .panel {
+    min-width: 0;
   }
 
   .gallery-swiper {
@@ -674,7 +681,7 @@ onMounted(() => {
 
 @media (max-width: 640px) {
   .hero {
-    min-height: 26vh;
+    min-height: 23vh;
   }
 
   .hero-title {
@@ -696,6 +703,50 @@ onMounted(() => {
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
+  }
+}
+
+/* 小屏手机（≤480px）：进一步收紧主视觉与卡片 */
+@media (max-width: 480px) {
+  .hero {
+    min-height: 21vh;
+    padding: 6px 14px 40px;
+  }
+
+  .hero-title {
+    font-size: 46px;
+    margin-top: 3vh;
+  }
+
+  .hero-subtitle {
+    font-size: 13px;
+    letter-spacing: 0.16em;
+    text-indent: 0.16em;
+  }
+
+  .hero-fade-line {
+    width: 34vw;
+  }
+
+  .gallery-swiper {
+    height: 280px;
+  }
+
+  .news-list {
+    max-height: 260px;
+  }
+
+  .panel {
+    padding: 16px 14px;
+  }
+
+  .panel-title {
+    font-size: 18px;
+  }
+
+  .gallery-zoom-hint {
+    opacity: 1;
+    transform: none; /* 触屏无 hover，常显放大提示 */
   }
 }
 </style>
