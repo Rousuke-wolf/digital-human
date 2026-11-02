@@ -1296,3 +1296,42 @@ body:has(.page-graph.theme-3d) {
     z-index: 9990;
   }
 }
+
+/* ── 横屏专用布局：旋转后视口约 750×390，隐藏非核心区块，
+   图例压缩、3D 画布占满剩余高度（否则画布被裁、交互够不到）── */
+@media (max-width: 900px) {
+  .page-graph.landscape-mode {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page-graph.landscape-mode .navbar,
+  .page-graph.landscape-mode .graph-head,
+  .page-graph.landscape-mode .graph-trail {
+    display: none;
+  }
+
+  .page-graph.landscape-mode .graph-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .page-graph.landscape-mode .graph-legend-bar {
+    flex-wrap: wrap;
+    padding: 6px 10px;
+  }
+
+  .page-graph.landscape-mode .lgbar-hint,
+  .page-graph.landscape-mode .render-switch {
+    display: none;
+  }
+
+  .page-graph.landscape-mode .graph-canvas-wrap {
+    flex: 1;
+    min-height: 0 !important;   /* 压过 3D 主题的 560px 最小高度 */
+    border: none;
+    border-radius: 0;
+  }
+}
