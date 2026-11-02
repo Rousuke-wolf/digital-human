@@ -427,23 +427,22 @@ const exploredCount = computed(() => visitedIds.value.length)
 let graph3d = null
 const g3dError = ref('')
 
-// 移动端全页横屏：整页旋转 90° 铺满视口（切回 2D 或退出页面时复位）
+// 移动端横屏：3D 画布全屏铺满 + 相机滚转 90°（切回 2D 或退出页面时复位）
 const landscapeMode = ref(false)
 function toggleLandscape() {
   landscapeMode.value = !landscapeMode.value
-  // 3D 拾取需感知页面旋转（屏幕坐标 → 画布坐标换轴）
-  graph3d?.setLandscapeRotated(landscapeMode.value)
-  // 旋转后的固定层覆盖全屏，锁定底层滚动
+  graph3d?.setLandscape(landscapeMode.value)
+  // 全屏固定层覆盖视口，锁定底层滚动
   document.body.style.overflow = landscapeMode.value ? 'hidden' : ''
 }
 
 function switchRenderMode(mode) {
   if (mode === renderMode.value) return
   renderMode.value = mode
-  // 切回 2D：复位全页横屏状态（3D 引擎仍常驻，需显式通知）
+  // 切回 2D：复位横屏状态（3D 引擎仍常驻，需显式滚回相机）
   if (mode === '2d' && landscapeMode.value) {
     landscapeMode.value = false
-    graph3d?.setLandscapeRotated(false)
+    graph3d?.setLandscape(false)
     document.body.style.overflow = ''
   }
   if (mode === '3d' && !graph3d && scene3dWrapRef.value) {

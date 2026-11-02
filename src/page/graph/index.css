@@ -1278,24 +1278,63 @@ body:has(.page-graph.theme-3d) {
   }
 }
 
-/* ── 移动端全页横屏：整个页面旋转 90° 铺满视口 ──
-   用户把手机横过来即为横屏布局（导航栏/图例/3D 视图一起转）；
-   页面级旋转不影响页面内相对布局，3D 拾取由引擎按旋转换轴补偿 */
+/* ── 移动端横屏模式：3D 画布全屏铺满 + 相机滚转 90° ──
+   不旋转 DOM（真机浏览器对整页 CSS 旋转兼容差、交互失效）；
+   改为隐藏导航/页头/轨迹，图例浮层化，画布 fixed 盖满视口，
+   相机由引擎滚转 90°——手机横过来即满屏横屏星图，交互全部正常 */
 @media (max-width: 900px) {
-  .page-graph.landscape-mode {
+  .page-graph.landscape-mode .navbar,
+  .page-graph.landscape-mode .graph-head,
+  .page-graph.landscape-mode .graph-trail {
+    display: none;
+  }
+
+  .page-graph.landscape-mode .graph-main {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vh;
-    width: 100dvh;
-    height: 100vw;
-    height: 100dvw;
-    transform-origin: 0 0;
-    transform: translateX(100vw) rotate(90deg);
-    /* 旋转后允许页面内滚动：完整布局不裁内容，手机横过来后竖滑浏览 */
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    inset: 0;
     z-index: 9990;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page-graph.landscape-mode .graph-legend-bar {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: auto;
+    z-index: 15;
+    flex-wrap: wrap;
+    padding: 6px 10px;
+    background: rgba(13, 18, 40, 0.62);
+    backdrop-filter: blur(6px);
+    border-radius: 12px;
+  }
+
+  .page-graph.landscape-mode .lgbar-hint,
+  .page-graph.landscape-mode .render-switch {
+    display: none;
+  }
+
+  .page-graph.landscape-mode .graph-canvas-wrap {
+    flex: 1;
+    min-height: 0 !important;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* 横屏按钮移到左下角，避免与图例重叠 */
+  .page-graph.landscape-mode .g3d-landscape-btn {
+    top: auto;
+    right: auto;
+    left: 12px;
+    bottom: 12px;
+  }
+
+  .page-graph.landscape-mode .g3d-hint {
+    left: auto;
+    right: 12px;
+    bottom: 12px;
   }
 }
