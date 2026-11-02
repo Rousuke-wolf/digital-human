@@ -102,8 +102,20 @@
 
         <!-- 3D 场景容器（懒初始化；v-show 保持容器常驻避免重复建场景） -->
         <div v-show="renderMode === '3d'" ref="scene3dWrapRef" class="graph-scene3d" />
-        <div v-if="renderMode === '3d' && !g3dError" class="g3d-hint">🌌 深空模式 · 拖拽旋转 / 滚轮拉近推远 / 点击星体探索</div>
+        <div v-if="renderMode === '3d' && !g3dError" class="g3d-hint">
+          {{ landscapeMode ? '📱 横屏模式 · 把手机横过来查看（再点按钮退出）' : '🌌 深空模式 · 拖拽旋转 / 滚轮拉近推远 / 点击星体探索' }}
+        </div>
         <div v-if="g3dError" class="g3d-hint error">⚠️ {{ g3dError }}（已切回 2D 星图）</div>
+
+        <!-- 移动端横屏切换（仅 3D 模式；相机滚转 90°，交互不受影响） -->
+        <button
+          v-show="renderMode === '3d'"
+          class="g3d-landscape-btn"
+          :class="{ on: landscapeMode }"
+          type="button"
+          title="横屏查看：把手机横过来"
+          @click="toggleLandscape"
+        >{{ landscapeMode ? '↩ 退出横屏' : '📱 横屏' }}</button>
 
         <!-- 节点专属界面：介绍 + 关联（选中后浮现，按住标题栏可拖动） -->
         <Transition name="overlay-in">
@@ -415,9 +427,21 @@ const exploredCount = computed(() => visitedIds.value.length)
 let graph3d = null
 const g3dError = ref('')
 
+// 移动端横屏模式：相机滚转 90°（切回 2D 或退出 3D 时复位）
+const landscapeMode = ref(false)
+function toggleLandscape() {
+  landscapeMode.value = !landscapeMode.value
+  graph3d?.setLandscape(landscapeMode.value)
+}
+
 function switchRenderMode(mode) {
   if (mode === renderMode.value) return
   renderMode.value = mode
+  // 切回 2D：复位横屏状态（3D 引擎仍常驻，需显式滚回）
+  if (mode === '2d' && landscapeMode.value) {
+    landscapeMode.value = false
+    graph3d?.setLandscape(false)
+  }
   if (mode === '3d' && !graph3d && scene3dWrapRef.value) {
     // 懒初始化：首次切 3D 才建场景（容器此时已可见）
     try {

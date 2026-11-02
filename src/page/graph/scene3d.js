@@ -606,6 +606,12 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
       filterCat = catId
       applyStates()
     },
+    // 移动端横屏模式：滚转相机 90°（绕视线轴），DOM 不旋转——
+    // 节点拾取/OrbitControls 拖拽缩放全部照常工作，用户把手机横过来即为横屏视角
+    setLandscape(on) {
+      camera.up.set(0, on ? 0 : 1, on ? 1 : 0)
+      controls.update()
+    },
     pause() { paused = true },
     resume() { paused = false },
     dispose() {

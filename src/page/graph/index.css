@@ -1247,3 +1247,33 @@ html:has(.page-graph.theme-3d),
 body:has(.page-graph.theme-3d) {
   background: #0a0f22;
 }
+
+/* ── 移动端横屏切换按钮（仅 3D 模式、≤900px 显示）── */
+.g3d-landscape-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 12;
+  display: none;
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  background: rgba(13, 18, 40, 0.55);
+  color: #d8e0f5;
+  font-size: 13px;
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.g3d-landscape-btn.on {
+  border-color: #c9984a;
+  color: #ffd98a;
+  background: rgba(13, 18, 40, 0.72);
+}
+
+@media (max-width: 900px) {
+  .g3d-landscape-btn {
+    display: block;
+  }
+}
