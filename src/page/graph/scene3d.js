@@ -219,7 +219,9 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
 
   const camera = new THREE.PerspectiveCamera(45, 1, 1, 4000)
   // 初始视角见文件顶部 CAM_INIT / CAM_TARGET（默认平视、撑满屏宽）
-  camera.position.set(CAM_INIT.x, CAM_INIT.y, CAM_INIT.z)
+  // 竖屏窄容器（手机）：初始相机拉远，一屏看全星图，弥补横宽星图在竖屏下的视野损失
+  const isNarrow = (container.clientWidth || 0) < 500
+  camera.position.set(CAM_INIT.x, CAM_INIT.y, isNarrow ? 560 : CAM_INIT.z)
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   // 上下文丢失（GPU 进程崩溃/驱动重置）：提示并停止渲染，避免黑屏循环
@@ -605,13 +607,6 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
     setFilter(catId) {
       filterCat = catId
       applyStates()
-    },
-    // 移动端横屏：全屏铺满画布 + 滚转相机 90°（DOM 不旋转，
-    // 节点拾取/拖拽/缩放全部照常），用户把手机横过来即得横屏沉浸视角
-    setLandscape(on) {
-      camera.up.set(0, on ? 0 : 1, on ? 1 : 0)
-      controls.update()
-      resize()
     },
     pause() { paused = true },
     resume() { paused = false },

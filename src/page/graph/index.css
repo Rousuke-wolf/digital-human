@@ -1248,93 +1248,22 @@ body:has(.page-graph.theme-3d) {
   background: #0a0f22;
 }
 
-/* ── 移动端横屏切换按钮（仅 3D 模式、≤900px 显示）── */
-.g3d-landscape-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 12;
-  display: none;
-  padding: 7px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 20px;
-  background: rgba(13, 18, 40, 0.55);
-  color: #d8e0f5;
-  font-size: 13px;
-  backdrop-filter: blur(6px);
-  cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, background 0.2s;
-}
 
-.g3d-landscape-btn.on {
-  border-color: #c9984a;
-  color: #ffd98a;
-  background: rgba(13, 18, 40, 0.72);
-}
-
+/* ═══ 移动端竖屏体验优化（2026-11-02）═══
+   ① 节点卡片停靠底部：不再悬浮遮挡星图中心
+   ② 图例提示文字隐藏：省出星图空间 */
 @media (max-width: 900px) {
-  .g3d-landscape-btn {
-    display: block;
+  .node-overlay {
+    left: 8px !important;
+    right: 8px;
+    top: auto !important;
+    bottom: 8px;
+    width: auto !important;
+    max-width: none;
+    max-height: 46%;
   }
-}
 
-/* ── 移动端横屏模式：3D 画布全屏铺满 + 相机滚转 90° ──
-   不旋转 DOM（真机浏览器对整页 CSS 旋转兼容差、交互失效）；
-   改为隐藏导航/页头/轨迹，图例浮层化，画布 fixed 盖满视口，
-   相机由引擎滚转 90°——手机横过来即满屏横屏星图，交互全部正常 */
-@media (max-width: 900px) {
-  .page-graph.landscape-mode .navbar,
-  .page-graph.landscape-mode .graph-head,
-  .page-graph.landscape-mode .graph-trail {
+  .lgbar-hint {
     display: none;
-  }
-
-  .page-graph.landscape-mode .graph-main {
-    position: fixed;
-    inset: 0;
-    z-index: 9990;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .page-graph.landscape-mode .graph-legend-bar {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    right: auto;
-    z-index: 15;
-    flex-wrap: wrap;
-    padding: 6px 10px;
-    background: rgba(13, 18, 40, 0.62);
-    backdrop-filter: blur(6px);
-    border-radius: 12px;
-  }
-
-  .page-graph.landscape-mode .lgbar-hint,
-  .page-graph.landscape-mode .render-switch {
-    display: none;
-  }
-
-  .page-graph.landscape-mode .graph-canvas-wrap {
-    flex: 1;
-    min-height: 0 !important;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  /* 横屏按钮移到左下角，避免与图例重叠 */
-  .page-graph.landscape-mode .g3d-landscape-btn {
-    top: auto;
-    right: auto;
-    left: 12px;
-    bottom: 12px;
-  }
-
-  .page-graph.landscape-mode .g3d-hint {
-    left: auto;
-    right: 12px;
-    bottom: 12px;
   }
 }
