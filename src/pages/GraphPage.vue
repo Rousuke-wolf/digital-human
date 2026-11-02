@@ -1,5 +1,5 @@
 <template>
-  <div class="app-wrapper page-graph" :class="{ 'theme-3d': renderMode === '3d' }">
+  <div class="app-wrapper page-graph" :class="{ 'theme-3d': renderMode === '3d', 'landscape-mode': landscapeMode }">
     <Navbar />
 
     <main class="graph-main">
@@ -103,7 +103,7 @@
         <!-- 3D 场景容器（懒初始化；v-show 保持容器常驻避免重复建场景） -->
         <div v-show="renderMode === '3d'" ref="scene3dWrapRef" class="graph-scene3d" />
         <div v-if="renderMode === '3d' && !g3dError" class="g3d-hint">
-          {{ landscapeMode ? '📱 横屏模式 · 把手机横过来查看（再点按钮退出）' : '🌌 深空模式 · 拖拽旋转 / 滚轮拉近推远 / 点击星体探索' }}
+          {{ landscapeMode ? '📱 全页横屏 · 把手机横过来查看（再点按钮退出）' : '🌌 深空模式 · 拖拽旋转 / 滚轮拉近推远 / 点击星体探索' }}
         </div>
         <div v-if="g3dError" class="g3d-hint error">⚠️ {{ g3dError }}（已切回 2D 星图）</div>
 
@@ -427,20 +427,24 @@ const exploredCount = computed(() => visitedIds.value.length)
 let graph3d = null
 const g3dError = ref('')
 
-// 移动端横屏模式：相机滚转 90°（切回 2D 或退出 3D 时复位）
+// 移动端全页横屏：整页旋转 90° 铺满视口（切回 2D 或退出页面时复位）
 const landscapeMode = ref(false)
 function toggleLandscape() {
   landscapeMode.value = !landscapeMode.value
-  graph3d?.setLandscape(landscapeMode.value)
+  // 3D 拾取需感知页面旋转（屏幕坐标 → 画布坐标换轴）
+  graph3d?.setLandscapeRotated(landscapeMode.value)
+  // 旋转后的固定层覆盖全屏，锁定底层滚动
+  document.body.style.overflow = landscapeMode.value ? 'hidden' : ''
 }
 
 function switchRenderMode(mode) {
   if (mode === renderMode.value) return
   renderMode.value = mode
-  // 切回 2D：复位横屏状态（3D 引擎仍常驻，需显式滚回）
+  // 切回 2D：复位全页横屏状态（3D 引擎仍常驻，需显式通知）
   if (mode === '2d' && landscapeMode.value) {
     landscapeMode.value = false
-    graph3d?.setLandscape(false)
+    graph3d?.setLandscapeRotated(false)
+    document.body.style.overflow = ''
   }
   if (mode === '3d' && !graph3d && scene3dWrapRef.value) {
     // 懒初始化：首次切 3D 才建场景（容器此时已可见）
@@ -1032,6 +1036,8 @@ onBeforeUnmount(() => {
   clearInterval(factTimer)
   canvasWrapRef.value?.removeEventListener('wheel', onWrapWheel)
   ttsStop()   // 离开页面停止语音讲解
+  // 横屏模式可能锁了 body 滚动：离开页面时释放
+  document.body.style.overflow = ''
   graph3d?.dispose()
   graph3d = null
   if (camRafId != null) cancelAnimationFrame(camRafId)

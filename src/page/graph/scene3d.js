@@ -483,8 +483,18 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
   let downTime = 0
   let rafPending = false
 
+  // 全页横屏（页面整体被 CSS rotate 90°）时拾取坐标需换轴
+  let pointerRotated = false
+
   function updatePointer(e) {
     const rect = renderer.domElement.getBoundingClientRect()
+    if (pointerRotated) {
+      // 页面 transform: translateX(100vw) rotate(90deg)（原点 0 0）：
+      // 屏幕 (sx,sy) 对应画布局部 (lx,ly) = (sy - rect.top, rect.right - sx)
+      pointer.x = ((e.clientY - rect.top) / rect.height) * 2 - 1
+      pointer.y = -(((rect.right - e.clientX) / rect.width) * 2 - 1)
+      return
+    }
     pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
     pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
   }
@@ -606,11 +616,9 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
       filterCat = catId
       applyStates()
     },
-    // 移动端横屏模式：滚转相机 90°（绕视线轴），DOM 不旋转——
-    // 节点拾取/OrbitControls 拖拽缩放全部照常工作，用户把手机横过来即为横屏视角
-    setLandscape(on) {
-      camera.up.set(0, on ? 0 : 1, on ? 1 : 0)
-      controls.update()
+    // 移动端全页横屏：告知引擎页面已被 CSS 旋转 90°，拾取坐标换轴
+    setLandscapeRotated(on) {
+      pointerRotated = !!on
     },
     pause() { paused = true },
     resume() { paused = false },
