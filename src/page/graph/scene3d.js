@@ -219,9 +219,10 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
 
   const camera = new THREE.PerspectiveCamera(45, 1, 1, 4000)
   // 初始视角见文件顶部 CAM_INIT / CAM_TARGET（默认平视、撑满屏宽）
-  // 竖屏窄容器（手机）：初始相机拉远，一屏看全星图，弥补横宽星图在竖屏下的视野损失
+  // 竖屏窄容器（手机）：初始相机拉远 + 抬高（约 35° 俯视），
+  // 俯视比平视信息量大，弥补横宽星图在竖屏下的视野损失
   const isNarrow = (container.clientWidth || 0) < 500
-  camera.position.set(CAM_INIT.x, CAM_INIT.y, isNarrow ? 560 : CAM_INIT.z)
+  camera.position.set(CAM_INIT.x, isNarrow ? 420 : CAM_INIT.y, isNarrow ? 560 : CAM_INIT.z)
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   // 上下文丢失（GPU 进程崩溃/驱动重置）：提示并停止渲染，避免黑屏循环
@@ -531,6 +532,28 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
     else if (onClear) onClear()
   })
 
+  // ── 节点聚焦动画（点击星体：相机平滑拉近，与 2D 聚焦行为呼应）──
+  let focusTween = null   // { t0, dur, fromPos, fromTarget, toPos, toTarget }
+  function easeInOutCubic(u) {
+    return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2
+  }
+  function startFocus(id) {
+    const p = pos3Of(id)
+    // 保持当前视线方向，把相机移到距节点 300 单位处（≥minDistance 260）
+    const dir = camera.position.clone().sub(controls.target).normalize()
+    focusTween = {
+      t0: performance.now(),
+      dur: 650,
+      fromPos: camera.position.clone(),
+      fromTarget: controls.target.clone(),
+      toPos: p.clone().addScaledVector(dir, 300),
+      toTarget: p.clone(),
+    }
+  }
+  function cancelFocus() { focusTween = null }
+  // 用户开始拖拽/缩放：立即让位，取消进行中的聚焦动画
+  controls.addEventListener('start', cancelFocus)
+
   // ── 渲染循环（呼吸动画 + 阻尼 + 自转）──
   let rafId = null
   let paused = false
@@ -541,6 +564,14 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
     if (paused) return
     const t = clock.getElapsedTime()
     const dt = Math.min(clock.getDelta(), 0.05)
+    // 聚焦动画：平滑插值相机位置与注视点
+    if (focusTween) {
+      const u = Math.min(1, (performance.now() - focusTween.t0) / focusTween.dur)
+      const k = easeInOutCubic(u)
+      camera.position.lerpVectors(focusTween.fromPos, focusTween.toPos, k)
+      controls.target.lerpVectors(focusTween.fromTarget, focusTween.toTarget, k)
+      if (u >= 1) focusTween = null
+    }
     // 星灯：平滑追随选中星球并渐亮（柔和的暖光照明）；取消选中后渐灭
     if (selectLightOn) {
       selectLight.position.lerp(selectLightPos, 0.18)
@@ -593,6 +624,10 @@ export function initGraph3D(container, { onSelect, onHover, onLeave, onClear }) 
       if (id) {
         const p = pos3Of(id)
         selectLightPos.set(p.x, p.y + 30, p.z)
+        // 点击星体：相机平滑拉近该节点（与 2D 聚焦行为呼应）
+        startFocus(id)
+      } else {
+        cancelFocus()
       }
       applyStates()
     },
